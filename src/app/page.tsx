@@ -52,7 +52,19 @@ function Ticker() {
   );
 }
 
+function useLiveClock() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
 function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
+  const now = useLiveClock();
+  const dateStr = now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const timeStr = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
   const tabs = ['Dashboard','Positions','Transactions','Rider','Rate Board'];
   return (
     <nav style={S.nav}>
@@ -71,7 +83,7 @@ function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
         <div style={{ width:7, height:7, borderRadius:'50%', background:'#00d4aa', boxShadow:'0 0 8px #00d4aa88' }} />
         <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#00d4aa' }}>LIVE</span>
-        <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>Mar 8 2026 · 06:58 PM</span>
+        <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{dateStr} · {timeStr}</span>
       </div>
     </nav>
   );
