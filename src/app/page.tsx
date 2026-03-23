@@ -32,6 +32,20 @@ const PIE_DATA = [
   { name:'PHP Cash', value: PHP_CASH, color:'#a78bfa' },
 ];
 
+// ── Tracker Types ─────────────────────────────────────
+interface TrackerEntry {
+  id: string; date: string; customer: string;
+  currency: string; foreignAmt: number; rate: number;
+  totalPhp: number; cashPaid: number; checkAmt: number;
+  checkNo: string; bank: string;
+  status: 'PENDING' | 'FULLY PAID';
+  depositedDate?: string; branch: string;
+}
+interface PassbookEntry {
+  id: string; date: string; amount: number;
+  description: string; refId?: string; branch: string;
+}
+
 const S: Record<string, React.CSSProperties> = {
   nav:  { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 32px', height:'56px', borderBottom:'1px solid #1e2230', background:'rgba(15,17,23,0.96)', backdropFilter:'blur(12px)', position:'sticky', top:0, zIndex:100, fontFamily:"'Syne',sans-serif" },
   ticker: { overflow:'hidden', borderBottom:'1px solid #1e2230', background:'#0f1117', padding:'8px 0' },
@@ -65,7 +79,7 @@ function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
   const now = useLiveClock();
   const dateStr = now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
   const timeStr = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
-  const tabs = ['Dashboard','Positions','Transactions','Rider','Rate Board'];
+  const tabs = ['Dashboard','Positions','Transactions','Rider','Rate Board','Tracker'];
   return (
     <nav style={S.nav}>
       <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
@@ -427,6 +441,268 @@ function RateBoardTab() {
   );
 }
 
+const BRANCHES = ['PUSOK', 'SM', 'AYALA', 'MAIN'];
+
+function TrackerTab() {
+  const [role, setRole]       = useState<'ADMIN'|'CASHIER'>('CASHIER');
+  const [view, setView]       = useState<'balances'|'passbook'>('balances');
+  const [entries, setEntries] = useState<TrackerEntry[]>([]);
+  const [passbook, setPb]     = useState<PassbookEntry[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [branch, setBranch]   = useState('PUSOK');
+
+  // entry form
+  const [f, setF] = useState({ customer:'', currency:'USD', foreignAmt:'', cashPaid:'', checkNo:'', bank:'' });
+
+  useEffect(() => {
+    try {
+      const e = localStorage.getItem('kedco-tracker'); if (e) setEntries(JSON.parse(e));
+      const p = localStorage.getItem('kedco-passbook'); if (p) setPb(JSON.parse(p));
+    } catch {}
+  }, []);
+  useEffect(() => { localStorage.setItem('kedco-tracker', JSON.stringify(entries)); }, [entries]);
+  useEffect(() => { localStorage.setItem('kedco-passbook', JSON.stringify(passbook)); }, [passbook]);
+
+  const rate     = CURRENCIES.find(c => c.code === f.currency)?.todaySellRate ?? 0;
+  const totalPhp = (parseFloat(f.foreignAmt) || 0) * rate;
+  const checkAmt = Math.max(0, totalPhp - (parseFloat(f.cashPaid) || 0));
+
+  const addEntry = () => {
+    if (!f.customer.trim() || !f.foreignAmt) return;
+    const isPaid = checkAmt <= 0;
+    const entry: TrackerEntry = {
+      id: `CHK-${Date.now()}`, date: new Date().toLocaleDateString('en-PH'),
+      customer: f.customer, currency: f.currency,
+      foreignAmt: parseFloat(f.foreignAmt), rate, totalPhp,
+      cashPaid: parseFloat(f.cashPaid) || 0, checkAmt,
+      checkNo: f.checkNo, bank: f.bank,
+      status: isPaid ? 'FULLY PAID' : 'PENDING', branch,
+    };
+    setEntries(prev => [entry, ...prev]);
+    if (!isPaid) {
+      const pb: PassbookEntry = { id:`PB-${Date.now()}`, date: new Date().toLocaleDateString('en-PH'), amount: checkAmt, description:`Pending check — ${f.customer} (${f.checkNo||'no ref'})`, refId: entry.id, branch };
+      setPb(prev => [pb, ...prev]);
+    }
+    setF({ customer:'', currency:'USD', foreignAmt:'', cashPaid:'', checkNo:'', bank:'' });
+    setShowForm(false);
+  };
+
+  const markDeposited = (id: string) => {
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, status: 'FULLY PAID' as const, depositedDate: new Date().toLocaleDateString('en-PH') } : e));
+    setPb(prev => prev.map(p => p.refId === id ? { ...p, description: p.description.replace('Pending check', 'Deposited check') } : p));
+  };
+
+  const pending   = entries.filter(e => e.status === 'PENDING');
+  const paid      = entries.filter(e => e.status === 'FULLY PAID');
+  const pendingTotal = pending.reduce((s, e) => s + e.checkAmt, 0);
+
+  const branchPb  = passbook.filter(p => p.branch === branch);
+  const pbBalance = branchPb.reduce((s, p) => s + p.amount, 0);
+
+  const inp = (label: string, key: keyof typeof f, opts?: { type?: string; placeholder?: string; list?: string }) => (
+    <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+      <label style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', letterSpacing:'0.12em' }}>{label}</label>
+      <input
+        type={opts?.type||'text'} list={opts?.list}
+        placeholder={opts?.placeholder||''}
+        value={f[key]} onChange={e => setF(p => ({ ...p, [key]: e.target.value }))}
+        style={{ background:'#161922', border:'1px solid #1e2230', borderRadius:6, padding:'8px 10px', color:'#e2e6f0', fontFamily:"'DM Mono',monospace", fontSize:12, outline:'none', width:'100%' }}
+      />
+    </div>
+  );
+
+  return (
+    <div style={S.page}>
+      {/* Header row */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:6 }}>
+          {(['balances','passbook'] as const).map(v => (
+            <button key={v} onClick={()=>setView(v)} style={{ padding:'7px 18px', borderRadius:6, border:`1px solid ${view===v?'#00d4aa':'#1e2230'}`, background:view===v?'rgba(0,212,170,0.1)':'transparent', color:view===v?'#00d4aa':'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'0.1em', cursor:'pointer', textTransform:'uppercase' }}>{v}</button>
+          ))}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+          {/* Role toggle — demo only */}
+          <div style={{ display:'flex', alignItems:'center', gap:6, background:'#161922', border:'1px solid #1e2230', borderRadius:8, padding:'4px' }}>
+            {(['CASHIER','ADMIN'] as const).map(r => (
+              <button key={r} onClick={()=>setRole(r)} style={{ padding:'5px 14px', borderRadius:6, border:'none', cursor:'pointer', fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'0.08em', background: role===r ? (r==='ADMIN'?'rgba(245,166,35,0.2)':'rgba(91,140,255,0.2)') : 'transparent', color: role===r ? (r==='ADMIN'?'#f5a623':'#5b8cff') : '#4a5468', transition:'all 0.15s' }}>
+                {r==='ADMIN' ? '🔐 ADMIN' : '🖥️ CASHIER'}
+              </button>
+            ))}
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#4a5468', letterSpacing:'0.1em' }}>BRANCH</span>
+            {BRANCHES.map(b => (
+              <button key={b} onClick={()=>setBranch(b)} style={{ padding:'5px 12px', borderRadius:5, border:`1px solid ${branch===b?'#a78bfa':'#1e2230'}`, background:branch===b?'rgba(167,139,250,0.1)':'transparent', color:branch===b?'#a78bfa':'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer' }}>{b}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {view === 'balances' && (
+        <>
+          {/* Summary cards — admin only */}
+          {role === 'ADMIN' && <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
+            {[
+              { label:'PENDING CHECKS', val:php(pendingTotal), sub:`${pending.length} customer${pending.length!==1?'s':''} with balance`, color:'#ff5c5c' },
+              { label:'FULLY PAID TODAY', val:String(paid.length), sub:'All cleared', color:'#00d4aa' },
+              { label:'TOTAL ENTRIES', val:String(entries.length), sub:'Cumulative', color:'#5b8cff' },
+            ].map(c => (
+              <div key={c.label} style={{ ...S.card, padding:'18px 22px', position:'relative', overflow:'hidden' }}>
+                <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,${c.color},transparent)` }}/>
+                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', letterSpacing:'0.15em', marginBottom:6 }}>{c.label}</div>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:c.color, lineHeight:1, marginBottom:4 }}>{c.val}</div>
+                <div style={{ fontSize:11, color:'#4a5468' }}>{c.sub}</div>
+              </div>
+            ))}
+          </div>}
+
+          {/* Add entry */}
+          <div>
+            <button onClick={()=>setShowForm(s=>!s)} style={{ padding:'8px 20px', borderRadius:7, border:'1px solid rgba(0,212,170,0.35)', background:'rgba(0,212,170,0.08)', color:'#00d4aa', fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, cursor:'pointer', letterSpacing:'0.02em' }}>
+              {showForm ? '✕ Cancel' : '+ Add Entry'}
+            </button>
+            {showForm && (
+              <div style={{ ...S.card, padding:'22px 24px', marginTop:12, border:'1px solid rgba(0,212,170,0.2)', animation:'fadeUp 0.25s ease both' }}>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700, marginBottom:16, color:'#00d4aa' }}>New Customer Entry</div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 140px 140px 140px', gap:12, marginBottom:12 }}>
+                  {inp('CUSTOMER NAME', 'customer', { placeholder:'e.g. Nancy' })}
+                  <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                    <label style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', letterSpacing:'0.12em' }}>CURRENCY</label>
+                    <select value={f.currency} onChange={e=>setF(p=>({...p,currency:e.target.value}))} style={{ background:'#161922', border:'1px solid #1e2230', borderRadius:6, padding:'8px 10px', color:'#e2e6f0', fontFamily:"'DM Mono',monospace", fontSize:12, outline:'none' }}>
+                      {CURRENCIES.map(c=><option key={c.code} value={c.code}>{c.code}</option>)}
+                    </select>
+                  </div>
+                  {inp('FOREIGN AMT', 'foreignAmt', { type:'number', placeholder:'e.g. 100000' })}
+                  {inp('CASH PAID (PHP)', 'cashPaid', { type:'number', placeholder:'e.g. 100000' })}
+                  <div style={{ display:'flex', flexDirection:'column', gap:4, justifyContent:'flex-end' }}>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', letterSpacing:'0.12em' }}>COMPUTED</div>
+                    <div style={{ background:'#0f1117', border:'1px solid #1e2230', borderRadius:6, padding:'8px 10px' }}>
+                      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#4a5468' }}>Rate: {rate.toFixed(4)}</div>
+                      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#f5a623' }}>Total: {php(totalPhp)}</div>
+                      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: checkAmt > 0 ? '#ff5c5c' : '#00d4aa' }}>Check: {php(checkAmt)}</div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
+                  {inp('CHECK NO.', 'checkNo', { placeholder:'e.g. 001234' })}
+                  {inp('BANK', 'bank', { placeholder:'e.g. BDO, BPI...' })}
+                </div>
+                <button onClick={addEntry} style={{ padding:'9px 24px', borderRadius:7, border:'none', background:'linear-gradient(135deg,#00d4aa,#00a884)', color:'#000', fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:800, cursor:'pointer', letterSpacing:'0.02em' }}>
+                  Save Entry
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Pending checks */}
+          {pending.length > 0 && (
+            <div style={S.card}>
+              <div style={{ padding:'14px 22px', borderBottom:'1px solid #1e2230', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700, color:'#ff5c5c' }}>⏳ Pending Checks</div>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#ff5c5c' }}>{php(pendingTotal)} outstanding</span>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 80px 110px 110px 110px 110px 120px 120px', padding:'9px 22px', borderBottom:'1px solid #1e2230', fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', letterSpacing:'0.1em', gap:10 }}>
+                <span>CUSTOMER</span><span>CCY</span><span>FOREIGN AMT</span><span>PHP TOTAL</span><span>CASH PAID</span><span>CHECK AMT</span><span>CHECK / BANK</span><span></span>
+              </div>
+              {pending.map((e, i) => (
+                <div key={e.id} style={{ display:'grid', gridTemplateColumns:'1fr 80px 110px 110px 110px 110px 120px 120px', padding:'13px 22px', borderBottom:i<pending.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10 }}>
+                  <div>
+                    <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700 }}>{e.customer}</div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468' }}>{e.date}</div>
+                  </div>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:'#f5a623', fontWeight:600 }}>{e.currency}</span>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11 }}>{e.foreignAmt.toLocaleString()}</span>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11 }}>{php(e.totalPhp)}</span>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#00d4aa' }}>{php(e.cashPaid)}</span>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:'#ff5c5c', fontWeight:600 }}>{php(e.checkAmt)}</span>
+                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10 }}>
+                    <div style={{ color:'#e2e6f0' }}>{e.checkNo||'—'}</div>
+                    <div style={{ color:'#4a5468' }}>{e.bank||'—'}</div>
+                  </div>
+                  <button onClick={()=>markDeposited(e.id)} style={{ padding:'6px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.4)', background:'rgba(0,212,170,0.08)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em' }}>
+                    MARK DEPOSITED
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Fully paid */}
+          {paid.length > 0 && (
+            <div style={S.card}>
+              <div style={{ padding:'14px 22px', borderBottom:'1px solid #1e2230' }}>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700, color:'#00d4aa' }}>✅ Fully Paid</div>
+              </div>
+              {paid.map((e, i) => (
+                <div key={e.id} style={{ display:'grid', gridTemplateColumns:'1fr 80px 110px 110px 110px 140px', padding:'11px 22px', borderBottom:i<paid.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10 }}>
+                  <div>
+                    <div style={{ fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, color:'#4a5468' }}>{e.customer}</div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468' }}>{e.date}{e.depositedDate ? ` · deposited ${e.depositedDate}` : ''}</div>
+                  </div>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:'#4a5468' }}>{e.currency}</span>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{e.foreignAmt.toLocaleString()}</span>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{php(e.totalPhp)}</span>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{php(e.cashPaid)}</span>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#00d4aa', padding:'3px 10px', background:'rgba(0,212,170,0.08)', borderRadius:20, border:'1px solid rgba(0,212,170,0.2)', textAlign:'center' }}>FULLY PAID</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {entries.length === 0 && (
+            <div style={{ ...S.card, padding:'48px', textAlign:'center' }}>
+              <div style={{ fontSize:32, marginBottom:12 }}>📋</div>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:700, marginBottom:6 }}>No entries yet</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>Click + Add Entry to log a customer transaction with check payment</div>
+            </div>
+          )}
+        </>
+      )}
+
+      {view === 'passbook' && (
+        <>
+          {/* Passbook balance card — admin only */}
+          {role === 'ADMIN' && <div style={{ ...S.card, padding:'24px 28px', border:'1px solid rgba(91,140,255,0.28)', position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', top:-40, right:-40, width:130, height:130, borderRadius:'50%', background:'radial-gradient(circle,rgba(91,140,255,0.1) 0%,transparent 70%)', pointerEvents:'none' }}/>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#4a5468', letterSpacing:'0.2em', marginBottom:8 }}>PASSBOOK BALANCE · {branch} BRANCH</div>
+            <div style={{ fontFamily:"'Syne',sans-serif", fontSize:42, fontWeight:800, color:'#5b8cff', lineHeight:1, marginBottom:8 }}>{php(pbBalance)}</div>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{branchPb.length} deposit{branchPb.length!==1?'s':''} recorded</div>
+          </div>}
+
+          {/* Passbook log */}
+          <div style={S.card}>
+            <div style={{ padding:'14px 22px', borderBottom:'1px solid #1e2230', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700 }}>Deposit Log</div>
+            </div>
+            {branchPb.length === 0 ? (
+              <div style={{ padding:'40px', textAlign:'center', fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>
+                No deposits recorded. Entries appear here when checks are marked as deposited.
+              </div>
+            ) : (
+              <>
+                <div style={{ display:'grid', gridTemplateColumns:'100px 1fr 140px', padding:'9px 22px', borderBottom:'1px solid #1e2230', fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', letterSpacing:'0.1em', gap:12 }}>
+                  <span>DATE</span><span>DESCRIPTION</span><span style={{ textAlign:'right' }}>AMOUNT</span>
+                </div>
+                {branchPb.map((p, i) => (
+                  <div key={p.id} style={{ display:'grid', gridTemplateColumns:'100px 1fr 140px', padding:'13px 22px', borderBottom:i<branchPb.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:12 }}>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#4a5468' }}>{p.date}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11 }}>{p.description}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:13, color:'#5b8cff', fontWeight:600, textAlign:'right' }}>{php(p.amount)}</span>
+                  </div>
+                ))}
+                <div style={{ display:'grid', gridTemplateColumns:'100px 1fr 140px', padding:'13px 22px', borderTop:'2px solid rgba(91,140,255,0.35)', background:'rgba(91,140,255,0.06)', gap:12, alignItems:'center' }}>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#4a5468', gridColumn:'span 2' }}>TOTAL BALANCE</span>
+                  <span style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, color:'#5b8cff', textAlign:'right' }}>{php(pbBalance)}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
   const [active, setActive] = useState('Dashboard');
   return (
@@ -442,6 +718,7 @@ export default function Home() {
       {active==='Transactions' && <TransactionsTab/>}
       {active==='Rider'        && <RiderTab/>}
       {active==='Rate Board'   && <RateBoardTab/>}
+      {active==='Tracker'      && <TrackerTab/>}
     </div>
   );
 }
