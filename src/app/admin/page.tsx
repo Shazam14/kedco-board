@@ -3,6 +3,13 @@ import { getTokenRole } from '@/lib/api';
 
 const tools: { href: string; icon: string; title: string; desc: string; color: string; soon?: boolean }[] = [
   {
+    href:  '/counter',
+    icon:  '🖥️',
+    title: 'Counter',
+    desc:  'Enter buy and sell transactions for walk-in customers.',
+    color: '#00d4aa',
+  },
+  {
     href:  '/admin/rates',
     icon:  '📊',
     title: 'Set Today\'s Rates',
@@ -29,6 +36,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     title: 'End of Day',
     desc:  'Close the day, lock rates, generate summary report.',
     color: '#f5a623',
+  },
+  {
+    href:  '/admin/report',
+    icon:  '📋',
+    title: 'Daily Report',
+    desc:  'Full day breakdown by currency and cashier. Replaces the 6 manual books.',
+    color: '#a78bfa',
   },
 ];
 

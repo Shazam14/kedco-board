@@ -19,12 +19,17 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         setError(data.error ?? 'Login failed');
         return;
       }
-      router.push('/');
+      // Route by role — cashier goes straight to the counter
+      if (data.role === 'cashier') {
+        router.push('/counter');
+      } else {
+        router.push('/');
+      }
       router.refresh();
     } finally {
       setLoading(false);

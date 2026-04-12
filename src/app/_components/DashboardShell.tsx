@@ -7,6 +7,17 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 const php = (n: number) => '₱' + Math.round(n).toLocaleString('en-PH');
 const fmt = (rate: number, dp: number) => rate.toFixed(dp);
 
+function useWindowWidth() {
+  const [w, setW] = useState(1440);
+  useEffect(() => {
+    setW(window.innerWidth);
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return w;
+}
+
 function useCountUp(target: number, duration = 1300) {
   const [val, setVal] = useState(0);
   useEffect(() => {
@@ -70,7 +81,9 @@ function useLiveClock() {
 
 function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
   const router = useRouter();
-  const now = useLiveClock();
+  const now    = useLiveClock();
+  const w      = useWindowWidth();
+  const isMobile = w < 768;
   const dateStr = now ? now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
   const timeStr = now ? now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true }) : '';
   const tabs = ['Dashboard','Positions','Transactions','Rider','Rate Board','Tracker'];
@@ -81,7 +94,7 @@ function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
   }
 
   return (
-    <nav style={S.nav}>
+    <nav style={{ ...S.nav, flexWrap: isMobile ? 'wrap' : 'nowrap', height: isMobile ? 'auto' : '56px', padding: isMobile ? '10px 16px' : '0 32px', gap: isMobile ? 8 : 0 }}>
       <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
         <div style={{ width:28, height:28, borderRadius:8, background:'linear-gradient(135deg,#00d4aa,#00a884)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#000' }}>K</div>
         <div>
@@ -89,16 +102,17 @@ function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
           <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', marginTop:-2 }}>Pusok · Lapu-Lapu City</div>
         </div>
       </div>
-      <div style={{ display:'flex', gap:4 }}>
+      {/* Tabs — horizontally scrollable on mobile */}
+      <div style={{ display:'flex', gap:4, overflowX:'auto', flexShrink: isMobile ? 0 : 1, width: isMobile ? '100%' : 'auto', paddingBottom: isMobile ? 4 : 0 }}>
         {tabs.map(t => (
-          <button key={t} onClick={()=>set(t)} style={{ padding:'6px 16px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:"'Syne',sans-serif", letterSpacing:'0.01em', background: active===t ? 'rgba(0,212,170,0.12)' : 'transparent', color: active===t ? '#00d4aa' : '#4a5468', transition:'all 0.15s' }}>{t}</button>
+          <button key={t} onClick={()=>set(t)} style={{ padding:'6px 12px', borderRadius:6, border:'none', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:"'Syne',sans-serif", letterSpacing:'0.01em', background: active===t ? 'rgba(0,212,170,0.12)' : 'transparent', color: active===t ? '#00d4aa' : '#4a5468', transition:'all 0.15s', whiteSpace:'nowrap', flexShrink:0 }}>{t}</button>
         ))}
       </div>
-      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginLeft: isMobile ? 0 : 'auto' }}>
         <div style={{ width:7, height:7, borderRadius:'50%', background:'#00d4aa', boxShadow:'0 0 8px #00d4aa88' }} />
         <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#00d4aa' }}>LIVE</span>
-        <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{dateStr} · {timeStr}</span>
-        <a href="/admin" style={{ marginLeft:8, padding:'4px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>ADMIN</a>
+        {!isMobile && <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{dateStr} · {timeStr}</span>}
+        <a href="/admin" style={{ marginLeft: isMobile ? 0 : 8, padding:'4px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>ADMIN</a>
         <button onClick={handleLogout} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #1e2230', background:'transparent', color:'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em' }}>LOGOUT</button>
       </div>
     </nav>
@@ -106,6 +120,8 @@ function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
 }
 
 function DashboardTab({ data }: { data: DashboardSummary }) {
+  const w = useWindowWidth();
+  const isMobile = w < 768;
   const capitalGain = data.totalCapital - data.openingCapital;
   const capital = useCountUp(data.totalCapital, 1400);
   const gain    = useCountUp(capitalGain, 1400);
@@ -125,11 +141,11 @@ function DashboardTab({ data }: { data: DashboardSummary }) {
   const sellCount = data.recentTransactions.filter(t=>t.type==='SELL').length;
 
   return (
-    <div style={S.page}>
+    <div style={{ ...S.page, padding: isMobile ? '16px' : '28px 32px' }}>
       {/* HERO */}
-      <div style={{ ...S.card, border:'1px solid rgba(0,212,170,0.28)', padding:'30px 32px', position:'relative', overflow:'hidden', animation:'fadeUp 0.4s ease both' }}>
+      <div style={{ ...S.card, border:'1px solid rgba(0,212,170,0.28)', padding: isMobile ? '20px 18px' : '30px 32px', position:'relative', overflow:'hidden', animation:'fadeUp 0.4s ease both' }}>
         <div style={{ position:'absolute', top:-60, right:-60, width:200, height:200, borderRadius:'50%', background:'radial-gradient(circle, rgba(0,212,170,0.09) 0%, transparent 70%)', pointerEvents:'none' }} />
-        <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:24, alignItems:'center' }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap:24, alignItems:'center' }}>
           <div>
             <div style={{ ...S.mono, fontSize:10, color:'#4a5468', letterSpacing:'0.2em', marginBottom:10 }}>TOTAL CAPITAL POSITION — PHP EQUIVALENT</div>
             <div style={{ ...S.syne, fontSize:'clamp(38px,5vw,58px)', fontWeight:800, color:'#00d4aa', lineHeight:1, letterSpacing:'-0.025em', marginBottom:12 }}>{php(capital)}</div>
@@ -154,7 +170,7 @@ function DashboardTab({ data }: { data: DashboardSummary }) {
       </div>
 
       {/* STATS */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:14 }}>
         {[
           { label:'TODAY THAN (MARGIN)', val:php(than),                sub:'Counter + rider combined',             color:'#00d4aa', icon:'📈', d:100 },
           { label:'BOUGHT TODAY',        val:php(data.totalBoughtToday),sub:`${buyCount} transactions`,             color:'#5b8cff', icon:'💱', d:150 },
@@ -173,7 +189,7 @@ function DashboardTab({ data }: { data: DashboardSummary }) {
       </div>
 
       {/* CHART + PIE */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 300px', gap:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap:16 }}>
         <div style={{ ...S.card, padding:24, animation:'fadeUp 0.5s ease 0.3s both' }}>
           <div style={{ ...S.syne, fontSize:14, fontWeight:700, marginBottom:2 }}>Capital Movement Today</div>
           <div style={{ ...S.mono, fontSize:9, color:'#4a5468', marginBottom:18, letterSpacing:'0.15em' }}>PHP EQUIVALENT · REAL-TIME</div>
@@ -225,29 +241,33 @@ function DashboardTab({ data }: { data: DashboardSummary }) {
           </div>
           <span style={{ ...S.mono, fontSize:11, color:'#00d4aa' }}>{data.recentTransactions.length} today</span>
         </div>
-        {data.recentTransactions.slice(0,6).map((t,i) => (
-          <div key={t.id} style={{ display:'grid', gridTemplateColumns:'90px 58px 62px 70px 1fr 90px 80px', padding:'11px 24px', borderBottom:i<5?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10, fontSize:12 }}>
-            <span style={{ ...S.mono, fontSize:10, color:'#4a5468' }}>{t.time}</span>
-            <span style={{ ...S.mono, fontSize:10, textAlign:'center', padding:'2px 0', borderRadius:4, color:t.type==='BUY'?'#5b8cff':'#f5a623', background:t.type==='BUY'?'rgba(91,140,255,0.1)':'rgba(245,166,35,0.1)' }}>{t.type}</span>
-            <span style={{ ...S.mono, fontSize:10, textAlign:'center', color:t.source==='RIDER'?'#a78bfa':'#4a5468' }}>{t.source==='RIDER'?'🏍️ RDR':'🖥️ CTR'}</span>
-            <span style={{ ...S.mono, fontSize:12, color:'#f5a623', fontWeight:500 }}>{t.currency}</span>
-            <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>{t.foreignAmt.toLocaleString()} @ {t.rate}</span>
-            <span style={{ ...S.mono, fontSize:12, color:'#e2e6f0', fontWeight:500, textAlign:'right' }}>{php(t.phpAmt)}</span>
-            <span style={{ ...S.mono, fontSize:11, color:'#00d4aa', textAlign:'right' }}>{t.type==='SELL'?'+'+php(t.than):'—'}</span>
-          </div>
-        ))}
+        <div style={{ overflowX:'auto' }}>
+          {data.recentTransactions.slice(0,6).map((t,i) => (
+            <div key={t.id} style={{ display:'grid', gridTemplateColumns:'90px 58px 62px 70px 1fr 90px 80px', padding:'11px 24px', borderBottom:i<5?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10, fontSize:12, minWidth:560 }}>
+              <span style={{ ...S.mono, fontSize:10, color:'#4a5468' }}>{t.time}</span>
+              <span style={{ ...S.mono, fontSize:10, textAlign:'center', padding:'2px 0', borderRadius:4, color:t.type==='BUY'?'#5b8cff':'#f5a623', background:t.type==='BUY'?'rgba(91,140,255,0.1)':'rgba(245,166,35,0.1)' }}>{t.type}</span>
+              <span style={{ ...S.mono, fontSize:10, textAlign:'center', color:t.source==='RIDER'?'#a78bfa':'#4a5468' }}>{t.source==='RIDER'?'🏍️ RDR':'🖥️ CTR'}</span>
+              <span style={{ ...S.mono, fontSize:12, color:'#f5a623', fontWeight:500 }}>{t.currency}</span>
+              <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>{t.foreignAmt.toLocaleString()} @ {t.rate}</span>
+              <span style={{ ...S.mono, fontSize:12, color:'#e2e6f0', fontWeight:500, textAlign:'right' }}>{php(t.phpAmt)}</span>
+              <span style={{ ...S.mono, fontSize:11, color:'#00d4aa', textAlign:'right' }}>{t.type==='SELL'?'+'+php(t.than):'—'}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
 function PositionsTab({ data }: { data: DashboardSummary }) {
+  const w = useWindowWidth();
+  const isMobile = w < 768;
   const { positions } = data;
   const [filter, setFilter] = useState<'ALL'|'MAIN'|'2ND'|'OTHERS'>('ALL');
   const filtered = filter==='ALL' ? positions : positions.filter(c=>c.category===filter);
   return (
-    <div style={S.page}>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
+    <div style={{ ...S.page, padding: isMobile ? '16px' : '28px 32px' }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:14 }}>
         {(['MAIN','2ND','OTHERS'] as const).map(cat => {
           const items = positions.filter(c=>c.category===cat);
           return (
@@ -265,37 +285,39 @@ function PositionsTab({ data }: { data: DashboardSummary }) {
         ))}
       </div>
       <div style={S.card}>
-        <div style={{ display:'grid', gridTemplateColumns:'130px 110px 120px 100px 100px 110px 100px', padding:'10px 20px', borderBottom:'1px solid #1e2230', fontFamily:"'DM Mono',monospace", fontSize:10, color:'#4a5468', letterSpacing:'0.1em', gap:8 }}>
-          <span>CURRENCY</span><span>STOCK QTY</span><span>AVG COST (PHP)</span><span>BUY RATE</span><span>SELL RATE</span><span>STOCK VALUE</span><span>UNREALIZED</span>
-        </div>
-        {filtered.map((c,i) => (
-          <div key={c.code} style={{ display:'grid', gridTemplateColumns:'130px 110px 120px 100px 100px 110px 100px', padding:'13px 20px', borderBottom:i<filtered.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:8 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:15 }}>{c.flag}</span>
-              <div>
-                <div style={{ ...S.mono, fontSize:12, color:'#f5a623', fontWeight:500 }}>{c.code}</div>
-                <div style={{ ...S.mono, fontSize:9, color:'#4a5468' }}>{c.category}</div>
-              </div>
-            </div>
-            <span style={{ ...S.mono, fontSize:11 }}>{c.totalQty.toLocaleString()}</span>
-            <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>{fmt(c.dailyAvgCost, c.decimalPlaces)}</span>
-            <span style={{ ...S.mono, fontSize:11 }}>{fmt(c.todayBuyRate, c.decimalPlaces)}</span>
-            <span style={{ ...S.mono, fontSize:11, color:'#00d4aa' }}>{fmt(c.todaySellRate, c.decimalPlaces)}</span>
-            <span style={{ ...S.mono, fontSize:12, fontWeight:500 }}>{php(c.stockValuePhp)}</span>
-            <span style={{ ...S.mono, fontSize:11, color:'#00d4aa' }}>+{php(c.unrealizedPHP)}</span>
+        <div style={{ overflowX:'auto' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'130px 110px 120px 100px 100px 110px 100px', padding:'10px 20px', borderBottom:'1px solid #1e2230', fontFamily:"'DM Mono',monospace", fontSize:10, color:'#4a5468', letterSpacing:'0.1em', gap:8, minWidth:700 }}>
+            <span>CURRENCY</span><span>STOCK QTY</span><span>AVG COST (PHP)</span><span>BUY RATE</span><span>SELL RATE</span><span>STOCK VALUE</span><span>UNREALIZED</span>
           </div>
-        ))}
-        <div style={{ display:'grid', gridTemplateColumns:'130px 110px 120px 100px 100px 110px 100px', padding:'12px 20px', borderTop:'1px solid #1e2230', background:'rgba(167,139,250,0.04)', gap:8, alignItems:'center' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}><span style={{ fontSize:15 }}>🇵🇭</span><div><div style={{ ...S.mono, fontSize:12, color:'#a78bfa', fontWeight:500 }}>PHP</div><div style={{ ...S.mono, fontSize:9, color:'#4a5468' }}>CASH</div></div></div>
-          <span style={{ ...S.mono, fontSize:11, color:'#4a5468', gridColumn:'span 4' }}>Cash on hand</span>
-          <span style={{ ...S.mono, fontSize:12, color:'#a78bfa', fontWeight:500 }}>{php(data.phpCash)}</span>
-          <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>—</span>
-        </div>
-        <div style={{ display:'grid', gridTemplateColumns:'130px 110px 120px 100px 100px 110px 100px', padding:'14px 20px', borderTop:'2px solid rgba(0,212,170,0.35)', background:'rgba(0,212,170,0.06)', gap:8, alignItems:'center' }}>
-          <span style={{ ...S.syne, fontSize:13, fontWeight:800, color:'#00d4aa' }}>TOTAL</span>
-          <span style={{ ...S.mono, fontSize:11, color:'#4a5468', gridColumn:'span 4' }}>{positions.length} currencies + PHP cash</span>
-          <span style={{ ...S.mono, fontSize:14, color:'#00d4aa', fontWeight:500 }}>{php(data.totalCapital)}</span>
-          <span style={{ ...S.mono, fontSize:12, color:'#00d4aa' }}>+{php(data.totalUnrealized)}</span>
+          {filtered.map((c,i) => (
+            <div key={c.code} style={{ display:'grid', gridTemplateColumns:'130px 110px 120px 100px 100px 110px 100px', padding:'13px 20px', borderBottom:i<filtered.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:8, minWidth:700 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:15 }}>{c.flag}</span>
+                <div>
+                  <div style={{ ...S.mono, fontSize:12, color:'#f5a623', fontWeight:500 }}>{c.code}</div>
+                  <div style={{ ...S.mono, fontSize:9, color:'#4a5468' }}>{c.category}</div>
+                </div>
+              </div>
+              <span style={{ ...S.mono, fontSize:11 }}>{c.totalQty.toLocaleString()}</span>
+              <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>{fmt(c.dailyAvgCost, c.decimalPlaces)}</span>
+              <span style={{ ...S.mono, fontSize:11 }}>{fmt(c.todayBuyRate, c.decimalPlaces)}</span>
+              <span style={{ ...S.mono, fontSize:11, color:'#00d4aa' }}>{fmt(c.todaySellRate, c.decimalPlaces)}</span>
+              <span style={{ ...S.mono, fontSize:12, fontWeight:500 }}>{php(c.stockValuePhp)}</span>
+              <span style={{ ...S.mono, fontSize:11, color:'#00d4aa' }}>+{php(c.unrealizedPHP)}</span>
+            </div>
+          ))}
+          <div style={{ display:'grid', gridTemplateColumns:'130px 110px 120px 100px 100px 110px 100px', padding:'12px 20px', borderTop:'1px solid #1e2230', background:'rgba(167,139,250,0.04)', gap:8, alignItems:'center', minWidth:700 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}><span style={{ fontSize:15 }}>🇵🇭</span><div><div style={{ ...S.mono, fontSize:12, color:'#a78bfa', fontWeight:500 }}>PHP</div><div style={{ ...S.mono, fontSize:9, color:'#4a5468' }}>CASH</div></div></div>
+            <span style={{ ...S.mono, fontSize:11, color:'#4a5468', gridColumn:'span 4' }}>Cash on hand</span>
+            <span style={{ ...S.mono, fontSize:12, color:'#a78bfa', fontWeight:500 }}>{php(data.phpCash)}</span>
+            <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>—</span>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'130px 110px 120px 100px 100px 110px 100px', padding:'14px 20px', borderTop:'2px solid rgba(0,212,170,0.35)', background:'rgba(0,212,170,0.06)', gap:8, alignItems:'center', minWidth:700 }}>
+            <span style={{ ...S.syne, fontSize:13, fontWeight:800, color:'#00d4aa' }}>TOTAL</span>
+            <span style={{ ...S.mono, fontSize:11, color:'#4a5468', gridColumn:'span 4' }}>{positions.length} currencies + PHP cash</span>
+            <span style={{ ...S.mono, fontSize:14, color:'#00d4aa', fontWeight:500 }}>{php(data.totalCapital)}</span>
+            <span style={{ ...S.mono, fontSize:12, color:'#00d4aa' }}>+{php(data.totalUnrealized)}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -307,8 +329,10 @@ function TransactionsTab({ data }: { data: DashboardSummary }) {
   const [tF, setTF] = useState<'ALL'|'BUY'|'SELL'>('ALL');
   const [sF, setSF] = useState<'ALL'|'COUNTER'|'RIDER'>('ALL');
   const filtered = txns.filter(t=>(tF==='ALL'||t.type===tF)&&(sF==='ALL'||t.source===sF));
+  const w = useWindowWidth();
+  const isMobile = w < 768;
   return (
-    <div style={S.page}>
+    <div style={{ ...S.page, padding: isMobile ? '16px' : '28px 32px' }}>
       <div style={{ display:'flex', gap:24, alignItems:'center', flexWrap:'wrap' }}>
         <div style={{ display:'flex', gap:6 }}>
           {(['ALL','BUY','SELL'] as const).map(f => <button key={f} onClick={()=>setTF(f)} style={{ padding:'6px 14px', borderRadius:6, cursor:'pointer', fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'0.1em', border:`1px solid ${tF===f?(f==='BUY'?'#5b8cff':f==='SELL'?'#f5a623':'#00d4aa'):'#1e2230'}`, background:tF===f?(f==='BUY'?'rgba(91,140,255,0.1)':f==='SELL'?'rgba(245,166,35,0.1)':'rgba(0,212,170,0.1)'):'transparent', color:tF===f?(f==='BUY'?'#5b8cff':f==='SELL'?'#f5a623':'#00d4aa'):'#4a5468' }}>{f}</button>)}
@@ -319,34 +343,38 @@ function TransactionsTab({ data }: { data: DashboardSummary }) {
         <div style={{ marginLeft:'auto', ...S.mono, fontSize:11, color:'#00d4aa' }}>THAN from filtered: {php(filtered.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.than,0))}</div>
       </div>
       <div style={S.card}>
-        <div style={{ display:'grid', gridTemplateColumns:'110px 70px 58px 80px 70px 1fr 90px 80px 130px', padding:'10px 20px', borderBottom:'1px solid #1e2230', fontFamily:"'DM Mono',monospace", fontSize:10, color:'#4a5468', letterSpacing:'0.1em', gap:10 }}>
-          <span>OR/REF</span><span>TIME</span><span>TYPE</span><span>SOURCE</span><span>CCY</span><span>AMT @ RATE</span><span>PHP TOTAL</span><span>THAN</span><span>CASHIER/CLIENT</span>
-        </div>
-        {filtered.map((t,i) => (
-          <div key={t.id} style={{ display:'grid', gridTemplateColumns:'110px 70px 58px 80px 70px 1fr 90px 80px 130px', padding:'12px 20px', borderBottom:i<filtered.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10 }}>
-            <span style={{ ...S.mono, fontSize:9, color:'#4a5468' }}>{t.id}</span>
-            <span style={{ ...S.mono, fontSize:10, color:'#4a5468' }}>{t.time}</span>
-            <span style={{ ...S.mono, fontSize:10, textAlign:'center', padding:'2px 0', borderRadius:4, color:t.type==='BUY'?'#5b8cff':'#f5a623', background:t.type==='BUY'?'rgba(91,140,255,0.1)':'rgba(245,166,35,0.1)' }}>{t.type}</span>
-            <span style={{ ...S.mono, fontSize:10, color:t.source==='RIDER'?'#a78bfa':'#4a5468' }}>{t.source==='RIDER'?'🏍️ Rider':'🖥️ Ctr'}</span>
-            <span style={{ ...S.mono, fontSize:13, color:'#f5a623', fontWeight:500 }}>{t.currency}</span>
-            <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>{t.foreignAmt.toLocaleString()} @ {t.rate}</span>
-            <span style={{ ...S.mono, fontSize:12, fontWeight:500 }}>{php(t.phpAmt)}</span>
-            <span style={{ ...S.mono, fontSize:11, color:t.type==='SELL'?'#00d4aa':'#4a5468' }}>{t.type==='SELL'?'+'+php(t.than):'—'}</span>
-            <div style={{ ...S.mono, fontSize:10 }}><div>{t.cashier}</div>{t.customer&&<div style={{ color:'#4a5468' }}>{t.customer}</div>}</div>
+        <div style={{ overflowX:'auto' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'110px 70px 58px 80px 70px 1fr 90px 80px 130px', padding:'10px 20px', borderBottom:'1px solid #1e2230', fontFamily:"'DM Mono',monospace", fontSize:10, color:'#4a5468', letterSpacing:'0.1em', gap:10, minWidth:700 }}>
+            <span>OR/REF</span><span>TIME</span><span>TYPE</span><span>SOURCE</span><span>CCY</span><span>AMT @ RATE</span><span>PHP TOTAL</span><span>THAN</span><span>CASHIER/CLIENT</span>
           </div>
-        ))}
-        {filtered.length === 0 && (
-          <div style={{ padding:'40px', textAlign:'center', fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>No transactions recorded yet today.</div>
-        )}
+          {filtered.map((t,i) => (
+            <div key={t.id} style={{ display:'grid', gridTemplateColumns:'110px 70px 58px 80px 70px 1fr 90px 80px 130px', padding:'12px 20px', borderBottom:i<filtered.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10, minWidth:700 }}>
+              <span style={{ ...S.mono, fontSize:9, color:'#4a5468' }}>{t.id}</span>
+              <span style={{ ...S.mono, fontSize:10, color:'#4a5468' }}>{t.time}</span>
+              <span style={{ ...S.mono, fontSize:10, textAlign:'center', padding:'2px 0', borderRadius:4, color:t.type==='BUY'?'#5b8cff':'#f5a623', background:t.type==='BUY'?'rgba(91,140,255,0.1)':'rgba(245,166,35,0.1)' }}>{t.type}</span>
+              <span style={{ ...S.mono, fontSize:10, color:t.source==='RIDER'?'#a78bfa':'#4a5468' }}>{t.source==='RIDER'?'🏍️ Rider':'🖥️ Ctr'}</span>
+              <span style={{ ...S.mono, fontSize:13, color:'#f5a623', fontWeight:500 }}>{t.currency}</span>
+              <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>{t.foreignAmt.toLocaleString()} @ {t.rate}</span>
+              <span style={{ ...S.mono, fontSize:12, fontWeight:500 }}>{php(t.phpAmt)}</span>
+              <span style={{ ...S.mono, fontSize:11, color:t.type==='SELL'?'#00d4aa':'#4a5468' }}>{t.type==='SELL'?'+'+php(t.than):'—'}</span>
+              <div style={{ ...S.mono, fontSize:10 }}><div>{t.cashier}</div>{t.customer&&<div style={{ color:'#4a5468' }}>{t.customer}</div>}</div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div style={{ padding:'40px', textAlign:'center', fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>No transactions recorded yet today.</div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 function RiderTab({ data }: { data: DashboardSummary }) {
+  const w = useWindowWidth();
+  const isMobile = w < 768;
   const riderTxns = data.recentTransactions.filter(t=>t.source==='RIDER');
   return (
-    <div style={S.page}>
+    <div style={{ ...S.page, padding: isMobile ? '16px' : '28px 32px' }}>
       <div style={{ ...S.card, padding:'32px', textAlign:'center', color:'#4a5468', fontFamily:"'DM Mono',monospace" }}>
         <div style={{ fontSize:32, marginBottom:12 }}>🏍️</div>
         <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:700, marginBottom:6, color:'#a78bfa' }}>Rider Management</div>
@@ -373,6 +401,8 @@ function RiderTab({ data }: { data: DashboardSummary }) {
 }
 
 function RateBoardTab({ data }: { data: DashboardSummary }) {
+  const w = useWindowWidth();
+  const isMobile = w < 768;
   const { positions } = data;
   const [today, setToday] = useState('');
   useEffect(() => {
@@ -382,8 +412,8 @@ function RateBoardTab({ data }: { data: DashboardSummary }) {
   const left  = positions.slice(0, half);
   const right = positions.slice(half);
   return (
-    <div style={S.page}>
-      <div style={{ ...S.card, padding:'24px 32px', display:'flex', justifyContent:'space-between', alignItems:'center', border:'1px solid rgba(0,212,170,0.22)', animation:'fadeUp 0.3s ease both' }}>
+    <div style={{ ...S.page, padding: isMobile ? '16px' : '28px 32px' }}>
+      <div style={{ ...S.card, padding:'24px 32px', display:'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent:'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 16 : 0, border:'1px solid rgba(0,212,170,0.22)', animation:'fadeUp 0.3s ease both' }}>
         <div style={{ display:'flex', alignItems:'center', gap:16 }}>
           <div style={{ width:46, height:46, borderRadius:12, background:'linear-gradient(135deg,#00d4aa,#00a884)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:900, color:'#000', fontFamily:"'Syne',sans-serif" }}>K</div>
           <div>
@@ -401,7 +431,7 @@ function RateBoardTab({ data }: { data: DashboardSummary }) {
           <div>in Philippine Peso (PHP)</div>
         </div>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, animation:'fadeUp 0.4s ease 0.1s both' }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:14, animation:'fadeUp 0.4s ease 0.1s both' }}>
         {[left, right].map((col, ci) => (
           <div key={ci} style={S.card}>
             <div style={{ display:'grid', gridTemplateColumns:'auto 1fr 110px 110px', padding:'9px 20px', borderBottom:'1px solid rgba(0,212,170,0.18)', background:'rgba(0,212,170,0.06)', gap:14, alignItems:'center' }}>
@@ -434,6 +464,8 @@ function RateBoardTab({ data }: { data: DashboardSummary }) {
 const BRANCHES = ['PUSOK', 'SM', 'AYALA', 'MAIN'];
 
 function TrackerTab({ data }: { data: DashboardSummary }) {
+  const w = useWindowWidth();
+  const isMobile = w < 768;
   const { positions } = data;
   const [role, setRole]         = useState<'ADMIN'|'CASHIER'>('CASHIER');
   const [view, setView]         = useState<'balances'|'passbook'>('balances');
@@ -500,7 +532,7 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
   );
 
   return (
-    <div style={S.page}>
+    <div style={{ ...S.page, padding: isMobile ? '16px' : '28px 32px' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
         <div style={{ display:'flex', gap:6 }}>
           {(['balances','passbook'] as const).map(v => (
@@ -526,7 +558,7 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
 
       {view === 'balances' && (
         <>
-          {role === 'ADMIN' && <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14 }}>
+          {role === 'ADMIN' && <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:14 }}>
             {[
               { label:'PENDING CHECKS', val:php(pendingTotal), sub:`${pending.length} customer${pending.length!==1?'s':''} with balance`, color:'#ff5c5c' },
               { label:'FULLY PAID TODAY', val:String(paid.length), sub:'All cleared', color:'#00d4aa' },
@@ -548,7 +580,7 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
             {showForm && (
               <div style={{ ...S.card, padding:'22px 24px', marginTop:12, border:'1px solid rgba(0,212,170,0.2)', animation:'fadeUp 0.25s ease both' }}>
                 <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700, marginBottom:16, color:'#00d4aa' }}>New Customer Entry</div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 120px 140px 140px 140px', gap:12, marginBottom:12 }}>
+                <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 120px 140px 140px 140px', gap:12, marginBottom:12 }}>
                   {inp('CUSTOMER NAME', 'customer', { placeholder:'e.g. Nancy' })}
                   <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
                     <label style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', letterSpacing:'0.12em' }}>CURRENCY</label>
@@ -582,37 +614,41 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
                 <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700, color:'#ff5c5c' }}>⏳ Pending Checks</div>
                 <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#ff5c5c' }}>{php(pendingTotal)} outstanding</span>
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 80px 110px 110px 110px 110px 120px 120px', padding:'9px 22px', borderBottom:'1px solid #1e2230', fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', letterSpacing:'0.1em', gap:10 }}>
-                <span>CUSTOMER</span><span>CCY</span><span>FOREIGN AMT</span><span>PHP TOTAL</span><span>CASH PAID</span><span>CHECK AMT</span><span>CHECK / BANK</span><span></span>
-              </div>
-              {pending.map((e, i) => (
-                <div key={e.id} style={{ display:'grid', gridTemplateColumns:'1fr 80px 110px 110px 110px 110px 120px 120px', padding:'13px 22px', borderBottom:i<pending.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10 }}>
-                  <div><div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700 }}>{e.customer}</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468' }}>{e.date}</div></div>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:'#f5a623', fontWeight:600 }}>{e.currency}</span>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11 }}>{e.foreignAmt.toLocaleString()}</span>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11 }}>{php(e.totalPhp)}</span>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#00d4aa' }}>{php(e.cashPaid)}</span>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:'#ff5c5c', fontWeight:600 }}>{php(e.checkAmt)}</span>
-                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10 }}><div style={{ color:'#e2e6f0' }}>{e.checkNo||'—'}</div><div style={{ color:'#4a5468' }}>{e.bank||'—'}</div></div>
-                  <button onClick={()=>markDeposited(e.id)} style={{ padding:'6px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.4)', background:'rgba(0,212,170,0.08)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em' }}>MARK DEPOSITED</button>
+              <div style={{ overflowX:'auto' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 80px 110px 110px 110px 110px 120px 120px', padding:'9px 22px', borderBottom:'1px solid #1e2230', fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', letterSpacing:'0.1em', gap:10, minWidth:760 }}>
+                  <span>CUSTOMER</span><span>CCY</span><span>FOREIGN AMT</span><span>PHP TOTAL</span><span>CASH PAID</span><span>CHECK AMT</span><span>CHECK / BANK</span><span></span>
                 </div>
-              ))}
+                {pending.map((e, i) => (
+                  <div key={e.id} style={{ display:'grid', gridTemplateColumns:'1fr 80px 110px 110px 110px 110px 120px 120px', padding:'13px 22px', borderBottom:i<pending.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10, minWidth:760 }}>
+                    <div><div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700 }}>{e.customer}</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468' }}>{e.date}</div></div>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:'#f5a623', fontWeight:600 }}>{e.currency}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11 }}>{e.foreignAmt.toLocaleString()}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11 }}>{php(e.totalPhp)}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#00d4aa' }}>{php(e.cashPaid)}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:'#ff5c5c', fontWeight:600 }}>{php(e.checkAmt)}</span>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10 }}><div style={{ color:'#e2e6f0' }}>{e.checkNo||'—'}</div><div style={{ color:'#4a5468' }}>{e.bank||'—'}</div></div>
+                    <button onClick={()=>markDeposited(e.id)} style={{ padding:'6px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.4)', background:'rgba(0,212,170,0.08)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em' }}>MARK DEPOSITED</button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {paid.length > 0 && (
             <div style={S.card}>
               <div style={{ padding:'14px 22px', borderBottom:'1px solid #1e2230' }}><div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700, color:'#00d4aa' }}>✅ Fully Paid</div></div>
-              {paid.map((e, i) => (
-                <div key={e.id} style={{ display:'grid', gridTemplateColumns:'1fr 80px 110px 110px 110px 140px', padding:'11px 22px', borderBottom:i<paid.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10 }}>
-                  <div><div style={{ fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, color:'#4a5468' }}>{e.customer}</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468' }}>{e.date}{e.depositedDate ? ` · deposited ${e.depositedDate}` : ''}</div></div>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:'#4a5468' }}>{e.currency}</span>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{e.foreignAmt.toLocaleString()}</span>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{php(e.totalPhp)}</span>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{php(e.cashPaid)}</span>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#00d4aa', padding:'3px 10px', background:'rgba(0,212,170,0.08)', borderRadius:20, border:'1px solid rgba(0,212,170,0.2)', textAlign:'center' }}>FULLY PAID</span>
-                </div>
-              ))}
+              <div style={{ overflowX:'auto' }}>
+                {paid.map((e, i) => (
+                  <div key={e.id} style={{ display:'grid', gridTemplateColumns:'1fr 80px 110px 110px 110px 140px', padding:'11px 22px', borderBottom:i<paid.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10, minWidth:640 }}>
+                    <div><div style={{ fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, color:'#4a5468' }}>{e.customer}</div><div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468' }}>{e.date}{e.depositedDate ? ` · deposited ${e.depositedDate}` : ''}</div></div>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:'#4a5468' }}>{e.currency}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{e.foreignAmt.toLocaleString()}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{php(e.totalPhp)}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{php(e.cashPaid)}</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'#00d4aa', padding:'3px 10px', background:'rgba(0,212,170,0.08)', borderRadius:20, border:'1px solid rgba(0,212,170,0.2)', textAlign:'center' }}>FULLY PAID</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
