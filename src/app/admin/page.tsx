@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getTokenRole } from '@/lib/api';
 
-const tools = [
+const tools: { href: string; icon: string; title: string; desc: string; color: string; soon?: boolean }[] = [
   {
     href:  '/admin/rates',
     icon:  '📊',
@@ -20,9 +20,8 @@ const tools = [
     href:  '/admin/users',
     icon:  '👤',
     title: 'Manage Users',
-    desc:  'Add or deactivate cashier accounts.',
+    desc:  'Rename staff, set branches, reset passwords.',
     color: '#a78bfa',
-    soon:  true,
   },
   {
     href:  '/admin/eod',
