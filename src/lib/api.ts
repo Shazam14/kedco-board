@@ -3,7 +3,7 @@
 // The token and API URL never reach the browser.
 
 import { cookies } from 'next/headers';
-import type { DashboardSummary, CurrencyPosition, Transaction } from './types';
+import type { DashboardSummary, CurrencyPosition, Transaction, CurrencyMeta } from './types';
 
 const API_URL = process.env.API_URL!;
 const AUTH_COOKIE = process.env.AUTH_COOKIE ?? 'kedco_token';
@@ -73,6 +73,54 @@ export async function getDashboardSummary(): Promise<DashboardSummary | null> {
     positions: (raw.positions as Record<string, unknown>[]).map(mapPosition),
     recentTransactions: (raw.recent_transactions as Record<string, unknown>[]).map(mapTransaction),
   };
+}
+
+export async function getTokenRole(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split('.')[1], 'base64').toString()
+    );
+    return payload.role ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getCurrencies(): Promise<CurrencyMeta[]> {
+  const raw = await apiFetch<Record<string, unknown>[]>('/api/v1/currencies/');
+  if (!raw) return [];
+  return raw.map(c => ({
+    code:          c.code as string,
+    name:          c.name as string,
+    flag:          c.flag as string,
+    category:      c.category as string,
+    decimalPlaces: c.decimal_places as number,
+    todayBuyRate:  c.today_buy_rate  as number | null,
+    todaySellRate: c.today_sell_rate as number | null,
+    rateSet:       c.rate_set as boolean,
+  }));
+}
+
+export async function saveRates(
+  rates: { code: string; buy_rate: number; sell_rate: number }[]
+): Promise<{ ok: boolean; message?: string }> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE)?.value;
+  if (!token) return { ok: false };
+
+  const res = await fetch(`${API_URL}/api/v1/rates/today`, {
+    method:  'POST',
+    headers: {
+      Authorization:  `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(rates),
+  });
+  const data = await res.json();
+  return { ok: res.ok, message: data.message ?? data.detail };
 }
 
 export async function loginToApi(

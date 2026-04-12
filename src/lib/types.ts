@@ -29,6 +29,17 @@ export interface Transaction {
   customer?: string;
 }
 
+export interface CurrencyMeta {
+  code: string;
+  name: string;
+  flag: string;
+  category: string;
+  decimalPlaces: number;
+  todayBuyRate: number | null;
+  todaySellRate: number | null;
+  rateSet: boolean;
+}
+
 export interface DashboardSummary {
   date: string;
   openingCapital: number;

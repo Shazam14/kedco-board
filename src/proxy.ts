@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const AUTH_COOKIE = process.env.AUTH_COOKIE ?? 'kedco_token';
 const PUBLIC_PATHS = ['/login', '/api/auth/login'];
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p));
   const token = req.cookies.get(AUTH_COOKIE)?.value;

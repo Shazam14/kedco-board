@@ -97,7 +97,8 @@ function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
         <div style={{ width:7, height:7, borderRadius:'50%', background:'#00d4aa', boxShadow:'0 0 8px #00d4aa88' }} />
         <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#00d4aa' }}>LIVE</span>
         <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{dateStr} · {timeStr}</span>
-        <button onClick={handleLogout} style={{ marginLeft:8, padding:'4px 12px', borderRadius:6, border:'1px solid #1e2230', background:'transparent', color:'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em' }}>LOGOUT</button>
+        <a href="/admin" style={{ marginLeft:8, padding:'4px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>ADMIN</a>
+        <button onClick={handleLogout} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #1e2230', background:'transparent', color:'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em' }}>LOGOUT</button>
       </div>
     </nav>
   );
