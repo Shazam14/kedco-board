@@ -89,6 +89,20 @@ export async function getTokenRole(): Promise<string | null> {
   }
 }
 
+export async function getTokenUsername(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split('.')[1], 'base64').toString()
+    );
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getCurrencies(): Promise<CurrencyMeta[]> {
   const raw = await apiFetch<Record<string, unknown>[]>('/api/v1/currencies/');
   if (!raw) return [];
