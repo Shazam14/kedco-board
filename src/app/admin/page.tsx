@@ -31,7 +31,6 @@ const tools = [
     title: 'End of Day',
     desc:  'Close the day, lock rates, generate summary report.',
     color: '#f5a623',
-    soon:  true,
   },
 ];
 
