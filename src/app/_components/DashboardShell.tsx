@@ -59,8 +59,9 @@ function Ticker({ positions }: { positions: CurrencyPosition[] }) {
 }
 
 function useLiveClock() {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
+    setNow(new Date());
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
@@ -70,8 +71,8 @@ function useLiveClock() {
 function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
   const router = useRouter();
   const now = useLiveClock();
-  const dateStr = now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-  const timeStr = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
+  const dateStr = now ? now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
+  const timeStr = now ? now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true }) : '';
   const tabs = ['Dashboard','Positions','Transactions','Rider','Rate Board','Tracker'];
 
   async function handleLogout() {
@@ -373,7 +374,10 @@ function RiderTab({ data }: { data: DashboardSummary }) {
 
 function RateBoardTab({ data }: { data: DashboardSummary }) {
   const { positions } = data;
-  const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const [today, setToday] = useState('');
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }));
+  }, []);
   const half  = Math.ceil(positions.length / 2);
   const left  = positions.slice(0, half);
   const right = positions.slice(half);

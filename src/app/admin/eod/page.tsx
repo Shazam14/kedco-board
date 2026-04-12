@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const S: Record<string, React.CSSProperties> = {
   card: { background:'#0f1117', border:'1px solid #1e2230', borderRadius:14, overflow:'hidden' },
@@ -26,10 +26,12 @@ export default function EodPage() {
   const [result,   setResult]   = useState<EodResult | null>(null);
   const [error,    setError]    = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
-
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday:'long', year:'numeric', month:'long', day:'numeric',
-  });
+  const [today, setToday] = useState('');
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString('en-US', {
+      weekday:'long', year:'numeric', month:'long', day:'numeric',
+    }));
+  }, []);
 
   async function handleClose() {
     setLoading(true);
