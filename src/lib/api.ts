@@ -104,6 +104,32 @@ export async function getCurrencies(): Promise<CurrencyMeta[]> {
   }));
 }
 
+export interface PositionMeta {
+  code:         string;
+  name:         string;
+  flag:         string;
+  category:     string;
+  decimalPlaces: number;
+  carryInQty:   number;
+  carryInRate:  number;
+  positionSet:  boolean;
+}
+
+export async function getPositions(): Promise<PositionMeta[]> {
+  const raw = await apiFetch<Record<string, unknown>[]>('/api/v1/positions/today');
+  if (!raw) return [];
+  return raw.map(p => ({
+    code:         p.code          as string,
+    name:         p.name          as string,
+    flag:         p.flag          as string,
+    category:     p.category      as string,
+    decimalPlaces: p.decimal_places as number,
+    carryInQty:   p.carry_in_qty  as number,
+    carryInRate:  p.carry_in_rate as number,
+    positionSet:  p.position_set  as boolean,
+  }));
+}
+
 export async function saveRates(
   rates: { code: string; buy_rate: number; sell_rate: number }[]
 ): Promise<{ ok: boolean; message?: string }> {

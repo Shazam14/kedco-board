@@ -15,7 +15,6 @@ const tools = [
     title: 'Opening Positions',
     desc:  'Set carry-in stock quantities from previous day.',
     color: '#5b8cff',
-    soon:  true,
   },
   {
     href:  '/admin/users',
