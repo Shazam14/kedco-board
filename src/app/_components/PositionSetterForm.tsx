@@ -7,7 +7,7 @@ import type { PositionMeta } from '@/lib/api';
 function fmtQty(val: string): string {
   const raw = val.replace(/[^0-9]/g, '');
   if (!raw) return '';
-  return parseInt(raw, 10).toLocaleString('en-PH');
+  return raw.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 // Strip commas for parsing
