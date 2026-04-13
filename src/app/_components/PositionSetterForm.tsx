@@ -75,9 +75,9 @@ function CategoryBlock({
             <div>
               <input
                 type="number"
-                step="any"
+                step={Math.pow(10, -p.decimalPlaces).toFixed(p.decimalPlaces)}
                 min="0"
-                placeholder={p.decimalPlaces === 4 ? '0.0000' : '0.00'}
+                placeholder={(0).toFixed(p.decimalPlaces)}
                 value={v.rate}
                 onChange={e => onChange(p.code, 'rate', e.target.value)}
                 style={{ background:'#161922', border:`1px solid ${v.rate !== '' ? (rateNum > 0 ? '#00d4aa44' : '#ff5c5c44') : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#00d4aa', ...S.mono, fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
@@ -112,7 +112,7 @@ export default function PositionSetterForm({ positions }: { positions: PositionM
     positions.forEach(p => {
       init[p.code] = {
         qty:  p.carryInQty  > 0 ? String(p.carryInQty)  : '',
-        rate: p.carryInRate > 0 ? String(p.carryInRate) : '',
+        rate: p.carryInRate > 0 ? p.carryInRate.toFixed(p.decimalPlaces) : '',
       };
     });
     return init;
