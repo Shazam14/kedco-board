@@ -36,7 +36,9 @@ function CategoryBlock({
       {currencies.map((c, i) => {
         const v = values[c.code] ?? { buy:'', sell:'' };
         const hasValue = v.buy && v.sell;
-        const spread = hasValue ? (parseFloat(v.sell) - parseFloat(v.buy)) : null;
+        const rawBuy  = parseFloat(v.buy.replace(/,/g, ''));
+        const rawSell = parseFloat(v.sell.replace(/,/g, ''));
+        const spread = hasValue ? (rawSell - rawBuy) : null;
         const spreadOk = spread !== null && spread > 0;
 
         return (
@@ -52,22 +54,22 @@ function CategoryBlock({
 
             {/* Buy rate */}
             <input
-              type="number"
-              step={Math.pow(10, -c.decimalPlaces).toFixed(c.decimalPlaces)}
+              type="text"
+              inputMode="decimal"
               placeholder={`e.g. ${(0).toFixed(c.decimalPlaces)}`}
               value={v.buy}
-              onChange={e => onChange(c.code, 'buy', e.target.value)}
+              onChange={e => onChange(c.code, 'buy', e.target.value.replace(/[^0-9.]/g, ''))}
               style={{ background:'#161922', border:`1px solid ${v.buy ? '#5b8cff44' : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#5b8cff', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
             />
 
             {/* Sell rate */}
             <div>
               <input
-                type="number"
-                step={Math.pow(10, -c.decimalPlaces).toFixed(c.decimalPlaces)}
+                type="text"
+                inputMode="decimal"
                 placeholder={`e.g. ${(0).toFixed(c.decimalPlaces)}`}
                 value={v.sell}
-                onChange={e => onChange(c.code, 'sell', e.target.value)}
+                onChange={e => onChange(c.code, 'sell', e.target.value.replace(/[^0-9.]/g, ''))}
                 style={{ background:'#161922', border:`1px solid ${v.sell ? (spreadOk ? '#00d4aa44' : '#ff5c5c44') : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
               />
               {spread !== null && (
@@ -118,8 +120,8 @@ export default function RateSetterForm({ currencies }: { currencies: CurrencyMet
       .filter(c => values[c.code]?.buy && values[c.code]?.sell)
       .map(c => ({
         code:      c.code,
-        buy_rate:  parseFloat(values[c.code].buy),
-        sell_rate: parseFloat(values[c.code].sell),
+        buy_rate:  parseFloat(values[c.code].buy.replace(/,/g, '')),
+        sell_rate: parseFloat(values[c.code].sell.replace(/,/g, '')),
       }))
       .filter(r => r.sell_rate > r.buy_rate); // only valid spreads
 
