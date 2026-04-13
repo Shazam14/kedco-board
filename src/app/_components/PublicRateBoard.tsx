@@ -36,7 +36,7 @@ const S: Record<string, React.CSSProperties> = {
   syne: { fontFamily:"'Syne',sans-serif" },
 };
 
-export default function PublicRateBoard({ rates }: { rates: Rate[] }) {
+export default function PublicRateBoard({ rates, isLoggedIn }: { rates: Rate[]; isLoggedIn: boolean }) {
   const now = useLiveClock();
   const w   = useWindowWidth();
   const isMobile = w < 768;
@@ -64,7 +64,10 @@ export default function PublicRateBoard({ rates }: { rates: Rate[] }) {
           <div style={{ width:7, height:7, borderRadius:'50%', background:'#00d4aa', boxShadow:'0 0 8px #00d4aa88' }} />
           <span style={{ ...S.mono, fontSize:11, color:'#00d4aa' }}>LIVE</span>
           {!isMobile && <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>{timeStr}</span>}
-          <a href="/login" style={{ marginLeft:8, padding:'4px 14px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, textDecoration:'none', letterSpacing:'0.05em' }}>STAFF LOGIN</a>
+          {isLoggedIn
+            ? <a href="/dashboard" style={{ marginLeft:8, padding:'4px 14px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, textDecoration:'none', letterSpacing:'0.05em' }}>GO TO DASHBOARD</a>
+            : <a href="/login"    style={{ marginLeft:8, padding:'4px 14px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, textDecoration:'none', letterSpacing:'0.05em' }}>STAFF LOGIN</a>
+          }
         </div>
       </nav>
 
