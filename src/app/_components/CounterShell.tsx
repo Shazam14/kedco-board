@@ -9,6 +9,11 @@ const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
 const php = (n: number) =>
   '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const fmtFx = (amt: number, code: string, currencies: { code: string; decimalPlaces: number }[]) => {
+  const dp = currencies.find(c => c.code === code)?.decimalPlaces ?? 2;
+  return amt.toLocaleString('en-PH', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+};
+
 export default function CounterShell({
   currencies,
   username,
@@ -41,7 +46,7 @@ export default function CounterShell({
   useEffect(() => {
     if (!ccy) return;
     const r = type === 'BUY' ? ccy.todayBuyRate : ccy.todaySellRate;
-    setRate(r != null ? String(r) : '');
+    setRate(r != null ? r.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 8 }) : '');
   }, [ccy, type]);
 
   const fetchTxns = useCallback(async () => {
@@ -49,13 +54,24 @@ export default function CounterShell({
     if (res.ok) setTxns(await res.json());
   }, []);
 
+  // Strip commas before any numeric operation (inputs may be comma-formatted)
+  const rawAmt  = amt.replace(/,/g, '');
+  const rawRate = rate.replace(/,/g, '');
+
   const phpTotal =
-    ccy && amt && rate && +amt > 0 && +rate > 0
-      ? +amt * +rate
+    ccy && rawAmt && rawRate && +rawAmt > 0 && +rawRate > 0
+      ? +rawAmt * +rawRate
       : null;
 
   const canSubmit =
-    !!ccy?.rateSet && !!amt && +amt > 0 && !!rate && +rate > 0 && !loading;
+    !!ccy?.rateSet && !!rawAmt && +rawAmt > 0 && !!rawRate && +rawRate > 0 && !loading;
+
+  // Format a numeric string with commas (for blur handler)
+  const fmtOnBlur = (val: string, maxDp = 8) => {
+    const n = parseFloat(val.replace(/,/g, ''));
+    if (isNaN(n)) return val;
+    return n.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: maxDp });
+  };
 
   async function handleSubmit() {
     if (!canSubmit || !ccy) return;
@@ -69,8 +85,8 @@ export default function CounterShell({
           type,
           source: 'COUNTER',
           currency: ccy.code,
-          foreign_amt: +amt,
-          rate: +rate,
+          foreign_amt: +rawAmt,
+          rate: +rawRate,
           cashier: username,
           customer: cust || undefined,
         }),
@@ -151,13 +167,13 @@ export default function CounterShell({
 <hr class="divider">
 <table>
   <tr><td class="label">Currency</td><td class="value">${txn.currency}</td></tr>
-  <tr><td class="label">Foreign Amount</td><td class="value">${txn.foreignAmt.toLocaleString()} ${txn.currency}</td></tr>
+  <tr><td class="label">Foreign Amount</td><td class="value">${fmtFx(txn.foreignAmt, txn.currency, currencies)} ${txn.currency}</td></tr>
   <tr><td class="label">Rate (PHP / ${txn.currency})</td><td class="value">${txn.rate}</td></tr>
 </table>
 <div class="big-php">PHP ${txn.phpAmt.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>
 <hr class="divider">
 <div class="footer">
-  ${isSell ? `<div style="margin-bottom:6px">This receipt confirms the sale of ${txn.foreignAmt.toLocaleString()} ${txn.currency} to the customer.</div>` : `<div style="margin-bottom:6px">This receipt confirms the purchase of ${txn.foreignAmt.toLocaleString()} ${txn.currency} from the customer.</div>`}
+  ${isSell ? `<div style="margin-bottom:6px">This receipt confirms the sale of ${fmtFx(txn.foreignAmt, txn.currency, currencies)} ${txn.currency} to the customer.</div>` : `<div style="margin-bottom:6px">This receipt confirms the purchase of ${fmtFx(txn.foreignAmt, txn.currency, currencies)} ${txn.currency} from the customer.</div>`}
   Thank you for transacting with Kedco FX.<br>
   Please keep this receipt for your records.
 </div>
@@ -326,11 +342,12 @@ export default function CounterShell({
               FOREIGN AMOUNT{ccy ? ` (${ccy.code})` : ''}
             </label>
             <input
-              type="number"
-              min="0"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={amt}
-              onChange={e => setAmt(e.target.value)}
+              onChange={e => setAmt(e.target.value.replace(/[^0-9.,]/g, ''))}
+              onBlur={() => setAmt(fmtOnBlur(amt))}
+              onFocus={e => { e.target.select(); setAmt(rawAmt); }}
               placeholder="0.00"
               style={{
                 width: '100%', background: '#0f1117', border: '1px solid #1e2230',
@@ -346,11 +363,12 @@ export default function CounterShell({
               RATE (PHP per {ccy?.code ?? 'unit'})
             </label>
             <input
-              type="number"
-              min="0"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={rate}
-              onChange={e => setRate(e.target.value)}
+              onChange={e => setRate(e.target.value.replace(/[^0-9.,]/g, ''))}
+              onBlur={() => setRate(fmtOnBlur(rate))}
+              onFocus={e => { e.target.select(); setRate(rawRate); }}
               style={{
                 width: '100%', background: '#0f1117', border: `1px solid ${typeColor}44`,
                 borderRadius: 8, padding: '12px 14px', color: typeColor,
@@ -428,7 +446,7 @@ export default function CounterShell({
                 {[
                   ['Type',     flash.type],
                   ['Currency', flash.currency],
-                  ['Amount',   `${flash.foreignAmt.toLocaleString()} ${flash.currency}`],
+                  ['Amount',   `${fmtFx(flash.foreignAmt, flash.currency, currencies)} ${flash.currency}`],
                   ['Rate',     String(flash.rate)],
                   ['PHP',      php(flash.phpAmt)],
                   ...(flash.type === 'SELL' ? [['THAN', php(flash.than)]] : []),
@@ -554,7 +572,7 @@ export default function CounterShell({
                       }}>{t.type}</span>
                       <span style={{ ...M, fontSize: 13, color: '#e2e6f0' }}>{t.currency}</span>
                       <span style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>
-                        {t.foreignAmt.toLocaleString()}
+                        {fmtFx(t.foreignAmt, t.currency, currencies)}
                       </span>
                       <span style={{
                         ...M, fontSize: 11,
