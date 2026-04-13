@@ -27,7 +27,9 @@ function fmtAmt(val: string): string {
   return decPart !== undefined ? `${formatted}.${decPart}` : formatted;
 }
 
-interface Bank { id: number; name: string; code: string; }
+interface Bank     { id: number; name: string; code: string; }
+interface Dispatch { id: string; cash_php: number; status: string; dispatch_time: string | null; }
+interface Borrow   { id: string; amount_php: number; is_returned: string; }
 
 const PAYMENT_MODES = [
   { value: 'CASH',          label: 'Cash',          icon: '💵' },
@@ -64,6 +66,10 @@ export default function RiderShell({
   const [showLog,     setShowLog]     = useState(false);
   const [showBorrow,  setShowBorrow]  = useState(false);
 
+  // Dispatch + borrows (for balance card)
+  const [dispatch,     setDispatch]     = useState<Dispatch | null>(null);
+  const [borrows,      setBorrows]      = useState<Borrow[]>([]);
+
   // Borrow form
   const [dispatchId,   setDispatchId]   = useState<string | null>(null);
   const [borrowSrcType,setBorrowSrcType] = useState<'BRANCH'|'RIDER'>('BRANCH');
@@ -92,12 +98,24 @@ export default function RiderShell({
 
   useEffect(() => { fetchTxns(); }, [fetchTxns]);
 
-  // Fetch rider's own dispatch ID on mount (needed for borrow recording)
+  // Fetch rider's own dispatch on mount
   useEffect(() => {
     fetch('/api/rider/dispatch')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.dispatch?.id) setDispatchId(d.dispatch.id); });
+      .then(d => {
+        if (d?.dispatch) {
+          setDispatch(d.dispatch);
+          setDispatchId(d.dispatch.id);
+        }
+      });
   }, []);
+
+  const fetchBorrows = useCallback(async () => {
+    const res = await fetch('/api/rider/borrow');
+    if (res.ok) setBorrows(await res.json());
+  }, []);
+
+  useEffect(() => { if (dispatchId) fetchBorrows(); }, [dispatchId, fetchBorrows]);
 
   const rawAmt  = amt.replace(/,/g, '');
   const rawRate = rate.replace(/,/g, '');
@@ -169,14 +187,21 @@ export default function RiderShell({
     if (res.ok) {
       setBorrowOk(true);
       setBorrowSrc(''); setBorrowAmt(''); setBorrowNote('');
+      fetchBorrows();
       setTimeout(() => { setBorrowOk(false); setShowBorrow(false); }, 2000);
     }
     setBorrowSaving(false);
   }
 
-  const typeColor = type === 'BUY' ? '#5b8cff' : '#f5a623';
-  const todayTotal = txns.reduce((s, t) => s + t.phpAmt, 0);
-  const todayThan  = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.than, 0);
+  const typeColor   = type === 'BUY' ? '#5b8cff' : '#f5a623';
+  const todayTotal  = txns.reduce((s, t) => s + t.phpAmt, 0);
+  const todayThan   = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.than, 0);
+
+  // Balance card calculations
+  const phpSpent    = txns.filter(t => t.type === 'BUY').reduce((s, t)  => s + t.phpAmt, 0);
+  const phpReceived = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
+  const borrowed    = borrows.filter(b => b.is_returned === 'N').reduce((s, b) => s + b.amount_php, 0);
+  const remaining   = dispatch ? dispatch.cash_php + borrowed - phpSpent + phpReceived : null;
 
   return (
     <div style={{ minHeight: '100vh', background: '#080a10', color: '#e2e6f0', maxWidth: 480, margin: '0 auto', paddingBottom: 32 }}>
@@ -194,6 +219,46 @@ export default function RiderShell({
           {showLog ? '← Form' : `Log (${txns.length})`}
         </button>
       </div>
+
+      {/* ── BALANCE CARD ── */}
+      {dispatch ? (
+        <div style={{ margin: '12px 16px 0', background: '#0f1117', border: '1px solid rgba(167,139,250,0.3)', borderRadius: 14, padding: '14px 16px' }}>
+          <div style={{ ...M, fontSize: 9, color: '#a78bfa', letterSpacing: '0.12em', marginBottom: 10 }}>PHP BALANCE</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+            <div>
+              <div style={{ ...M, fontSize: 9, color: '#4a5468', marginBottom: 3 }}>STARTING</div>
+              <div style={{ ...M, fontSize: 13, color: '#e2e6f0' }}>{php(dispatch.cash_php)}</div>
+            </div>
+            <div>
+              <div style={{ ...M, fontSize: 9, color: '#4a5468', marginBottom: 3 }}>SPENT</div>
+              <div style={{ ...M, fontSize: 13, color: phpSpent > 0 ? '#ff5c5c' : '#4a5468' }}>
+                {phpSpent > 0 ? `−${php(phpSpent)}` : '—'}
+              </div>
+            </div>
+            <div>
+              <div style={{ ...M, fontSize: 9, color: '#4a5468', marginBottom: 3 }}>RECEIVED</div>
+              <div style={{ ...M, fontSize: 13, color: phpReceived > 0 ? '#00d4aa' : '#4a5468' }}>
+                {phpReceived > 0 ? `+${php(phpReceived)}` : '—'}
+              </div>
+            </div>
+          </div>
+          {borrowed > 0 && (
+            <div style={{ ...M, fontSize: 11, color: '#f5a623', marginBottom: 8 }}>
+              + {php(borrowed)} borrowed
+            </div>
+          )}
+          <div style={{ borderTop: '1px solid #1e2230', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div style={{ ...M, fontSize: 9, color: '#a78bfa', letterSpacing: '0.1em' }}>REMAINING</div>
+            <div style={{ ...Y, fontSize: 26, fontWeight: 800, color: remaining != null && remaining < 0 ? '#ff5c5c' : '#a78bfa' }}>
+              {remaining != null ? php(remaining) : '—'}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ margin: '12px 16px 0', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 12, padding: '12px 16px' }}>
+          <div style={{ ...M, fontSize: 11, color: '#f5a623' }}>Not dispatched — ask admin to dispatch you before starting.</div>
+        </div>
+      )}
 
       {showLog ? (
         /* ── LOG VIEW ── */

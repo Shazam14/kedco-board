@@ -9,6 +9,25 @@ function decodeToken(token: string) {
   catch { return null; }
 }
 
+export async function GET() {
+  const token = (await cookies()).get(AUTH_COOKIE)?.value;
+  if (!token) return NextResponse.json([]);
+  const payload = decodeToken(token);
+  if (!payload || payload.role !== 'rider') return NextResponse.json([]);
+
+  const dRes = await fetch(`${API_URL}/api/v1/rider/my-dispatch`, {
+    headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+  });
+  if (!dRes.ok) return NextResponse.json([]);
+  const { dispatch } = await dRes.json();
+  if (!dispatch?.id) return NextResponse.json([]);
+
+  const res = await fetch(`${API_URL}/api/v1/rider/borrows/${dispatch.id}`, {
+    headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+  });
+  return NextResponse.json(res.ok ? await res.json() : []);
+}
+
 export async function POST(req: NextRequest) {
   const token = (await cookies()).get(AUTH_COOKIE)?.value;
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
