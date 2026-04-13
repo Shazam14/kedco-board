@@ -1,4 +1,5 @@
 import PublicRateBoard from './_components/PublicRateBoard';
+import { getTokenRole } from '@/lib/api';
 
 const API_URL = process.env.API_URL!;
 
@@ -13,6 +14,7 @@ async function getPublicRates() {
 }
 
 export default async function Home() {
-  const rates = await getPublicRates();
-  return <PublicRateBoard rates={rates} />;
+  const [rates, role] = await Promise.all([getPublicRates(), getTokenRole()]);
+  const isLoggedIn = !!role;
+  return <PublicRateBoard rates={rates} isLoggedIn={isLoggedIn} />;
 }
