@@ -49,7 +49,7 @@ export default async function GuidePage() {
               <li><Route href="/dashboard">/dashboard</Route> — live capital position, THAN, stock summary</li>
               <li><strong>Positions</strong> tab — current stock quantities per currency</li>
               <li><strong>Transactions</strong> tab — everything from counter + rider in real time</li>
-              <li><Route href="/">/</Route> — public rate board (share this link with customers to see today&apos;s rates)</li>
+              <li><Route href="/admin/rates">/admin/rates</Route> — view or update today&apos;s rates anytime</li>
             </ul>
           </Block>
           <Block title="End of day">
@@ -87,7 +87,111 @@ export default async function GuidePage() {
           <Block title="Payment modes">
             <p style={{ color: '#4a5468' }}>Each transaction can be tagged: <strong>Cash</strong>, <strong>GCash</strong>, <strong>Cheque</strong>, <strong>Bank Transfer</strong>, or <strong>Other</strong>. The daily report breaks these down automatically.</p>
           </Block>
-          <div style={{ marginTop: 12, display: 'inline-block', fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#a78bfa', background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)', borderRadius: 6, padding: '4px 12px', letterSpacing: '0.1em', margin: '0 24px 20px' }}>COMING SOON</div>
+          <Note>Rider must be dispatched by admin first — admin sets the starting PHP cash. Without dispatch, the balance card won&apos;t show.</Note>
+        </Section>
+
+        {/* WHAT THIS REPLACES */}
+        <Section icon="📂" title="What This Replaces (CSV → System)" color="#00d4aa">
+          <Block title="">
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #1e2230' }}>
+                  {['OLD CSV FILE', 'REPLACED BY'].map(h => (
+                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, color: '#4a5468', letterSpacing: '0.12em', fontWeight: 600 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['BUY x MAIN',    'Daily Report → Main Currencies (BUY rows)'],
+                  ['BUY x 2ND',     'Daily Report → 2nd Currencies (BUY rows)'],
+                  ['SELL x MAIN',   'Daily Report → all categories (SELL rows + THAN)'],
+                  ['CASHIER',       'Daily Report → By Cashier section'],
+                  ['STOCKS LEFT',   'Dashboard → Positions tab (live) + EOD closes the day'],
+                  ['BUY x OTHERS',  'Daily Report → Others category (BUY rows)'],
+                ].map(([old, rep], i) => (
+                  <tr key={old} style={{ borderBottom: '1px solid #1e2230', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
+                    <td style={{ padding: '10px 12px', color: '#f5a623', fontFamily: "'DM Mono',monospace" }}>{old}</td>
+                    <td style={{ padding: '10px 12px', color: '#4a5468' }}>{rep}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Note>
+              The Daily Report at <Route href="/admin/report">/admin/report</Route> is printable as PDF —
+              it is the single document that covers all 6 of the above files in one page.
+              Print it at end of day instead of downloading CSVs.
+            </Note>
+          </Block>
+        </Section>
+
+        {/* DAY 1 TEST CHECKLIST */}
+        <Section icon="✅" title="Day 1 Test Checklist" color="#a78bfa">
+          <Block title="Before you start">
+            <p style={{ color: '#4a5468', marginBottom: 12 }}>Run through this with real numbers from a recent day to verify the system matches your manual books.</p>
+          </Block>
+          <Block title="Step 1 — Set rates">
+            <ol>
+              <li>Log in as <strong>admin</strong> → go to <Route href="/admin/rates">/admin/rates</Route></li>
+              <li style={{ marginTop: 6 }}>Enter today&apos;s BUY and SELL rates for each currency</li>
+              <li style={{ marginTop: 6 }}>Check: rates appear on the Dashboard → Capital tab</li>
+            </ol>
+          </Block>
+          <Block title="Step 2 — Enter opening stock">
+            <ol>
+              <li>Go to <Route href="/admin/positions">/admin/positions</Route></li>
+              <li style={{ marginTop: 6 }}>Enter the quantity and acquisition rate for each currency you have on hand</li>
+              <li style={{ marginTop: 6 }}>Check: Dashboard → Positions tab shows your stock quantities and PHP value</li>
+              <li style={{ marginTop: 6 }}>Check: Dashboard → Capital tab shows total PHP capital (should match your manual tally)</li>
+            </ol>
+          </Block>
+          <Block title="Step 3 — Test a BUY transaction (counter)">
+            <ol>
+              <li>Log in as <strong>cashier1</strong> → auto-lands on <Route href="/counter">/counter</Route></li>
+              <li style={{ marginTop: 6 }}>Select BUY, pick a currency (e.g. USD), enter amount and rate</li>
+              <li style={{ marginTop: 6 }}>Submit → receipt prints (or opens print dialog)</li>
+              <li style={{ marginTop: 6 }}>Check: Dashboard → Transactions shows this transaction</li>
+              <li style={{ marginTop: 6 }}>Check: Dashboard → Positions — USD stock went up by the amount you bought</li>
+            </ol>
+          </Block>
+          <Block title="Step 4 — Test a SELL transaction (counter)">
+            <ol>
+              <li>On the same counter, select SELL, pick same currency</li>
+              <li style={{ marginTop: 6 }}>Submit → check that THAN (gain) appears on the receipt and on Dashboard</li>
+              <li style={{ marginTop: 6 }}>Check: THAN = (sell rate − average cost) × units sold — compare to your manual calculation</li>
+            </ol>
+          </Block>
+          <Block title="Step 5 — Test a rider transaction">
+            <ol>
+              <li>Log in as <strong>admin</strong> → Dashboard → Riders tab → dispatch a rider with starting PHP cash</li>
+              <li style={{ marginTop: 6 }}>Log in as <strong>rider01</strong> on a phone → PHP balance card shows starting cash</li>
+              <li style={{ marginTop: 6 }}>Record a BUY → balance card updates (remaining PHP decreases)</li>
+              <li style={{ marginTop: 6 }}>Check: admin can see rider&apos;s transactions in the Riders tab</li>
+            </ol>
+          </Block>
+          <Block title="Step 6 — Run End of Day">
+            <ol>
+              <li>Log in as admin → <Route href="/admin/eod">/admin/eod</Route> → run EOD</li>
+              <li style={{ marginTop: 6 }}>Go to <Route href="/admin/report">/admin/report</Route> → print to PDF</li>
+              <li style={{ marginTop: 6 }}>Compare totals against your manual CSVs for that day:</li>
+            </ol>
+            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {[
+                ['Total BUY PHP', 'Grand Total BUY in your CSV'],
+                ['Total SELL PHP', 'Grand Total SOLD in your CSV'],
+                ['Total THAN', 'Grand Total THAN in your CSV'],
+                ['By Cashier', 'CASHIER.csv totals'],
+                ['MAIN currencies', 'BUY x MAIN rows'],
+                ['2ND currencies', 'BUY x 2ND rows'],
+              ].map(([sys, csv]) => (
+                <div key={sys} style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.15)', borderRadius: 8, padding: '8px 12px' }}>
+                  <div style={{ fontSize: 10, color: '#a78bfa', marginBottom: 2 }}>System: {sys}</div>
+                  <div style={{ fontSize: 10, color: '#4a5468' }}>vs CSV: {csv}</div>
+                </div>
+              ))}
+            </div>
+            <Note>If numbers match — you&apos;re good to go live. If they don&apos;t match, flag it and we&apos;ll investigate before going live.</Note>
+          </Block>
         </Section>
 
         {/* STAFF ACCOUNTS */}
@@ -133,7 +237,7 @@ export default async function GuidePage() {
               </thead>
               <tbody>
                 {[
-                  ['/',                 'Public rate board — share with customers'],
+                  ['/',                 'Kedco landing page — branches and services (public)'],
                   ['/dashboard',        'Live capital dashboard (admin/supervisor)'],
                   ['/counter',          'Cashier transaction screen'],
                   ['/rider',            'Rider field screen (mobile)'],
