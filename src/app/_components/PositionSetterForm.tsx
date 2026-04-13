@@ -3,6 +3,18 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PositionMeta } from '@/lib/api';
 
+// Format number string with commas: "45665656" → "45,665,656"
+function fmtQty(val: string): string {
+  const raw = val.replace(/[^0-9]/g, '');
+  if (!raw) return '';
+  return parseInt(raw, 10).toLocaleString('en-PH');
+}
+
+// Strip commas for parsing
+function parseQty(val: string): number {
+  return parseFloat(val.replace(/,/g, '')) || 0;
+}
+
 const S: Record<string, React.CSSProperties> = {
   card: { background:'#0f1117', border:'1px solid #1e2230', borderRadius:14, overflow:'hidden' },
   mono: { fontFamily:"'DM Mono',monospace" },
@@ -37,7 +49,7 @@ function CategoryBlock({
       {positions.map((p, i) => {
         const v = values[p.code] ?? { qty:'', rate:'' };
         const hasValue = v.qty !== '' && v.rate !== '';
-        const qtyNum   = parseFloat(v.qty);
+        const qtyNum   = parseQty(v.qty);
         const rateNum  = parseFloat(v.rate);
         const valid    = hasValue && qtyNum >= 0 && rateNum > 0;
         const phpValue = valid ? qtyNum * rateNum : null;
@@ -56,12 +68,11 @@ function CategoryBlock({
             {/* Qty */}
             <div>
               <input
-                type="number"
-                step="any"
-                min="0"
+                type="text"
+                inputMode="numeric"
                 placeholder="0"
                 value={v.qty}
-                onChange={e => onChange(p.code, 'qty', e.target.value)}
+                onChange={e => onChange(p.code, 'qty', fmtQty(e.target.value))}
                 style={{ background:'#161922', border:`1px solid ${v.qty !== '' ? '#5b8cff44' : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#5b8cff', ...S.mono, fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
               />
               {phpValue !== null && (
@@ -111,7 +122,7 @@ export default function PositionSetterForm({ positions }: { positions: PositionM
     const init: Record<string, { qty: string; rate: string }> = {};
     positions.forEach(p => {
       init[p.code] = {
-        qty:  p.carryInQty  > 0 ? String(p.carryInQty)  : '',
+        qty:  p.carryInQty  > 0 ? fmtQty(String(p.carryInQty)) : '',
         rate: p.carryInRate > 0 ? p.carryInRate.toFixed(p.decimalPlaces) : '',
       };
     });
@@ -126,11 +137,11 @@ export default function PositionSetterForm({ positions }: { positions: PositionM
     const toSave = positions
       .filter(p => {
         const v = values[p.code];
-        return v?.qty !== '' && v?.rate !== '' && parseFloat(v.rate) > 0 && parseFloat(v.qty) >= 0;
+        return v?.qty !== '' && v?.rate !== '' && parseFloat(v.rate) > 0 && parseQty(v.qty) >= 0;
       })
       .map(p => ({
         currency_code: p.code,
-        carry_in_qty:  parseFloat(values[p.code].qty),
+        carry_in_qty:  parseQty(values[p.code].qty),
         carry_in_rate: parseFloat(values[p.code].rate),
       }));
 
