@@ -102,8 +102,8 @@ export default function RateSetterForm({ currencies }: { currencies: CurrencyMet
     const init: Record<string, { buy: string; sell: string }> = {};
     currencies.forEach(c => {
       init[c.code] = {
-        buy:  c.todayBuyRate  != null ? String(c.todayBuyRate)  : '',
-        sell: c.todaySellRate != null ? String(c.todaySellRate) : '',
+        buy:  c.todayBuyRate  != null ? c.todayBuyRate.toFixed(c.decimalPlaces)  : '',
+        sell: c.todaySellRate != null ? c.todaySellRate.toFixed(c.decimalPlaces) : '',
       };
     });
     return init;
