@@ -48,6 +48,7 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
 
 export default async function AdminPage() {
   const role = await getTokenRole();
+  if (!role) redirect('/login');
   if (role !== 'admin') redirect('/');
 
   return (
