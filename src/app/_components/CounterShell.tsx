@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import type { CurrencyMeta, Transaction } from '@/lib/types';
+import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -15,6 +16,7 @@ export default function CounterShell({
   currencies: CurrencyMeta[];
   username: string;
 }) {
+  useIdleTimeout(20);
   const [type, setType]       = useState<'BUY' | 'SELL'>('BUY');
   const [ccy,  setCcy]        = useState<CurrencyMeta | null>(null);
   const [amt,  setAmt]        = useState('');
