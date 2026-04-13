@@ -34,7 +34,7 @@ function LoginForm() {
       if (data.role === 'cashier') {
         router.push('/counter');
       } else {
-        router.push('/');
+        router.push('/dashboard');
       }
       router.refresh();
     } finally {
