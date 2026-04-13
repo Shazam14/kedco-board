@@ -45,6 +45,20 @@ const tools = [
     desc:  'Full day breakdown by currency and cashier. Replaces the 6 manual books.',
     color: '#a78bfa',
   },
+  {
+    href:  '/admin/riders',
+    icon:  '🏍️',
+    title: 'Rider Dispatch',
+    desc:  'Dispatch riders, track borrows, confirm pending payments.',
+    color: '#f5a623',
+  },
+  {
+    href:  '/admin/banks',
+    icon:  '🏦',
+    title: 'Manage Banks',
+    desc:  'Add or deactivate banks and e-wallets used for payments.',
+    color: '#5b8cff',
+  },
 ];
 
 export default async function AdminPage() {
