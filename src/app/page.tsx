@@ -31,10 +31,12 @@ export default async function Home() {
             <div style={{ ...S.mono, fontSize: 9, color: '#4a5468' }}>Foreign Exchange Services</div>
           </div>
         </div>
-        {isLoggedIn
-          ? <a href="/dashboard" style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.25)', background: 'rgba(0,212,170,0.06)', color: '#00d4aa', ...S.mono, fontSize: 10, textDecoration: 'none', letterSpacing: '0.05em' }}>DASHBOARD</a>
-          : <a href="/login"    style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.25)', background: 'rgba(0,212,170,0.06)', color: '#00d4aa', ...S.mono, fontSize: 10, textDecoration: 'none', letterSpacing: '0.05em' }}>STAFF LOGIN</a>
-        }
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isLoggedIn && (
+            <a href="/dashboard" style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.25)', background: 'rgba(0,212,170,0.06)', color: '#00d4aa', ...S.mono, fontSize: 10, textDecoration: 'none', letterSpacing: '0.05em' }}>DASHBOARD</a>
+          )}
+          <a href="/login" style={{ padding: '5px 16px', borderRadius: 6, border: '1px solid #1e2230', background: 'transparent', color: '#4a5468', ...S.mono, fontSize: 10, textDecoration: 'none', letterSpacing: '0.05em' }}>STAFF LOGIN</a>
+        </div>
       </nav>
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '48px 24px 64px' }}>
