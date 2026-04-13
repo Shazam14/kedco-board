@@ -43,6 +43,145 @@ interface Report {
   transactions: TxnRow[];
 }
 
+function printReport(report: Report) {
+  const php = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const dateLabel = new Date(report.date + 'T00:00:00').toLocaleDateString('en-PH', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  }).toUpperCase();
+
+  const CATEGORY_LABEL: Record<string, string> = { MAIN: 'Main Currencies', '2ND': '2nd Currencies', OTHERS: 'Others' };
+  const categories = ['MAIN', '2ND', 'OTHERS'];
+
+  const currencyRows = categories.map(cat => {
+    const rows = report.by_currency.filter(r => r.category === cat);
+    if (!rows.length) return '';
+    const tot = {
+      buy_count:  rows.reduce((s, r) => s + r.buy_count,  0),
+      buy_php:    rows.reduce((s, r) => s + r.buy_php,    0),
+      sell_count: rows.reduce((s, r) => s + r.sell_count, 0),
+      sell_php:   rows.reduce((s, r) => s + r.sell_php,   0),
+      than:       rows.reduce((s, r) => s + r.than,       0),
+    };
+    return `
+      <tr style="background:#f0f0f0"><td colspan="9" style="padding:6px 8px;font-weight:700;font-size:11px;letter-spacing:0.1em">${CATEGORY_LABEL[cat] ?? cat}</td></tr>
+      ${rows.map((r, i) => `
+        <tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
+          <td style="padding:7px 8px;font-weight:700">${r.flag} ${r.code}</td>
+          <td style="color:#555">${r.name}</td>
+          <td style="text-align:right;color:#2255cc">${r.buy_count || '—'}</td>
+          <td style="text-align:right;color:#2255cc">${r.buy_qty > 0 ? r.buy_qty.toLocaleString('en-PH', { maximumFractionDigits: r.decimal_places }) : '—'}</td>
+          <td style="text-align:right;color:#2255cc;font-weight:600">${r.buy_php > 0 ? php(r.buy_php) : '—'}</td>
+          <td style="text-align:right;color:#c47000">${r.sell_count || '—'}</td>
+          <td style="text-align:right;color:#c47000">${r.sell_qty > 0 ? r.sell_qty.toLocaleString('en-PH', { maximumFractionDigits: r.decimal_places }) : '—'}</td>
+          <td style="text-align:right;color:#c47000;font-weight:600">${r.sell_php > 0 ? php(r.sell_php) : '—'}</td>
+          <td style="text-align:right;color:${r.than > 0 ? '#007a55' : '#999'};font-weight:600">${r.than > 0 ? php(r.than) : '—'}</td>
+        </tr>
+      `).join('')}
+      <tr style="background:#e8e8e8;font-weight:700">
+        <td colspan="2" style="padding:6px 8px;font-size:11px">${CATEGORY_LABEL[cat]} subtotal</td>
+        <td style="text-align:right;color:#2255cc">${tot.buy_count}</td>
+        <td></td>
+        <td style="text-align:right;color:#2255cc">${php(tot.buy_php)}</td>
+        <td style="text-align:right;color:#c47000">${tot.sell_count}</td>
+        <td></td>
+        <td style="text-align:right;color:#c47000">${php(tot.sell_php)}</td>
+        <td style="text-align:right;color:#007a55">${tot.than > 0 ? php(tot.than) : '—'}</td>
+      </tr>`;
+  }).join('');
+
+  const cashierRows = report.by_cashier.map((r, i) => `
+    <tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
+      <td style="padding:7px 8px;font-weight:700">${r.cashier}</td>
+      <td style="text-align:right;color:#2255cc">${r.buy_count}</td>
+      <td style="text-align:right;color:#2255cc;font-weight:600">${php(r.buy_php)}</td>
+      <td style="text-align:right;color:#c47000">${r.sell_count}</td>
+      <td style="text-align:right;color:#c47000;font-weight:600">${php(r.sell_php)}</td>
+      <td style="text-align:right;color:${r.than > 0 ? '#007a55' : '#999'};font-weight:700">${r.than > 0 ? php(r.than) : '—'}</td>
+    </tr>`).join('');
+
+  const txnRows = report.transactions.map((t, i) => `
+    <tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
+      <td style="padding:6px 8px;font-size:10px;color:#555">${t.id}</td>
+      <td style="color:#555">${t.time}</td>
+      <td style="font-weight:700;color:${t.type === 'BUY' ? '#2255cc' : '#c47000'}">${t.type}</td>
+      <td style="color:#555">${t.source === 'RIDER' ? 'RIDER' : 'CTR'}</td>
+      <td style="font-weight:700">${t.currency}</td>
+      <td style="text-align:right">${t.foreign_amt.toLocaleString()}</td>
+      <td style="text-align:right;color:${t.type === 'BUY' ? '#2255cc' : '#c47000'}">${t.rate}</td>
+      <td style="text-align:right;font-weight:600">${php(t.php_amt)}</td>
+      <td style="text-align:right;color:${t.than > 0 ? '#007a55' : '#999'}">${t.than > 0 ? php(t.than) : '—'}</td>
+      <td style="font-size:10px;color:#555">${t.cashier}${t.customer ? ` / ${t.customer}` : ''}</td>
+    </tr>`).join('');
+
+  const th = (label: string, align = 'left') =>
+    `<th style="padding:7px 8px;background:#222;color:#fff;text-align:${align};font-size:10px;letter-spacing:0.08em;white-space:nowrap">${label}</th>`;
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <title>Kedco FX Daily Report — ${report.date}</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Courier New', monospace; font-size: 12px; color: #000; background: #fff; padding: 24px; }
+      h1 { font-family: Arial, sans-serif; font-size: 20px; font-weight: 900; letter-spacing: -0.02em; }
+      h2 { font-family: Arial, sans-serif; font-size: 13px; font-weight: 800; margin: 20px 0 8px; }
+      table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 24px; }
+      td { padding: 7px 8px; border-bottom: 1px solid #e0e0e0; }
+      .summary { display: flex; gap: 16px; margin-bottom: 24px; }
+      .summary-box { flex: 1; border: 1px solid #ccc; border-radius: 6px; padding: 12px 16px; }
+      .summary-box .label { font-size: 9px; color: #555; letter-spacing: 0.15em; margin-bottom: 4px; }
+      .summary-box .value { font-size: 20px; font-weight: 900; font-family: Arial, sans-serif; }
+      @media print { body { padding: 12px; } }
+    </style>
+  </head><body>
+    <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #000">
+      <h1>KEDCO FX — DAILY REPORT</h1>
+      <div style="font-size:12px;color:#555;margin-top:4px">${dateLabel}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px">Generated ${report.generated_at} · ${report.total_transactions} transactions</div>
+    </div>
+
+    <div class="summary">
+      <div class="summary-box"><div class="label">TOTAL BOUGHT</div><div class="value" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
+      <div class="summary-box"><div class="label">TOTAL SOLD</div><div class="value" style="color:#c47000">${php(report.total_sold_php)}</div></div>
+      <div class="summary-box"><div class="label">TOTAL THAN (MARGIN)</div><div class="value" style="color:#007a55">${php(report.total_than)}</div></div>
+    </div>
+
+    <h2>CURRENCY BREAKDOWN</h2>
+    <table>
+      <thead><tr>
+        ${th('CURRENCY')}${th('NAME')}${th('BUY #','right')}${th('BUY QTY','right')}${th('BUY PHP','right')}${th('SELL #','right')}${th('SELL QTY','right')}${th('SELL PHP','right')}${th('THAN','right')}
+      </tr></thead>
+      <tbody>${currencyRows}</tbody>
+      <tfoot><tr style="background:#111;color:#fff;font-weight:900">
+        <td colspan="2" style="padding:8px;font-size:12px">GRAND TOTAL</td>
+        <td></td><td></td>
+        <td style="text-align:right;padding:8px;font-size:13px">${php(report.total_bought_php)}</td>
+        <td></td><td></td>
+        <td style="text-align:right;padding:8px;font-size:13px">${php(report.total_sold_php)}</td>
+        <td style="text-align:right;padding:8px;font-size:13px;color:#4ade80">${php(report.total_than)}</td>
+      </tr></tfoot>
+    </table>
+
+    <h2>PER-CASHIER SUMMARY</h2>
+    <table>
+      <thead><tr>${th('CASHIER')}${th('BUY TXN','right')}${th('BOUGHT (PHP)','right')}${th('SELL TXN','right')}${th('SOLD (PHP)','right')}${th('THAN','right')}</tr></thead>
+      <tbody>${cashierRows}</tbody>
+    </table>
+
+    <h2>TRANSACTION LOG</h2>
+    <table>
+      <thead><tr>${th('RECEIPT')}${th('TIME')}${th('TYPE')}${th('SRC')}${th('CCY')}${th('FOREIGN','right')}${th('RATE','right')}${th('PHP','right')}${th('THAN','right')}${th('CASHIER / CUST')}</tr></thead>
+      <tbody>${txnRows}</tbody>
+    </table>
+
+    <div style="text-align:center;font-size:10px;color:#aaa;margin-top:16px;padding-top:12px;border-top:1px solid #ddd">
+      Kedco FX · Pusok, Lapu-Lapu City · Confidential — For Internal Use Only
+    </div>
+    <script>window.onload = () => { window.print(); }</script>
+  </body></html>`;
+
+  const w = window.open('', '_blank', 'width=900,height=700');
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
 export default function ReportShell({
   report,
   selectedDate,
@@ -119,7 +258,7 @@ export default function ReportShell({
               }}
             />
             <button
-              onClick={() => window.print()}
+              onClick={() => report && printReport(report)}
               style={{
                 padding: '6px 18px', borderRadius: 6,
                 border: '1px solid rgba(0,212,170,0.35)',
