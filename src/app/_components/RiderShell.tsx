@@ -59,8 +59,19 @@ export default function RiderShell({
   const [error,       setError]       = useState<string | null>(null);
   const [flash,       setFlash]       = useState<(Transaction & { paymentLabel: string }) | null>(null);
   const [txns,        setTxns]        = useState<Transaction[]>([]);
+  const [payPending,  setPayPending]  = useState(false);   // mark payment as pending/advance
   const [showPicker,  setShowPicker]  = useState(false);
   const [showLog,     setShowLog]     = useState(false);
+  const [showBorrow,  setShowBorrow]  = useState(false);
+
+  // Borrow form
+  const [dispatchId,   setDispatchId]   = useState<string | null>(null);
+  const [borrowSrcType,setBorrowSrcType] = useState<'BRANCH'|'RIDER'>('BRANCH');
+  const [borrowSrc,    setBorrowSrc]    = useState('');
+  const [borrowAmt,    setBorrowAmt]    = useState('');
+  const [borrowNote,   setBorrowNote]   = useState('');
+  const [borrowSaving, setBorrowSaving] = useState(false);
+  const [borrowOk,     setBorrowOk]     = useState(false);
 
   // Auto-fill rate when currency or type changes
   useEffect(() => {
@@ -80,6 +91,13 @@ export default function RiderShell({
   }, []);
 
   useEffect(() => { fetchTxns(); }, [fetchTxns]);
+
+  // Fetch rider's own dispatch ID on mount (needed for borrow recording)
+  useEffect(() => {
+    fetch('/api/rider/dispatch')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.dispatch?.id) setDispatchId(d.dispatch.id); });
+  }, []);
 
   const rawAmt  = amt.replace(/,/g, '');
   const rawRate = rate.replace(/,/g, '');
@@ -109,6 +127,7 @@ export default function RiderShell({
           customer: cust || undefined,
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
+          payment_status: payPending ? 'PENDING' : 'RECEIVED',
         }),
       });
       const data = await res.json();
@@ -124,13 +143,35 @@ export default function RiderShell({
           cashier: data.cashier, customer: data.customer ?? undefined,
           paymentLabel: bankName ? `${modeLabel} · ${bankName}` : modeLabel,
         });
-        setAmt(''); setCust(''); setPayMode('CASH'); setBankId(null);
+        setAmt(''); setCust(''); setPayMode('CASH'); setBankId(null); setPayPending(false);
         await fetchTxns();
         setTimeout(() => setFlash(null), 6000);
       }
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleBorrow() {
+    if (!dispatchId || !borrowSrc || !borrowAmt) return;
+    setBorrowSaving(true);
+    const res = await fetch('/api/rider/borrow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dispatch_id: dispatchId,
+        source_type: borrowSrcType,
+        source_name: borrowSrc,
+        amount_php: +borrowAmt.replace(/,/g, ''),
+        notes: borrowNote || undefined,
+      }),
+    });
+    if (res.ok) {
+      setBorrowOk(true);
+      setBorrowSrc(''); setBorrowAmt(''); setBorrowNote('');
+      setTimeout(() => { setBorrowOk(false); setShowBorrow(false); }, 2000);
+    }
+    setBorrowSaving(false);
   }
 
   const typeColor = type === 'BUY' ? '#5b8cff' : '#f5a623';
@@ -341,6 +382,60 @@ export default function RiderShell({
               style={{ width: '100%', background: '#0f1117', border: '1px solid #1e2230', borderRadius: 10, padding: '14px 16px', color: '#e2e6f0', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
+
+          {/* Pending payment toggle — for non-cash modes */}
+          {payMode !== 'CASH' && (
+            <button onClick={() => setPayPending(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, background: payPending ? 'rgba(245,166,35,0.1)' : 'transparent', border: `1px solid ${payPending ? 'rgba(245,166,35,0.4)' : '#1e2230'}`, borderRadius: 10, padding: '12px 16px', cursor: 'pointer', width: '100%', textAlign: 'left' }}>
+              <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${payPending ? '#f5a623' : '#4a5468'}`, background: payPending ? '#f5a623' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#000', flexShrink: 0 }}>
+                {payPending ? '✓' : ''}
+              </div>
+              <div>
+                <div style={{ ...M, fontSize: 12, color: payPending ? '#f5a623' : '#4a5468', fontWeight: 700 }}>Mark as Advance / Pending Payment</div>
+                <div style={{ ...M, fontSize: 10, color: '#4a5468', marginTop: 2 }}>Payment not yet received — admin will confirm when collected</div>
+              </div>
+            </button>
+          )}
+
+          {/* Borrow cash */}
+          {dispatchId && (
+            <div>
+              {!showBorrow ? (
+                <button onClick={() => setShowBorrow(true)}
+                  style={{ ...M, fontSize: 11, background: 'transparent', border: '1px solid rgba(245,166,35,0.25)', borderRadius: 10, padding: '10px 16px', color: '#f5a623', cursor: 'pointer', width: '100%' }}>
+                  💸 Record Borrowed Cash
+                </button>
+              ) : (
+                <div style={{ background: '#0f1117', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 12, padding: '14px' }}>
+                  <div style={{ ...M, fontSize: 10, color: '#f5a623', marginBottom: 10 }}>RECORD BORROW</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                    {(['BRANCH', 'RIDER'] as const).map(st => (
+                      <button key={st} onClick={() => setBorrowSrcType(st)}
+                        style={{ padding: '8px', borderRadius: 8, border: `1px solid ${borrowSrcType === st ? '#f5a62344' : '#1e2230'}`, background: borrowSrcType === st ? 'rgba(245,166,35,0.1)' : 'transparent', color: borrowSrcType === st ? '#f5a623' : '#4a5468', ...M, fontSize: 11, cursor: 'pointer' }}>
+                        {st === 'BRANCH' ? '🏢 Branch' : '🏍️ Rider'}
+                      </button>
+                    ))}
+                  </div>
+                  <input value={borrowSrc} onChange={e => setBorrowSrc(e.target.value)}
+                    placeholder={borrowSrcType === 'BRANCH' ? 'Branch name' : 'Rider name'}
+                    style={{ width: '100%', background: '#161922', border: '1px solid #1e2230', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
+                  <input value={borrowAmt} onChange={e => setBorrowAmt(fmtAmt(e.target.value))}
+                    placeholder="Amount (PHP)"
+                    style={{ width: '100%', background: '#161922', border: '1px solid #1e2230', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
+                  <input value={borrowNote} onChange={e => setBorrowNote(e.target.value)}
+                    placeholder="Notes (optional)"
+                    style={{ width: '100%', background: '#161922', border: '1px solid #1e2230', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <button onClick={() => setShowBorrow(false)} style={{ padding: '10px', borderRadius: 8, border: '1px solid #1e2230', background: 'transparent', color: '#4a5468', ...M, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
+                    <button onClick={handleBorrow} disabled={borrowSaving || !borrowSrc || !borrowAmt}
+                      style={{ padding: '10px', borderRadius: 8, border: 'none', background: (!borrowSrc || !borrowAmt) ? '#1e2230' : '#f5a623', color: (!borrowSrc || !borrowAmt) ? '#4a5468' : '#000', ...M, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      {borrowOk ? '✓ Saved!' : borrowSaving ? '…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Error */}
           {error && (
