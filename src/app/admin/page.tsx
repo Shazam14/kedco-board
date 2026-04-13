@@ -61,7 +61,10 @@ export default async function AdminPage() {
             <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'#4a5468', marginTop:-2 }}>Admin Panel</div>
           </div>
         </div>
-        <a href="/" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid #1e2230', background:'transparent', color:'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none' }}>← Back to Dashboard</a>
+        <div style={{ display:'flex', gap:8 }}>
+          <a href="/guide" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid #1e2230', background:'transparent', color:'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none' }}>Guide</a>
+          <a href="/" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid #1e2230', background:'transparent', color:'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none' }}>← Dashboard</a>
+        </div>
       </nav>
 
       <div style={{ padding:'28px 32px' }}>
