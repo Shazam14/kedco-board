@@ -9,10 +9,12 @@ const S: Record<string, React.CSSProperties> = {
   syne: { fontFamily:"'Syne',sans-serif" },
 };
 
-function fmtOnBlur(val: string, dp: number) {
-  const n = parseFloat(val.replace(/,/g, ''));
-  if (isNaN(n)) return val;
-  return n.toLocaleString('en-PH', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+// Format rate as you type — commas on integer part, decimal part left alone
+function fmtRate(val: string): string {
+  const cleaned = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+  const [intPart, decPart] = cleaned.split('.');
+  const formatted = (intPart || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return decPart !== undefined ? `${formatted}.${decPart}` : formatted;
 }
 
 function CategoryBlock({
@@ -64,9 +66,7 @@ function CategoryBlock({
               inputMode="decimal"
               placeholder={`e.g. ${(0).toFixed(c.decimalPlaces)}`}
               value={v.buy}
-              onChange={e => onChange(c.code, 'buy', e.target.value.replace(/[^0-9.]/g, ''))}
-              onBlur={() => onChange(c.code, 'buy', fmtOnBlur(v.buy, c.decimalPlaces))}
-              onFocus={e => { e.target.select(); onChange(c.code, 'buy', v.buy.replace(/,/g, '')); }}
+              onChange={e => onChange(c.code, 'buy', fmtRate(e.target.value))}
               style={{ background:'#161922', border:`1px solid ${v.buy ? '#5b8cff44' : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#5b8cff', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
             />
 
@@ -77,9 +77,7 @@ function CategoryBlock({
                 inputMode="decimal"
                 placeholder={`e.g. ${(0).toFixed(c.decimalPlaces)}`}
                 value={v.sell}
-                onChange={e => onChange(c.code, 'sell', e.target.value.replace(/[^0-9.]/g, ''))}
-                onBlur={() => onChange(c.code, 'sell', fmtOnBlur(v.sell, c.decimalPlaces))}
-                onFocus={e => { e.target.select(); onChange(c.code, 'sell', v.sell.replace(/,/g, '')); }}
+                onChange={e => onChange(c.code, 'sell', fmtRate(e.target.value))}
                 style={{ background:'#161922', border:`1px solid ${v.sell ? (spreadOk ? '#00d4aa44' : '#ff5c5c44') : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
               />
               {spread !== null && (
