@@ -17,7 +17,7 @@ export default async function GuidePage() {
             <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: '#4a5468', marginTop: -2 }}>Staff Guide</div>
           </div>
         </div>
-        <a href="/" style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #1e2230', background: 'transparent', color: '#4a5468', fontFamily: "'DM Mono',monospace", fontSize: 11, textDecoration: 'none' }}>← Back to Dashboard</a>
+        <a href="/dashboard" style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #1e2230', background: 'transparent', color: '#4a5468', fontFamily: "'DM Mono',monospace", fontSize: 11, textDecoration: 'none' }}>← Back to Dashboard</a>
       </nav>
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 24px', display: 'flex', flexDirection: 'column', gap: 32 }}>
@@ -31,23 +31,32 @@ export default async function GuidePage() {
 
         {/* ADMIN SECTION */}
         <Section icon="👑" title="Admin (Ken)" color="#00d4aa">
-          <Block title="Before transactions start each day">
-            <p>Go to <Route href="/admin">/admin</Route> → <strong>Set Today&apos;s Rates</strong> — enter buy and sell rates for currencies you&apos;re trading today.</p>
-            <p style={{ marginTop: 8, color: '#4a5468' }}>Carry-in stock from yesterday is automatic — nothing else to prepare.</p>
+          <Block title="Day 1 — First time setup only">
+            <ol>
+              <li>Go to <Route href="/admin/rates">/admin/rates</Route> → <strong>Set Today&apos;s Rates</strong> — enter buy and sell rates for all currencies</li>
+              <li style={{ marginTop: 8 }}>Go to <Route href="/admin/positions">/admin/positions</Route> → <strong>Opening Positions</strong> — enter your actual stock quantities and the rates you acquired them at</li>
+              <li style={{ marginTop: 8 }}>Done — cashiers can now start transacting</li>
+            </ol>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.15)', borderRadius: 8, fontSize: 11, color: '#f5a623' }}>
+              After Day 1, carry-in stock is automatic — EOD carries your closing stock forward to the next day.
+            </div>
+          </Block>
+          <Block title="Every day (after Day 1)">
+            <p>Go to <Route href="/admin/rates">/admin/rates</Route> → <strong>Set Today&apos;s Rates</strong> — that&apos;s all. Opening stock is already carried in from yesterday.</p>
           </Block>
           <Block title="During the day">
             <ul>
-              <li><Route href="/">/</Route> Dashboard — live capital position anytime you want to check</li>
-              <li><strong>Rate Board</strong> tab — all published rates (can be shown on a screen at the counter for customers)</li>
+              <li><Route href="/dashboard">/dashboard</Route> — live capital position, THAN, stock summary</li>
               <li><strong>Positions</strong> tab — current stock quantities per currency</li>
               <li><strong>Transactions</strong> tab — everything from counter + rider in real time</li>
+              <li><Route href="/">/</Route> — public rate board (share this link with customers to see today&apos;s rates)</li>
             </ul>
           </Block>
           <Block title="End of day">
-            <ul>
-              <li>Go to <Route href="/admin/eod">/admin/eod</Route> → <strong>End of Day</strong> — closes the day and locks rates</li>
-              <li>Go to <Route href="/admin/report">/admin/report</Route> → <strong>Daily Report</strong> — full breakdown, print or save as PDF</li>
-            </ul>
+            <ol>
+              <li>Go to <Route href="/admin/eod">/admin/eod</Route> → <strong>End of Day</strong> — closes the day, calculates THAN, carries stock to tomorrow</li>
+              <li style={{ marginTop: 8 }}>Go to <Route href="/admin/report">/admin/report</Route> → <strong>Daily Report</strong> — full breakdown by currency and cashier, print or save as PDF</li>
+            </ol>
           </Block>
         </Section>
 
@@ -68,10 +77,17 @@ export default async function GuidePage() {
 
         {/* RIDER SECTION */}
         <Section icon="🏍️" title="Rider — Field Screen" color="#a78bfa">
-          <Block title="">
-            <p style={{ color: '#4a5468' }}>Works like the counter but designed for mobile. Record BUY/SELL transactions in the field — everything syncs to the dashboard in real time.</p>
-            <div style={{ marginTop: 12, display: 'inline-block', fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#a78bfa', background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)', borderRadius: 6, padding: '4px 12px', letterSpacing: '0.1em' }}>COMING SOON</div>
+          <Block title="How it works">
+            <ol>
+              <li><strong>Admin dispatches rider</strong> — goes to Dashboard → Rider tab → selects rider, enters PHP cash given → marks as IN FIELD</li>
+              <li style={{ marginTop: 8 }}><strong>Rider logs in on phone</strong> — lands on <Route href="/rider">/rider</Route> automatically. BUY/SELL with large mobile-friendly buttons. All transactions sync to the dashboard in real time.</li>
+              <li style={{ marginTop: 8 }}><strong>Rider returns</strong> — Admin marks rider as RETURNED. All rider transactions appear in the daily report alongside counter transactions.</li>
+            </ol>
           </Block>
+          <Block title="Payment modes">
+            <p style={{ color: '#4a5468' }}>Each transaction can be tagged: <strong>Cash</strong>, <strong>GCash</strong>, <strong>Cheque</strong>, <strong>Bank Transfer</strong>, or <strong>Other</strong>. The daily report breaks these down automatically.</p>
+          </Block>
+          <div style={{ marginTop: 12, display: 'inline-block', fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#a78bfa', background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)', borderRadius: 6, padding: '4px 12px', letterSpacing: '0.1em', margin: '0 24px 20px' }}>COMING SOON</div>
         </Section>
 
         {/* STAFF ACCOUNTS */}
@@ -117,14 +133,16 @@ export default async function GuidePage() {
               </thead>
               <tbody>
                 {[
-                  ['/',                 'Live capital dashboard'],
+                  ['/',                 'Public rate board — share with customers'],
+                  ['/dashboard',        'Live capital dashboard (admin/supervisor)'],
                   ['/counter',          'Cashier transaction screen'],
+                  ['/rider',            'Rider field screen (mobile)'],
                   ['/admin',            'Admin panel'],
                   ['/admin/rates',      'Set today\'s rates'],
+                  ['/admin/positions',  'Opening positions (Day 1 setup only)'],
+                  ['/admin/eod',        'End of day'],
                   ['/admin/report',     'Daily report — print to PDF'],
                   ['/admin/users',      'Manage staff accounts'],
-                  ['/admin/eod',        'End of day'],
-                  ['/admin/positions',  'Opening positions (Day 1 setup only)'],
                   ['/guide',            'This page'],
                 ].map(([route, desc], i) => (
                   <tr key={route} style={{ borderBottom: '1px solid #1e2230', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
@@ -140,6 +158,7 @@ export default async function GuidePage() {
         {/* FAQ */}
         <Section icon="❓" title="Common Questions" color="#4a5468">
           {[
+            ['First day setup — where do I start?', 'Go to /admin/rates first to set today\'s rates, then /admin/positions to enter your opening stock. After that you\'re ready to transact. From Day 2 onwards, only rates need to be set — stock carries over automatically from EOD.'],
             ['"Rates not set" on the counter', 'Admin needs to set today\'s rates at /admin/rates first.'],
             ['What is THAN?', 'Kedco\'s margin per sell transaction — the difference between your average cost for the currency and what you sold it for. Your profit per transaction.'],
             ['Dashboard shows no data', 'Today\'s rates haven\'t been set yet. Admin sets them at /admin/rates.'],
