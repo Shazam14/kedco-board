@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import type { DashboardSummary, CurrencyPosition, Transaction } from '@/lib/types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -701,6 +702,7 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
 
 export default function DashboardShell({ data }: { data: DashboardSummary }) {
   const [active, setActive] = useState('Dashboard');
+  useIdleTimeout(20);
   return (
     <div style={{ minHeight:'100vh', position:'relative', zIndex:1 }}>
       <style>{`

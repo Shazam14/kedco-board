@@ -1,13 +1,19 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [idleMsg, setIdleMsg] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('reason') === 'idle') setIdleMsg(true);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -73,6 +79,12 @@ export default function LoginPage() {
               style={{ width:'100%', background:'#080a10', border:'1px solid #1e2230', borderRadius:8, padding:'10px 14px', color:'#e2e6f0', fontSize:13, outline:'none', boxSizing:'border-box' }}
             />
           </div>
+
+          {idleMsg && (
+            <div style={{ fontSize:12, color:'#f5a623', background:'rgba(245,166,35,0.08)', border:'1px solid rgba(245,166,35,0.2)', borderRadius:8, padding:'8px 12px', fontFamily:"'DM Mono',monospace" }}>
+              Session ended due to inactivity. Please log in again.
+            </div>
+          )}
 
           {error && (
             <div style={{ fontSize:12, color:'#f87171', background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:8, padding:'8px 12px' }}>
