@@ -45,6 +45,8 @@ interface Report {
 
 function printReport(report: Report) {
   const php = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const dpMap: Record<string, number> = Object.fromEntries(report.by_currency.map(r => [r.code, r.decimal_places]));
+  const fmtFx = (amt: number, code: string) => { const dp = dpMap[code] ?? 2; return amt.toLocaleString('en-PH', { minimumFractionDigits: dp, maximumFractionDigits: dp }); };
   const dateLabel = new Date(report.date + 'T00:00:00').toLocaleDateString('en-PH', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   }).toUpperCase();
@@ -69,10 +71,10 @@ function printReport(report: Report) {
           <td style="padding:7px 8px;font-weight:700">${r.flag} ${r.code}</td>
           <td style="color:#555">${r.name}</td>
           <td style="text-align:right;color:#2255cc">${r.buy_count || '—'}</td>
-          <td style="text-align:right;color:#2255cc">${r.buy_qty > 0 ? r.buy_qty.toLocaleString('en-PH', { maximumFractionDigits: r.decimal_places }) : '—'}</td>
+          <td style="text-align:right;color:#2255cc">${r.buy_qty > 0 ? r.buy_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}</td>
           <td style="text-align:right;color:#2255cc;font-weight:600">${r.buy_php > 0 ? php(r.buy_php) : '—'}</td>
           <td style="text-align:right;color:#c47000">${r.sell_count || '—'}</td>
-          <td style="text-align:right;color:#c47000">${r.sell_qty > 0 ? r.sell_qty.toLocaleString('en-PH', { maximumFractionDigits: r.decimal_places }) : '—'}</td>
+          <td style="text-align:right;color:#c47000">${r.sell_qty > 0 ? r.sell_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}</td>
           <td style="text-align:right;color:#c47000;font-weight:600">${r.sell_php > 0 ? php(r.sell_php) : '—'}</td>
           <td style="text-align:right;color:${r.than > 0 ? '#007a55' : '#999'};font-weight:600">${r.than > 0 ? php(r.than) : '—'}</td>
         </tr>
@@ -106,7 +108,7 @@ function printReport(report: Report) {
       <td style="font-weight:700;color:${t.type === 'BUY' ? '#2255cc' : '#c47000'}">${t.type}</td>
       <td style="color:#555">${t.source === 'RIDER' ? 'RIDER' : 'CTR'}</td>
       <td style="font-weight:700">${t.currency}</td>
-      <td style="text-align:right">${t.foreign_amt.toLocaleString()}</td>
+      <td style="text-align:right">${fmtFx(t.foreign_amt, t.currency)}</td>
       <td style="text-align:right;color:${t.type === 'BUY' ? '#2255cc' : '#c47000'}">${t.rate}</td>
       <td style="text-align:right;font-weight:600">${php(t.php_amt)}</td>
       <td style="text-align:right;color:${t.than > 0 ? '#007a55' : '#999'}">${t.than > 0 ? php(t.than) : '—'}</td>
@@ -195,6 +197,15 @@ export default function ReportShell({
   function goToDate(d: string) {
     router.push(`/admin/report${d ? `?date=${d}` : ''}`);
   }
+
+  // dp lookup for on-screen foreign amount formatting
+  const dpMap: Record<string, number> = Object.fromEntries(
+    (report?.by_currency ?? []).map(r => [r.code, r.decimal_places])
+  );
+  const fmtFxScreen = (amt: number, code: string) => {
+    const dp = dpMap[code] ?? 2;
+    return amt.toLocaleString('en-PH', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+  };
 
   // Group currencies by category
   const categories = ['MAIN', '2ND', 'OTHERS'];
@@ -370,14 +381,14 @@ export default function ReportShell({
                         <span className="print-muted" style={{ ...M, fontSize: 11, color: '#4a5468' }}>{r.name}</span>
                         <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>{r.buy_count || '—'}</span>
                         <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>
-                          {r.buy_qty > 0 ? r.buy_qty.toLocaleString('en-PH', { maximumFractionDigits: r.decimal_places }) : '—'}
+                          {r.buy_qty > 0 ? r.buy_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}
                         </span>
                         <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>
                           {r.buy_php > 0 ? php(r.buy_php) : '—'}
                         </span>
                         <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{r.sell_count || '—'}</span>
                         <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>
-                          {r.sell_qty > 0 ? r.sell_qty.toLocaleString('en-PH', { maximumFractionDigits: r.decimal_places }) : '—'}
+                          {r.sell_qty > 0 ? r.sell_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}
                         </span>
                         <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>
                           {r.sell_php > 0 ? php(r.sell_php) : '—'}
@@ -502,7 +513,7 @@ export default function ReportShell({
                   <span style={{ ...M, fontSize: 11, fontWeight: 700, color: t.type === 'BUY' ? '#5b8cff' : '#f5a623' }}>{t.type}</span>
                   <span style={{ ...M, fontSize: 10, color: '#4a5468' }}>{t.source === 'RIDER' ? 'RIDER' : 'CTR'}</span>
                   <span style={{ ...M, fontSize: 12, color: '#e2e6f0', fontWeight: 700 }}>{t.currency}</span>
-                  <span style={{ ...M, fontSize: 11, color: '#e2e6f0', textAlign: 'right' }}>{t.foreign_amt.toLocaleString()}</span>
+                  <span style={{ ...M, fontSize: 11, color: '#e2e6f0', textAlign: 'right' }}>{fmtFxScreen(t.foreign_amt, t.currency)}</span>
                   <span style={{ ...M, fontSize: 11, color: t.type === 'BUY' ? '#5b8cff' : '#f5a623', textAlign: 'right' }}>{t.rate}</span>
                   <span style={{ ...M, fontSize: 11, color: '#e2e6f0', textAlign: 'right' }}>{php(t.php_amt)}</span>
                   <span style={{ ...M, fontSize: 11, color: t.than > 0 ? '#00d4aa' : '#4a5468', textAlign: 'right' }}>
