@@ -80,7 +80,7 @@ function useLiveClock() {
   return now;
 }
 
-function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
+function Nav({ active, set, role }: { active:string; set:(s:string)=>void; role:string }) {
   const router = useRouter();
   const now    = useLiveClock();
   const w      = useWindowWidth();
@@ -113,7 +113,8 @@ function Nav({ active, set }: { active:string; set:(s:string)=>void }) {
         <div style={{ width:7, height:7, borderRadius:'50%', background:'#00d4aa', boxShadow:'0 0 8px #00d4aa88' }} />
         <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#00d4aa' }}>LIVE</span>
         {!isMobile && <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#4a5468' }}>{dateStr} · {timeStr}</span>}
-        <a href="/admin" style={{ marginLeft: isMobile ? 0 : 8, padding:'4px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>ADMIN</a>
+        <a href="/guide" style={{ marginLeft: isMobile ? 0 : 8, padding:'4px 12px', borderRadius:6, border:'1px solid #1e2230', background:'transparent', color:'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>GUIDE</a>
+        {['admin','supervisor'].includes(role) && <a href="/admin" style={{ padding:'4px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>ADMIN</a>}
         <button onClick={handleLogout} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid #1e2230', background:'transparent', color:'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em' }}>LOGOUT</button>
       </div>
     </nav>
@@ -700,7 +701,7 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
   );
 }
 
-export default function DashboardShell({ data }: { data: DashboardSummary }) {
+export default function DashboardShell({ data, role }: { data: DashboardSummary; role: string }) {
   const [active, setActive] = useState('Dashboard');
   useIdleTimeout(20);
   return (
@@ -709,7 +710,7 @@ export default function DashboardShell({ data }: { data: DashboardSummary }) {
         @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         @keyframes ticker { from { transform:translateX(0); } to { transform:translateX(-50%); } }
       `}</style>
-      <Nav active={active} set={setActive}/>
+      <Nav active={active} set={setActive} role={role}/>
       <Ticker positions={data.positions}/>
       {active==='Dashboard'    && <DashboardTab    data={data}/>}
       {active==='Positions'    && <PositionsTab    data={data}/>}
