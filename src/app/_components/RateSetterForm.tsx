@@ -53,8 +53,8 @@ function CategoryBlock({
             {/* Buy rate */}
             <input
               type="number"
-              step="any"
-              placeholder={`e.g. ${c.decimalPlaces === 4 ? '0.0000' : '0.00'}`}
+              step={Math.pow(10, -c.decimalPlaces).toFixed(c.decimalPlaces)}
+              placeholder={`e.g. ${(0).toFixed(c.decimalPlaces)}`}
               value={v.buy}
               onChange={e => onChange(c.code, 'buy', e.target.value)}
               style={{ background:'#161922', border:`1px solid ${v.buy ? '#5b8cff44' : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#5b8cff', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
@@ -64,8 +64,8 @@ function CategoryBlock({
             <div>
               <input
                 type="number"
-                step="any"
-                placeholder={`e.g. ${c.decimalPlaces === 4 ? '0.0000' : '0.00'}`}
+                step={Math.pow(10, -c.decimalPlaces).toFixed(c.decimalPlaces)}
+                placeholder={`e.g. ${(0).toFixed(c.decimalPlaces)}`}
                 value={v.sell}
                 onChange={e => onChange(c.code, 'sell', e.target.value)}
                 style={{ background:'#161922', border:`1px solid ${v.sell ? (spreadOk ? '#00d4aa44' : '#ff5c5c44') : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
