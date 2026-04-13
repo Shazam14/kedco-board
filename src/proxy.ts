@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const AUTH_COOKIE = process.env.AUTH_COOKIE ?? 'kedco_token';
-const PUBLIC_PATHS = ['/login', '/api/auth/login'];
+const PUBLIC_PATHS = ['/', '/login', '/api/auth/login'];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
