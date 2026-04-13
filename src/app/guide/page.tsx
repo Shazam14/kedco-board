@@ -238,6 +238,7 @@ export default async function GuidePage() {
               <tbody>
                 {[
                   ['/',                 'Kedco landing page — branches and services (public)'],
+                  ['/login',            'Staff login page'],
                   ['/dashboard',        'Live capital dashboard (admin/supervisor)'],
                   ['/counter',          'Cashier transaction screen'],
                   ['/rider',            'Rider field screen (mobile)'],
