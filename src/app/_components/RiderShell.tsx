@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import type { CurrencyMeta, Transaction } from '@/lib/types';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
@@ -50,6 +51,13 @@ export default function RiderShell({
   banks: Bank[];
   username: string;
 }) {
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+  }
+
   const [type,        setType]        = useState<'BUY' | 'SELL'>('BUY');
   const [ccy,         setCcy]         = useState<CurrencyMeta | null>(null);
   const [amt,         setAmt]         = useState('');
@@ -212,12 +220,20 @@ export default function RiderShell({
           <div style={{ ...Y, fontSize: 16, fontWeight: 800, color: '#a78bfa' }}>KEDCO FX</div>
           <div style={{ ...M, fontSize: 10, color: '#4a5468' }}>🏍️ {username}</div>
         </div>
-        <button
-          onClick={() => setShowLog(v => !v)}
-          style={{ ...M, fontSize: 11, background: showLog ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${showLog ? '#a78bfa44' : '#1e2230'}`, borderRadius: 8, padding: '6px 14px', color: showLog ? '#a78bfa' : '#4a5468', cursor: 'pointer' }}
-        >
-          {showLog ? '← Form' : `Log (${txns.length})`}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setShowLog(v => !v)}
+            style={{ ...M, fontSize: 11, background: showLog ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${showLog ? '#a78bfa44' : '#1e2230'}`, borderRadius: 8, padding: '6px 14px', color: showLog ? '#a78bfa' : '#4a5468', cursor: 'pointer' }}
+          >
+            {showLog ? '← Form' : `Log (${txns.length})`}
+          </button>
+          <button
+            onClick={handleLogout}
+            style={{ ...M, fontSize: 11, background: 'transparent', border: '1px solid #1e2230', borderRadius: 8, padding: '6px 14px', color: '#4a5468', cursor: 'pointer' }}
+          >
+            LOGOUT
+          </button>
+        </div>
       </div>
 
       {/* ── BALANCE CARD ── */}

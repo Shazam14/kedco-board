@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import type { CurrencyMeta, Transaction } from '@/lib/types';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 
@@ -21,7 +22,14 @@ export default function CounterShell({
   currencies: CurrencyMeta[];
   username: string;
 }) {
+  const router = useRouter();
   useIdleTimeout(20);
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+  }
+
   const [type, setType]       = useState<'BUY' | 'SELL'>('BUY');
   const [ccy,  setCcy]        = useState<CurrencyMeta | null>(null);
   const [amt,  setAmt]        = useState('');
@@ -237,13 +245,13 @@ export default function CounterShell({
             <div style={{ ...M, fontSize: 9, color: '#4a5468', marginTop: -2 }}>Counter</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ ...M, fontSize: 11, color: '#4a5468' }}>
-            Cashier: <span style={{ color: '#e2e6f0' }}>{username}</span>
+            <span style={{ color: '#e2e6f0' }}>{username}</span>
           </div>
-          <a href="/" style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #1e2230', color: '#4a5468', ...M, fontSize: 11, textDecoration: 'none' }}>
-            ← Dashboard
-          </a>
+          <button onClick={handleLogout} style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid #1e2230', background: 'transparent', color: '#4a5468', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}>
+            LOGOUT
+          </button>
         </div>
       </nav>
 

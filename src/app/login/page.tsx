@@ -30,9 +30,11 @@ function LoginForm() {
         setError(data.error ?? 'Login failed');
         return;
       }
-      // Route by role — cashier goes straight to the counter
+      // Route by role
       if (data.role === 'cashier') {
         router.push('/counter');
+      } else if (data.role === 'rider') {
+        router.push('/rider');
       } else {
         router.push('/dashboard');
       }
