@@ -4,6 +4,7 @@ import RateSetterForm from '@/app/_components/RateSetterForm';
 
 export default async function AdminRatesPage() {
   const role = await getTokenRole();
+  if (!role) redirect('/login');
   if (role !== 'admin') redirect('/');
 
   const currencies = await getCurrencies();
@@ -24,7 +25,7 @@ export default async function AdminRatesPage() {
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <a href="/" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid #1e2230', background:'transparent', color:'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none', cursor:'pointer' }}>← Dashboard</a>
+          <a href="/dashboard" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid #1e2230', background:'transparent', color:'#4a5468', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none', cursor:'pointer' }}>← Dashboard</a>
           <a href="/admin" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid rgba(0,212,170,0.3)', background:'rgba(0,212,170,0.08)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none' }}>Admin Home</a>
         </div>
       </nav>

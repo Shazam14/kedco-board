@@ -26,7 +26,8 @@ export default async function ReportPage({
   searchParams: Promise<{ date?: string }>;
 }) {
   const role = await getTokenRole();
-  if (!role || !['admin', 'supervisor'].includes(role)) redirect('/');
+  if (!role) redirect('/login');
+  if (!['admin', 'supervisor'].includes(role)) redirect('/');
 
   const { date: dateParam } = await searchParams;
   const report = await fetchReport(dateParam);

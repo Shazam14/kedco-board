@@ -62,7 +62,7 @@ export default function EodPage() {
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <a href="/admin" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid #1e2230', color:'#4a5468', ...S.mono, fontSize:11, textDecoration:'none' }}>← Admin</a>
-          <a href="/" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid #1e2230', color:'#4a5468', ...S.mono, fontSize:11, textDecoration:'none' }}>Dashboard</a>
+          <a href="/dashboard" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid #1e2230', color:'#4a5468', ...S.mono, fontSize:11, textDecoration:'none' }}>Dashboard</a>
         </div>
       </nav>
 
@@ -157,7 +157,7 @@ export default function EodPage() {
             </div>
 
             <div style={{ display:'flex', gap:10, marginTop:16 }}>
-              <a href="/" style={{ flex:1, padding:'10px', borderRadius:8, border:'1px solid rgba(0,212,170,0.3)', background:'rgba(0,212,170,0.08)', color:'#00d4aa', ...S.syne, fontSize:12, fontWeight:700, textDecoration:'none', textAlign:'center' }}>
+              <a href="/dashboard" style={{ flex:1, padding:'10px', borderRadius:8, border:'1px solid rgba(0,212,170,0.3)', background:'rgba(0,212,170,0.08)', color:'#00d4aa', ...S.syne, fontSize:12, fontWeight:700, textDecoration:'none', textAlign:'center' }}>
                 View Dashboard
               </a>
               <a href="/admin" style={{ flex:1, padding:'10px', borderRadius:8, border:'1px solid #1e2230', color:'#4a5468', ...S.syne, fontSize:12, fontWeight:700, textDecoration:'none', textAlign:'center' }}>

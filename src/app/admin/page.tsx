@@ -49,6 +49,7 @@ const tools = [
 
 export default async function AdminPage() {
   const role = await getTokenRole();
+  if (!role) redirect('/login');
   if (role !== 'admin') redirect('/');
 
   return (
