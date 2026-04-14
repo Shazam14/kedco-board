@@ -24,12 +24,13 @@ export default defineConfig({
       port: 9999,
       reuseExistingServer: !process.env.CI,
     },
-    // 2. Next.js on port 3001 (separate from normal dev on 3000) pointed at mock API
+    // 2. Next.js on port 3001 — uses build+start to avoid .next/dev/lock
+    //    conflict when the dev server (port 3000) is already running.
     {
-      command: 'npx next dev --port 3001',
+      command: 'npx next build && npx next start --port 3001',
       url: 'http://localhost:3001',
       reuseExistingServer: !process.env.CI,
-      timeout: 60_000,
+      timeout: 120_000,
       env: {
         API_URL:     'http://localhost:9999',
         AUTH_COOKIE: 'kedco_token',
