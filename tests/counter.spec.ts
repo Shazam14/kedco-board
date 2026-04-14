@@ -40,21 +40,21 @@ test.describe('Counter screen', () => {
   test('entering amount shows PHP total', async ({ page }) => {
     await page.selectOption('select', 'USD');
     await page.locator('input').first().fill('100');
-    await expect(page.getByText(/₱/)).toBeVisible();
+    // PHP total card updates — look for a ₱ value with actual digits (not ₱ —)
+    await expect(page.locator('text=/₱[1-9]/').first()).toBeVisible();
   });
 
   test('payment mode selector is visible with all modes', async ({ page }) => {
     await expect(page.getByText('PAYMENT MODE')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'CASH' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'GCASH' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'MAYA' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'CHEQUE' })).toBeVisible();
+    // Use exact: true to avoid partial match ('CASH' inside 'GCASH')
+    await expect(page.getByRole('button', { name: 'CASH', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'GCASH', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'MAYA', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'CHEQUE', exact: true })).toBeVisible();
   });
 
   test('CASH is selected by default', async ({ page }) => {
-    // CASH button should be highlighted (has teal color via inline style)
-    // Use attribute selector to find the active button
-    const cashBtn = page.getByRole('button', { name: 'CASH' });
+    const cashBtn = page.getByRole('button', { name: 'CASH', exact: true });
     await expect(cashBtn).toBeVisible();
   });
 
@@ -81,7 +81,7 @@ test.describe('Counter screen', () => {
 
   test('BUY/SELL toggle changes submit button label', async ({ page }) => {
     await expect(page.getByRole('button', { name: /CONFIRM BUY/ })).toBeDisabled();
-    await page.getByRole('button', { name: '↑ SELL' }).click();
+    await page.getByText('↑ SELL').click();
     await expect(page.getByRole('button', { name: /CONFIRM SELL/ })).toBeDisabled();
   });
 

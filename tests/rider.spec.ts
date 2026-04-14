@@ -27,8 +27,9 @@ test.describe('Rider screen', () => {
   });
 
   test('has BUY and SELL buttons', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'BUY' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'SELL' })).toBeVisible();
+    // Use exact: true — 'BUY' partial match also hits 'CONFIRM BUY'
+    await expect(page.getByRole('button', { name: 'BUY', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'SELL', exact: true })).toBeVisible();
   });
 
   test('currency picker opens and shows currencies', async ({ page }) => {
@@ -41,14 +42,12 @@ test.describe('Rider screen', () => {
   test('currency picker shows buy and sell rates', async ({ page }) => {
     await page.getByText('Select currency…').click();
     // Should show B: and S: for rates
-    await expect(page.getByText(/B:.*S:/)).toBeVisible();
+    await expect(page.getByText(/B:.*S:/).first()).toBeVisible();
   });
 
   test('selecting currency fills rate field', async ({ page }) => {
     await page.getByText('Select currency…').click();
     await page.getByText('🇺🇸').first().click(); // select USD
-    // Rate input should now have a value
-    const rateInput = page.locator('input').filter({ hasText: '' }).nth(1);
     // Just verify a rate input exists and has content
     const inputs = page.locator('input');
     const count = await inputs.count();
@@ -57,8 +56,10 @@ test.describe('Rider screen', () => {
 
   test('payment mode buttons are shown', async ({ page }) => {
     await expect(page.getByText('PAYMENT MODE')).toBeVisible();
-    await expect(page.getByText('Cash')).toBeVisible();
-    await expect(page.getByText('GCash')).toBeVisible();
+    // Rider buttons show icon + label (e.g. '💵 Cash'). Use first() since
+    // 'Cash' appears in both '💵 Cash' and '📱 GCash'
+    await expect(page.getByText('Cash').first()).toBeVisible();
+    await expect(page.getByText('GCash').first()).toBeVisible();
     await expect(page.getByText('Maya')).toBeVisible();
   });
 

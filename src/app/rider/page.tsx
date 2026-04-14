@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import RiderShell from '@/app/_components/RiderShell';
+import type { CurrencyMeta } from '@/lib/types';
 
 const API_URL = process.env.API_URL!;
 const AUTH_COOKIE = process.env.AUTH_COOKIE ?? 'kedco_token';
@@ -10,12 +11,24 @@ function decodeToken(token: string) {
   catch { return null; }
 }
 
-async function getCurrencies(token: string) {
+async function getCurrencies(token: string): Promise<CurrencyMeta[]> {
   try {
     const res = await fetch(`${API_URL}/api/v1/currencies/meta`, {
       headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
     });
-    return res.ok ? res.json() : [];
+    if (!res.ok) return [];
+    const raw = await res.json() as Record<string, unknown>[];
+    // Convert snake_case API response to camelCase for the client component
+    return raw.map(c => ({
+      code:           c.code           as string,
+      name:           c.name           as string,
+      flag:           c.flag           as string,
+      category:       c.category       as string,
+      decimalPlaces:  (c.decimal_places  ?? c.decimalPlaces)  as number,
+      todayBuyRate:   (c.today_buy_rate  ?? c.todayBuyRate)   as number | null,
+      todaySellRate:  (c.today_sell_rate ?? c.todaySellRate)  as number | null,
+      rateSet:        (c.rate_set        ?? c.rateSet)        as boolean,
+    }));
   } catch { return []; }
 }
 

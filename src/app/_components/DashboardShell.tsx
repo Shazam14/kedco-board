@@ -922,7 +922,7 @@ export default function DashboardShell({ data, role }: { data: DashboardSummary;
   const [active, setActive] = useState('Dashboard');
   useIdleTimeout(20);
   return (
-    <div style={{ minHeight:'100vh', position:'relative', zIndex:1 }}>
+    <div style={{ minHeight:'100vh', position:'relative', zIndex:1, overflowX:'hidden', maxWidth:'100vw' }}>
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         @keyframes ticker { from { transform:translateX(0); } to { transform:translateX(-50%); } }
