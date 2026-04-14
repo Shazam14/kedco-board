@@ -493,7 +493,7 @@ function RiderTab({ data }: { data: DashboardSummary }) {
             onClick={handleDispatch}
             disabled={!selRider || !cashPhp || +cashPhp <= 0 || dispatching}
             style={{
-              padding: '10px 20px', borderRadius: 8, border: 'none', whiteSpace: 'nowrap',
+              padding: '10px 20px', borderRadius: 8, whiteSpace: 'nowrap',
               background: (!selRider || !cashPhp || +cashPhp <= 0) ? '#1e2230' : 'rgba(167,139,250,0.2)',
               color: (!selRider || !cashPhp || +cashPhp <= 0) ? '#4a5468' : '#a78bfa',
               border: `1px solid ${(!selRider || !cashPhp || +cashPhp <= 0) ? '#1e2230' : 'rgba(167,139,250,0.4)'}`,
