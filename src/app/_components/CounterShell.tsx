@@ -533,7 +533,6 @@ export default function CounterShell({
                   ['Amount',   `${fmtFx(flash.foreignAmt, flash.currency, currencies)} ${flash.currency}`],
                   ['Rate',     String(flash.rate)],
                   ['PHP',      php(flash.phpAmt)],
-                  ...(flash.type === 'SELL' ? [['THAN', php(flash.than)]] : []),
                 ].map(([k, v]) => (
                   <div key={k}>
                     <div style={{ ...M, fontSize: 9, color: '#4a5468', marginBottom: 2 }}>{k}</div>
@@ -569,11 +568,10 @@ export default function CounterShell({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 12 }}>
             {[
               { label: 'TOTAL BOUGHT', value: php(totalBought), color: '#5b8cff' },
               { label: 'TOTAL SOLD',   value: php(totalSold),   color: '#f5a623' },
-              { label: 'TOTAL THAN',   value: php(totalThan),   color: '#00d4aa' },
             ].map(s => (
               <div key={s.label} style={{
                 background: '#0f1117', border: '1px solid #1e2230',
@@ -619,7 +617,7 @@ export default function CounterShell({
                 {/* Column labels */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px 100px',
+                  gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px',
                   padding: '8px 20px', borderBottom: '1px solid #1e2230',
                   ...M, fontSize: 9, color: '#4a5468', letterSpacing: '0.1em',
                   whiteSpace: 'nowrap',
@@ -631,7 +629,6 @@ export default function CounterShell({
                   <span>FOREIGN</span>
                   <span>RATE</span>
                   <span>PHP AMT</span>
-                  <span>THAN</span>
                 </div>
 
                 <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 300px)' }}>
@@ -640,7 +637,7 @@ export default function CounterShell({
                       key={t.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px 100px',
+                        gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px',
                         padding: '10px 20px',
                         borderBottom: '1px solid #1e2230',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
@@ -663,12 +660,6 @@ export default function CounterShell({
                         color: t.type === 'BUY' ? '#5b8cff' : '#f5a623',
                       }}>{t.rate}</span>
                       <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
-                      <span style={{
-                        ...M, fontSize: 11,
-                        color: t.than > 0 ? '#00d4aa' : '#4a5468',
-                      }}>
-                        {t.than > 0 ? php(t.than) : '—'}
-                      </span>
                     </div>
                   ))}
                 </div>
