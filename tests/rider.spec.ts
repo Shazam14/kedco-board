@@ -27,8 +27,9 @@ test.describe('Rider screen', () => {
   });
 
   test('has BUY and SELL buttons', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'BUY' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'SELL' })).toBeVisible();
+    // Use exact: true — 'BUY' partial match also hits 'CONFIRM BUY'
+    await expect(page.getByRole('button', { name: 'BUY', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'SELL', exact: true })).toBeVisible();
   });
 
   test('currency picker opens and shows currencies', async ({ page }) => {
@@ -47,8 +48,6 @@ test.describe('Rider screen', () => {
   test('selecting currency fills rate field', async ({ page }) => {
     await page.getByText('Select currency…').click();
     await page.getByText('🇺🇸').first().click(); // select USD
-    // Rate input should now have a value
-    const rateInput = page.locator('input').filter({ hasText: '' }).nth(1);
     // Just verify a rate input exists and has content
     const inputs = page.locator('input');
     const count = await inputs.count();

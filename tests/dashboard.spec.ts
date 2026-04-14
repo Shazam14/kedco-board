@@ -20,16 +20,17 @@ test.describe('Dashboard', () => {
   });
 
   test('shows capital summary cards', async ({ page }) => {
-    await expect(page.getByText('TOTAL CAPITAL')).toBeVisible();
+    await expect(page.getByText('TOTAL CAPITAL POSITION')).toBeVisible();
     await expect(page.getByText('PHP CASH')).toBeVisible();
-    await expect(page.getByText('TOTAL STOCK')).toBeVisible();
+    await expect(page.getByText('FX STOCK VALUE')).toBeVisible(); // actual label (not 'TOTAL STOCK')
   });
 
   test('Rider tab — shows dispatch form', async ({ page }) => {
     await page.getByRole('button', { name: 'Rider' }).click();
     await expect(page.getByText('Dispatch a Rider')).toBeVisible();
-    await expect(page.getByText('RIDER')).toBeVisible();
     await expect(page.getByText('STARTING CASH (PHP)')).toBeVisible();
+    // RIDER label in the form — use a label locator to avoid matching other text
+    await expect(page.locator('label', { hasText: 'RIDER' })).toBeVisible();
   });
 
   test('Rider tab — shows no riders in field initially', async ({ page }) => {
@@ -52,19 +53,20 @@ test.describe('Dashboard', () => {
 
   test('Positions tab loads', async ({ page }) => {
     await page.getByRole('button', { name: 'Positions' }).click();
-    // Should show the positions content (currencies with stock)
-    await expect(page.getByText('USD')).toBeVisible({ timeout: 5_000 });
+    // USD appears in positions table — use first() since it may appear in the ticker too
+    await expect(page.getByText('USD').first()).toBeVisible({ timeout: 5_000 });
   });
 
   test('Transactions tab loads', async ({ page }) => {
     await page.getByRole('button', { name: 'Transactions' }).click();
-    // No transactions in mock data — should show empty state or table header
-    await expect(page.getByText(/COUNTER.*RIDER|ALL|transaction/i)).toBeVisible({ timeout: 5_000 });
+    // The source filter has ALL / COUNTER / RIDER buttons
+    await expect(page.getByRole('button', { name: 'ALL', exact: true })).toBeVisible({ timeout: 5_000 });
   });
 
   test('Rate Board tab loads', async ({ page }) => {
     await page.getByRole('button', { name: 'Rate Board' }).click();
-    await expect(page.getByText(/Kedco FX/i)).toBeVisible({ timeout: 5_000 });
+    // 'Kedco FX' appears in nav + rate board — use first()
+    await expect(page.getByText(/Kedco FX/i).first()).toBeVisible({ timeout: 5_000 });
   });
 
   test('logout redirects to login', async ({ page }) => {
@@ -79,6 +81,6 @@ test.describe('Dashboard — supervisor access', () => {
 
   test('supervisor can access dashboard', async ({ page }) => {
     await page.goto('/dashboard');
-    await expect(page.getByText('TOTAL CAPITAL')).toBeVisible();
+    await expect(page.getByText('TOTAL CAPITAL POSITION')).toBeVisible();
   });
 });
