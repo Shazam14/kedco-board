@@ -5,6 +5,8 @@ export default async function GuidePage() {
   const role = await getTokenRole();
   if (!role) redirect('/login');
 
+  const branchLocation = process.env.BRANCH_LOCATION ?? 'Lapu-Lapu City';
+
   return (
     <div style={{ minHeight: '100vh', background: '#080a10', color: '#e2e6f0' }}>
 
@@ -69,6 +71,7 @@ export default async function GuidePage() {
               <li>Pick the currency</li>
               <li>Enter the foreign amount — rate fills in automatically, PHP total shows live</li>
               <li>Enter customer name (optional but good habit)</li>
+              <li>Select <strong>payment mode</strong> — Cash, GCash, Maya, ShopeePay, Bank Transfer, Cheque, or Other (default is Cash)</li>
               <li>Hit <strong>Submit</strong> → print receipt for the customer</li>
             </ol>
           </Block>
@@ -85,7 +88,7 @@ export default async function GuidePage() {
             </ol>
           </Block>
           <Block title="Payment modes">
-            <p style={{ color: '#4a5468' }}>Each transaction can be tagged: <strong>Cash</strong>, <strong>GCash</strong>, <strong>Cheque</strong>, <strong>Bank Transfer</strong>, or <strong>Other</strong>. The daily report breaks these down automatically.</p>
+            <p style={{ color: '#4a5468' }}>Each transaction can be tagged: <strong>Cash</strong>, <strong>GCash</strong>, <strong>Maya</strong>, <strong>ShopeePay</strong>, <strong>Bank Transfer</strong>, <strong>Cheque</strong>, or <strong>Other</strong>. The daily report breaks these down automatically.</p>
           </Block>
           <Note>Rider must be dispatched by admin first — admin sets the starting PHP cash. Without dispatch, the balance card won&apos;t show.</Note>
         </Section>
@@ -278,7 +281,7 @@ export default async function GuidePage() {
 
         {/* FOOTER */}
         <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#4a5468', textAlign: 'center', paddingTop: 16, borderTop: '1px solid #1e2230' }}>
-          Kedco FX · Pusok, Lapu-Lapu City · For internal use only
+          Kedco FX · {branchLocation} · For internal use only
         </div>
 
       </div>
