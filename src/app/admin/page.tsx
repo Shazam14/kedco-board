@@ -58,6 +58,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     desc:  'Add or deactivate banks and e-wallets used for payments.',
     color: '#5b8cff',
   },
+  {
+    href:  '/admin/audit',
+    icon:  '🔍',
+    title: 'Audit Trail',
+    desc:  'Every create, edit, and delete — who changed what and when.',
+    color: '#a78bfa',
+  },
 ];
 
 export default async function AdminPage() {

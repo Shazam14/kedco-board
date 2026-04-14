@@ -62,6 +62,49 @@ const DASHBOARD_SUMMARY = {
   recent_transactions: [],
 };
 
+const AUDIT_LOG = [
+  {
+    id: 'AUD-001', table: 'rates', record_id: 'USD-2026-04-14',
+    action: 'UPDATE', changed_by: 'supervisor1',
+    changed_at: new Date(Date.now() - 30 * 60_000).toISOString(),
+    old_value: { buy_rate: 55.00, sell_rate: 55.50 },
+    new_value: { buy_rate: 55.50, sell_rate: 56.00 },
+    note: null,
+  },
+  {
+    id: 'AUD-002', table: 'transactions', record_id: 'TXN-2026-001',
+    action: 'CREATE', changed_by: 'cashier1',
+    changed_at: new Date(Date.now() - 60 * 60_000).toISOString(),
+    old_value: null,
+    new_value: { type: 'BUY', currency: 'USD', foreign_amt: 500, rate: 55.50, php_amt: 27750 },
+    note: null,
+  },
+  {
+    id: 'AUD-003', table: 'transactions', record_id: 'TXN-2026-001',
+    action: 'UPDATE', changed_by: 'admin',
+    changed_at: new Date(Date.now() - 45 * 60_000).toISOString(),
+    old_value: { rate: 55.50, php_amt: 27750 },
+    new_value: { rate: 55.00, php_amt: 27500 },
+    note: 'Rate correction approved by admin',
+  },
+  {
+    id: 'AUD-004', table: 'dispatches', record_id: 'DISP-001',
+    action: 'CREATE', changed_by: 'admin',
+    changed_at: new Date(Date.now() - 3 * 60 * 60_000).toISOString(),
+    old_value: null,
+    new_value: { rider: 'rider01', cash_php: 50000, status: 'IN_FIELD' },
+    note: null,
+  },
+  {
+    id: 'AUD-005', table: 'users', record_id: 'cashier2',
+    action: 'UPDATE', changed_by: 'admin',
+    changed_at: new Date(Date.now() - 24 * 60 * 60_000).toISOString(),
+    old_value: { full_name: 'Old Name', is_active: true },
+    new_value: { full_name: 'Cashier Two', is_active: true },
+    note: null,
+  },
+];
+
 const BANKS = [
   { id: 1, name: 'BDO',       code: 'BDO' },
   { id: 2, name: 'BPI',       code: 'BPI' },
@@ -211,6 +254,19 @@ const server = createServer(async (req, res) => {
   // POST rates
   if (method === 'POST' && url === '/api/v1/rates/today') {
     return json(res, { message: 'Rates saved' });
+  }
+
+  // Audit log
+  if (method === 'GET' && url === '/api/v1/audit/log') {
+    const qs     = new URLSearchParams((req.url ?? '').split('?')[1] ?? '');
+    const table  = qs.get('table');
+    const action = qs.get('action');
+    const user   = qs.get('user');
+    let results  = [...AUDIT_LOG];
+    if (table)  results = results.filter(e => e.table      === table);
+    if (action) results = results.filter(e => e.action     === action);
+    if (user)   results = results.filter(e => e.changed_by === user);
+    return json(res, results);
   }
 
   // Fallback
