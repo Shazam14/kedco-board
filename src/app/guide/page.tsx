@@ -106,12 +106,13 @@ export default async function GuidePage() {
               </thead>
               <tbody>
                 {[
-                  ['BUY x MAIN',    'Daily Report → Main Currencies (BUY rows)'],
-                  ['BUY x 2ND',     'Daily Report → 2nd Currencies (BUY rows)'],
-                  ['SELL x MAIN',   'Daily Report → all categories (SELL rows + THAN)'],
-                  ['CASHIER',       'Daily Report → By Cashier section'],
-                  ['STOCKS LEFT',   'Dashboard → Positions tab (live) + EOD closes the day'],
-                  ['BUY x OTHERS',  'Daily Report → Others category (BUY rows)'],
+                  ['BUY x MAIN',    'Daily Report → MAIN currencies, BUY rows (USD, JPY, KRW)'],
+                  ['BUY x 2ND',     'Daily Report → 2ND currencies, BUY rows (AUD, EUR, GBP, SGD + 11 more)'],
+                  ['BUY x OTHERS',  'Daily Report → OTHERS currencies, BUY rows (BHD, IDR, INR + 6 more)'],
+                  ['SELL x MAIN',   'Daily Report → MAIN currencies, SELL rows + THAN'],
+                  ['SELL x OTHERS', 'Daily Report → OTHERS + 2ND currencies, SELL rows + THAN'],
+                  ['CASHIER',       'Daily Report → By Cashier section (BUY total, SELL total, THAN per cashier)'],
+                  ['STOCKS LEFT',   'Dashboard → Positions tab (live closing stock)'],
                 ].map(([old, rep], i) => (
                   <tr key={old} style={{ borderBottom: '1px solid #1e2230', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
                     <td style={{ padding: '10px 12px', color: '#f5a623', fontFamily: "'DM Mono',monospace" }}>{old}</td>
@@ -122,9 +123,30 @@ export default async function GuidePage() {
             </table>
             <Note>
               The Daily Report at <Route href="/admin/report">/admin/report</Route> is printable as PDF —
-              it is the single document that covers all 6 of the above files in one page.
+              it is the single document that covers all 7 of the above files in one page.
               Print it at end of day instead of downloading CSVs.
             </Note>
+          </Block>
+          <Block title="Currency categories">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              {[
+                { label: 'MAIN', color: '#00d4aa', currencies: 'USD · JPY · KRW' },
+                { label: '2ND', color: '#5b8cff', currencies: 'AED · AUD · CAD · CHF · CNY · EUR · GBP · HKD · MYR · NTD · NZD · QAR · SAR · SGD · THB' },
+                { label: 'OTHERS', color: '#f5a623', currencies: 'BHD · BND · DKK · IDR · INR · MOP · NOK · OMR · TYR' },
+              ].map(({ label, color, currencies }) => (
+                <div key={label} style={{ background: `${color}08`, border: `1px solid ${color}22`, borderRadius: 8, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 9, color, letterSpacing: '0.15em', marginBottom: 6, fontWeight: 700 }}>{label}</div>
+                  <div style={{ fontSize: 11, color: '#4a5468', lineHeight: 1.8 }}>{currencies}</div>
+                </div>
+              ))}
+            </div>
+          </Block>
+          <Block title="Note on EXPENSES / COM">
+            <div style={{ padding: '10px 14px', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.15)', borderRadius: 8, fontSize: 11, color: '#f5a623', lineHeight: 1.7 }}>
+              The CASHIER CSV has an EXPENSES/COM row (e.g. ₱500 commission deductions). This is not yet tracked
+              in the system — enter it manually in the notes field of your daily report for now.
+              We can add a dedicated expense entry screen in a future update.
+            </div>
           </Block>
         </Section>
 
@@ -180,12 +202,14 @@ export default async function GuidePage() {
             </ol>
             <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {[
-                ['Total BUY PHP', 'Grand Total BUY in your CSV'],
-                ['Total SELL PHP', 'Grand Total SOLD in your CSV'],
-                ['Total THAN', 'Grand Total THAN in your CSV'],
-                ['By Cashier', 'CASHIER.csv totals'],
-                ['MAIN currencies', 'BUY x MAIN rows'],
-                ['2ND currencies', 'BUY x 2ND rows'],
+                ['Total BUY PHP',       'Grand Total BUY in CASHIER CSV (BUY MAIN + BUY 2ND + BUY OTHERS)'],
+                ['Total SELL PHP',      'Grand Total SELL in CASHIER CSV'],
+                ['Total THAN',          'Grand Total THAN in CASHIER CSV'],
+                ['MAIN currencies',     'BUY x MAIN + SELL x MAIN rows (USD, JPY, KRW)'],
+                ['2ND currencies',      'BUY x 2ND + SELL x OTHERS rows (AUD, EUR, GBP…)'],
+                ['OTHERS currencies',   'BUY x OTHERS + SELL x OTHERS rows (BHD, IDR, INR…)'],
+                ['Closing stock',       'STOCKS LEFT CSV — qty per currency at end of day'],
+                ['By Cashier',          'CASHIER CSV — per-cashier BUY / SELL / THAN totals'],
               ].map(([sys, csv]) => (
                 <div key={sys} style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.15)', borderRadius: 8, padding: '8px 12px' }}>
                   <div style={{ fontSize: 10, color: '#a78bfa', marginBottom: 2 }}>System: {sys}</div>

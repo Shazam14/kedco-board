@@ -7,6 +7,17 @@ import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
 
+function useWindowWidth() {
+  const [w, setW] = useState(1440);
+  useEffect(() => {
+    setW(window.innerWidth);
+    const h = () => setW(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return w;
+}
+
 const php = (n: number) =>
   '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -26,6 +37,11 @@ export default function CounterShell({
 }) {
   const router = useRouter();
   useIdleTimeout(20);
+
+  const vw       = useWindowWidth();
+  const isMobile = vw < 768;
+  const isTablet = vw >= 768 && vw < 1100;
+  const px       = isMobile ? 16 : isTablet ? 24 : 32;
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -241,7 +257,7 @@ export default function CounterShell({
       {noRatesAtAll && (
         <div style={{
           background: 'rgba(245,166,35,0.1)', borderBottom: '1px solid rgba(245,166,35,0.35)',
-          padding: '12px 32px', display: 'flex', alignItems: 'center', gap: 12,
+          padding: `12px ${px}px`, display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <span style={{ fontSize: 16 }}>⚠️</span>
           <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: '#f5a623' }}>
@@ -252,7 +268,7 @@ export default function CounterShell({
       {!noRatesAtAll && ratesCount < currencies.length && (
         <div style={{
           background: 'rgba(245,166,35,0.06)', borderBottom: '1px solid rgba(245,166,35,0.2)',
-          padding: '10px 32px', display: 'flex', alignItems: 'center', gap: 12,
+          padding: `10px ${px}px`, display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <span style={{ fontSize: 14 }}>ℹ️</span>
           <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#f5a623' }}>
@@ -264,7 +280,7 @@ export default function CounterShell({
       {/* ── NAV ── */}
       <nav style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 32px', height: '56px', borderBottom: '1px solid #1e2230',
+        padding: `0 ${px}px`, height: '56px', borderBottom: '1px solid #1e2230',
         background: 'rgba(15,17,23,0.96)', backdropFilter: 'blur(12px)',
         position: 'sticky', top: 0, zIndex: 100,
       }}>
@@ -292,9 +308,9 @@ export default function CounterShell({
 
       {/* ── BODY ── */}
       <div style={{
-        padding: '28px 32px',
+        padding: `24px ${px}px`,
         display: 'grid',
-        gridTemplateColumns: '400px 1fr',
+        gridTemplateColumns: isMobile || isTablet ? '1fr' : '400px 1fr',
         gap: 24,
         maxWidth: 1280,
       }}>
@@ -553,7 +569,7 @@ export default function CounterShell({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: 12 }}>
             {[
               { label: 'TOTAL BOUGHT', value: php(totalBought), color: '#5b8cff' },
               { label: 'TOTAL SOLD',   value: php(totalSold),   color: '#f5a623' },
