@@ -1,0 +1,37 @@
+#!/bin/sh
+# Pre-push hook — runs Playwright E2E tests before allowing a push.
+# If any test fails, the push is blocked.
+
+echo ""
+echo "┌─────────────────────────────────────────┐"
+echo "│  Running E2E tests before push...        │"
+echo "└─────────────────────────────────────────┘"
+echo ""
+
+npm run test:e2e
+
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+  echo ""
+  echo "┌─────────────────────────────────────────┐"
+  echo "│  ✗ E2E tests failed — push blocked.     │"
+  echo "│  Fix the failing tests then try again.  │"
+  echo "│                                         │"
+  echo "│  To see the report:                     │"
+  echo "│    npm run test:e2e:report              │"
+  echo "│                                         │"
+  echo "│  To skip (emergency only):              │"
+  echo "│    git push --no-verify                 │"
+  echo "└─────────────────────────────────────────┘"
+  echo ""
+  exit 1
+fi
+
+echo ""
+echo "┌─────────────────────────────────────────┐"
+echo "│  ✓ All tests passed — pushing.          │"
+echo "└─────────────────────────────────────────┘"
+echo ""
+
+exit 0

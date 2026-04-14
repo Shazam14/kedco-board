@@ -80,6 +80,15 @@ Tests run against a **mock API server** — no real backend needed.
 npx playwright install chromium
 ```
 
+### Install git hooks (first time only)
+
+```bash
+sh scripts/install-hooks.sh
+```
+
+This installs a pre-push hook that runs all E2E tests before every `git push`.
+The push is blocked if any test fails. To skip in an emergency: `git push --no-verify`.
+
 ### Run all tests
 
 ```bash
