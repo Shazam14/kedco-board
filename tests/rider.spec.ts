@@ -56,8 +56,10 @@ test.describe('Rider screen', () => {
 
   test('payment mode buttons are shown', async ({ page }) => {
     await expect(page.getByText('PAYMENT MODE')).toBeVisible();
-    await expect(page.getByText('Cash')).toBeVisible();
-    await expect(page.getByText('GCash')).toBeVisible();
+    // Rider buttons show icon + label (e.g. '💵 Cash'). Use first() since
+    // 'Cash' appears in both '💵 Cash' and '📱 GCash'
+    await expect(page.getByText('Cash').first()).toBeVisible();
+    await expect(page.getByText('GCash').first()).toBeVisible();
     await expect(page.getByText('Maya')).toBeVisible();
   });
 

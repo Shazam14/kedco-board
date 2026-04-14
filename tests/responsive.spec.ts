@@ -60,8 +60,9 @@ test.describe('Counter — mobile (390px)', () => {
   });
 
   test('payment mode buttons are shown', async ({ page }) => {
+    // Counter payment modes are uppercase ('CASH', 'GCASH') — use exact to avoid partial match
     await expect(page.getByText('PAYMENT MODE')).toBeVisible();
-    await expect(page.getByText('Cash')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'CASH', exact: true })).toBeVisible();
   });
 
   test('transaction log is below the form (stacked layout)', async ({ page }) => {
@@ -229,7 +230,8 @@ test.describe('Dashboard — mobile (390px)', () => {
 
   test('can switch to Transactions tab', async ({ page }) => {
     await page.getByRole('button', { name: 'Transactions' }).click();
-    await expect(page.getByText(/All Transactions/i)).toBeVisible();
+    // Transactions tab shows filter buttons: ALL / COUNTER / RIDER
+    await expect(page.getByRole('button', { name: 'ALL', exact: true })).toBeVisible();
   });
 
   test('can switch to Rider tab', async ({ page }) => {

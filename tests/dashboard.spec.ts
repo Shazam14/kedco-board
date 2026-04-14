@@ -20,9 +20,9 @@ test.describe('Dashboard', () => {
   });
 
   test('shows capital summary cards', async ({ page }) => {
-    await expect(page.getByText('TOTAL CAPITAL POSITION')).toBeVisible();
-    await expect(page.getByText('PHP CASH')).toBeVisible();
-    await expect(page.getByText('FX STOCK VALUE')).toBeVisible(); // actual label (not 'TOTAL STOCK')
+    await expect(page.getByText('TOTAL CAPITAL POSITION').first()).toBeVisible();
+    await expect(page.getByText('PHP CASH').first()).toBeVisible();
+    await expect(page.getByText('FX STOCK VALUE').first()).toBeVisible();
   });
 
   test('Rider tab — shows dispatch form', async ({ page }) => {
