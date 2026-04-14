@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CurrencyMeta, Transaction } from '@/lib/types';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import IDScanner, { type ScannedID } from '@/app/_components/IDScanner';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -51,17 +52,19 @@ export default function CounterShell({
   const PAY_MODES = ['CASH', 'GCASH', 'MAYA', 'SHOPEEPAY', 'BANK TRANSFER', 'CHEQUE', 'OTHER'] as const;
   type PayMode = typeof PAY_MODES[number];
 
-  const [type,    setType]    = useState<'BUY' | 'SELL'>('BUY');
-  const [ccy,     setCcy]     = useState<CurrencyMeta | null>(null);
-  const [amt,     setAmt]     = useState('');
-  const [rate,    setRate]    = useState('');
-  const [cust,    setCust]    = useState('');
-  const [payMode, setPayMode] = useState<PayMode>('CASH');
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
-  const [flash,   setFlash]   = useState<Transaction | null>(null);
-  const [txns,    setTxns]    = useState<Transaction[]>([]);
-  const [today,   setToday]   = useState('');
+  const [type,     setType]     = useState<'BUY' | 'SELL'>('BUY');
+  const [ccy,      setCcy]      = useState<CurrencyMeta | null>(null);
+  const [amt,      setAmt]      = useState('');
+  const [rate,     setRate]     = useState('');
+  const [cust,     setCust]     = useState('');
+  const [idNumber, setIdNumber] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [payMode,  setPayMode]  = useState<PayMode>('CASH');
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+  const [flash,    setFlash]    = useState<Transaction | null>(null);
+  const [txns,     setTxns]     = useState<Transaction[]>([]);
+  const [today,    setToday]    = useState('');
 
   useEffect(() => {
     setToday(
@@ -119,6 +122,7 @@ export default function CounterShell({
           rate: +rawRate,
           cashier: username,
           customer: cust || undefined,
+          id_number: idNumber || undefined,
           payment_mode: payMode,
         }),
       });
@@ -131,11 +135,13 @@ export default function CounterShell({
           currency: data.currency, foreignAmt: data.foreign_amt,
           rate: data.rate, phpAmt: data.php_amt, than: data.than,
           cashier: data.cashier, customer: data.customer ?? undefined,
+          idNumber: (data.id_number ?? idNumber) || undefined,
           paymentMode: data.payment_mode ?? payMode,
         };
         setFlash(txn);
         setAmt('');
         setCust('');
+        setIdNumber('');
         await fetchTxns();
         setTimeout(() => setFlash(null), 5000);
       }
@@ -225,9 +231,9 @@ export default function CounterShell({
 
 <div style="margin-top:8px"></div>
 
-<div class="field">SOLD TO &nbsp;&nbsp;:</div>
+<div class="field">SOLD TO &nbsp;&nbsp;: ${txn.customer ?? ''}</div>
 <div class="field">ADDRESS &nbsp;&nbsp;:</div>
-<div class="field">TIN &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</div>
+<div class="field">ID NO &nbsp;&nbsp;&nbsp;&nbsp;: ${txn.idNumber ?? ''}</div>
 <div class="field">BUSINESS STY :</div>
 <div class="field">SIGNATURE &nbsp;:</div>
 
@@ -252,6 +258,17 @@ export default function CounterShell({
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
+
+      {scanning && (
+        <IDScanner
+          onScan={(result: ScannedID) => {
+            setCust(result.name);
+            if (result.idNumber) setIdNumber(result.idNumber);
+            setScanning(false);
+          }}
+          onClose={() => setScanning(false)}
+        />
+      )}
 
       {/* ── RATES WARNING BANNER ── */}
       {noRatesAtAll && (
@@ -450,11 +467,26 @@ export default function CounterShell({
             </div>
           </div>
 
-          {/* Customer */}
-          <div>
-            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
-              CUSTOMER / REF <span style={{ opacity: 0.45 }}>(optional)</span>
-            </label>
+          {/* Customer / AMLA */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em' }}>
+                CUSTOMER / AMLA <span style={{ opacity: 0.45 }}>(optional)</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setScanning(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '4px 10px', borderRadius: 6,
+                  border: '1px solid rgba(0,212,170,0.4)',
+                  background: 'rgba(0,212,170,0.07)',
+                  color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer',
+                }}
+              >
+                📷 Scan ID
+              </button>
+            </div>
             <input
               type="text"
               value={cust}
@@ -464,6 +496,17 @@ export default function CounterShell({
                 width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
                 borderRadius: 8, padding: '12px 14px', color: '#e2e6f0',
                 ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+            <input
+              type="text"
+              value={idNumber}
+              onChange={e => setIdNumber(e.target.value)}
+              placeholder="ID number (PhilSys / DL / Passport)"
+              style={{
+                width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
+                ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
               }}
             />
           </div>
