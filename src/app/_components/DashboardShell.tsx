@@ -121,7 +121,8 @@ function Nav({ active, set, role }: { active:string; set:(s:string)=>void; role:
   );
 }
 
-function DashboardTab({ data }: { data: DashboardSummary }) {
+function DashboardTab({ data, role }: { data: DashboardSummary; role: string }) {
+  const isAdmin = role === 'admin';
   const w = useWindowWidth();
   const isMobile = w < 768;
   const capitalGain = data.totalCapital - data.openingCapital;
@@ -172,9 +173,9 @@ function DashboardTab({ data }: { data: DashboardSummary }) {
       </div>
 
       {/* STATS */}
-      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:14 }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${isAdmin ? 3 : 2},1fr)`, gap:14 }}>
         {[
-          { label:'TODAY THAN (MARGIN)', val:php(than),                sub:'Counter + rider combined',             color:'#00d4aa', icon:'📈', d:100 },
+          ...(isAdmin ? [{ label:'TODAY THAN (MARGIN)', val:php(than), sub:'Counter + rider combined', color:'#00d4aa', icon:'📈', d:100 }] : []),
           { label:'BOUGHT TODAY',        val:php(data.totalBoughtToday),sub:`${buyCount} transactions`,             color:'#5b8cff', icon:'💱', d:150 },
           { label:'SOLD TODAY',          val:php(data.totalSoldToday),  sub:`${sellCount} transactions`,            color:'#f5a623', icon:'💸', d:200 },
         ].map(card => (
@@ -245,14 +246,14 @@ function DashboardTab({ data }: { data: DashboardSummary }) {
         </div>
         <div style={{ overflowX:'auto' }}>
           {data.recentTransactions.slice(0,6).map((t,i) => (
-            <div key={t.id} style={{ display:'grid', gridTemplateColumns:'90px 58px 62px 70px 1fr 90px 80px', padding:'11px 24px', borderBottom:i<5?'1px solid var(--border)':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10, fontSize:12, minWidth:560 }}>
+            <div key={t.id} style={{ display:'grid', gridTemplateColumns:isAdmin ? '90px 58px 62px 70px 1fr 90px 80px' : '90px 58px 62px 70px 1fr 90px', padding:'11px 24px', borderBottom:i<5?'1px solid var(--border)':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10, fontSize:12, minWidth:isAdmin ? 560 : 480 }}>
               <span style={{ ...S.mono, fontSize:10, color:'var(--muted)' }}>{t.time}</span>
               <span style={{ ...S.mono, fontSize:10, textAlign:'center', padding:'2px 0', borderRadius:4, color:t.type==='BUY'?'#5b8cff':'#f5a623', background:t.type==='BUY'?'rgba(91,140,255,0.1)':'rgba(245,166,35,0.1)' }}>{t.type}</span>
               <span style={{ ...S.mono, fontSize:10, textAlign:'center', color:t.source==='RIDER'?'#a78bfa':'var(--muted)' }}>{t.source==='RIDER'?'🏍️ RDR':'🖥️ CTR'}</span>
               <span style={{ ...S.mono, fontSize:12, color:'#f5a623', fontWeight:500 }}>{t.currency}</span>
               <span style={{ ...S.mono, fontSize:11, color:'var(--muted)' }}>{t.foreignAmt.toLocaleString()} @ {t.rate}</span>
               <span style={{ ...S.mono, fontSize:12, color:'#e2e6f0', fontWeight:500, textAlign:'right' }}>{php(t.phpAmt)}</span>
-              <span style={{ ...S.mono, fontSize:11, color:'#00d4aa', textAlign:'right' }}>{t.type==='SELL'?'+'+php(t.than):'—'}</span>
+              {isAdmin && <span style={{ ...S.mono, fontSize:11, color:'#00d4aa', textAlign:'right' }}>{t.type==='SELL'?'+'+php(t.than):'—'}</span>}
             </div>
           ))}
         </div>
@@ -326,7 +327,8 @@ function PositionsTab({ data }: { data: DashboardSummary }) {
   );
 }
 
-function TransactionsTab({ data }: { data: DashboardSummary }) {
+function TransactionsTab({ data, role }: { data: DashboardSummary; role: string }) {
+  const isAdmin = role === 'admin';
   const { recentTransactions: txns } = data;
   const [tF, setTF] = useState<'ALL'|'BUY'|'SELL'>('ALL');
   const [sF, setSF] = useState<'ALL'|'COUNTER'|'RIDER'>('ALL');
@@ -342,15 +344,15 @@ function TransactionsTab({ data }: { data: DashboardSummary }) {
         <div style={{ display:'flex', gap:6 }}>
           {(['ALL','COUNTER','RIDER'] as const).map(f => <button key={f} onClick={()=>setSF(f)} style={{ padding:'6px 14px', borderRadius:6, cursor:'pointer', fontFamily:"'DM Mono',monospace", fontSize:10, letterSpacing:'0.1em', border:`1px solid ${sF===f?'#a78bfa':'var(--border)'}`, background:sF===f?'rgba(167,139,250,0.1)':'transparent', color:sF===f?'#a78bfa':'var(--muted)' }}>{f==='COUNTER'?'🖥️ COUNTER':f==='RIDER'?'🏍️ RIDER':f}</button>)}
         </div>
-        <div style={{ marginLeft:'auto', ...S.mono, fontSize:11, color:'#00d4aa' }}>THAN from filtered: {php(filtered.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.than,0))}</div>
+        {isAdmin && <div style={{ marginLeft:'auto', ...S.mono, fontSize:11, color:'#00d4aa' }}>THAN from filtered: {php(filtered.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.than,0))}</div>}
       </div>
       <div style={S.card}>
         <div style={{ overflowX:'auto' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'110px 70px 58px 80px 70px 1fr 90px 80px 130px', padding:'10px 20px', borderBottom:'1px solid var(--border)', fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.1em', gap:10, minWidth:700 }}>
-            <span>OR/REF</span><span>TIME</span><span>TYPE</span><span>SOURCE</span><span>CCY</span><span>AMT @ RATE</span><span>PHP TOTAL</span><span>THAN</span><span>CASHIER/CLIENT</span>
+          <div style={{ display:'grid', gridTemplateColumns:isAdmin ? '110px 70px 58px 80px 70px 1fr 90px 80px 130px' : '110px 70px 58px 80px 70px 1fr 90px 130px', padding:'10px 20px', borderBottom:'1px solid var(--border)', fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.1em', gap:10, minWidth:isAdmin ? 700 : 620 }}>
+            <span>OR/REF</span><span>TIME</span><span>TYPE</span><span>SOURCE</span><span>CCY</span><span>AMT @ RATE</span><span>PHP TOTAL</span>{isAdmin && <span>THAN</span>}<span>CASHIER/CLIENT</span>
           </div>
           {filtered.map((t,i) => (
-            <div key={t.id} style={{ display:'grid', gridTemplateColumns:'110px 70px 58px 80px 70px 1fr 90px 80px 130px', padding:'12px 20px', borderBottom:i<filtered.length-1?'1px solid var(--border)':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10, minWidth:700 }}>
+            <div key={t.id} style={{ display:'grid', gridTemplateColumns:isAdmin ? '110px 70px 58px 80px 70px 1fr 90px 80px 130px' : '110px 70px 58px 80px 70px 1fr 90px 130px', padding:'12px 20px', borderBottom:i<filtered.length-1?'1px solid var(--border)':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10, minWidth:isAdmin ? 700 : 620 }}>
               <span style={{ ...S.mono, fontSize:9, color:'var(--muted)' }}>{t.id}</span>
               <span style={{ ...S.mono, fontSize:10, color:'var(--muted)' }}>{t.time}</span>
               <span style={{ ...S.mono, fontSize:10, textAlign:'center', padding:'2px 0', borderRadius:4, color:t.type==='BUY'?'#5b8cff':'#f5a623', background:t.type==='BUY'?'rgba(91,140,255,0.1)':'rgba(245,166,35,0.1)' }}>{t.type}</span>
@@ -358,7 +360,7 @@ function TransactionsTab({ data }: { data: DashboardSummary }) {
               <span style={{ ...S.mono, fontSize:13, color:'#f5a623', fontWeight:500 }}>{t.currency}</span>
               <span style={{ ...S.mono, fontSize:11, color:'var(--muted)' }}>{t.foreignAmt.toLocaleString()} @ {t.rate}</span>
               <span style={{ ...S.mono, fontSize:12, fontWeight:500 }}>{php(t.phpAmt)}</span>
-              <span style={{ ...S.mono, fontSize:11, color:t.type==='SELL'?'#00d4aa':'var(--muted)' }}>{t.type==='SELL'?'+'+php(t.than):'—'}</span>
+              {isAdmin && <span style={{ ...S.mono, fontSize:11, color:t.type==='SELL'?'#00d4aa':'var(--muted)' }}>{t.type==='SELL'?'+'+php(t.than):'—'}</span>}
               <div style={{ ...S.mono, fontSize:10 }}><div>{t.cashier}</div>{t.customer&&<div style={{ color:'var(--muted)' }}>{t.customer}</div>}</div>
             </div>
           ))}
@@ -384,7 +386,8 @@ interface Dispatch {
 }
 interface RiderUser { username: string; full_name: string; }
 
-function RiderTab({ data }: { data: DashboardSummary }) {
+function RiderTab({ data, role }: { data: DashboardSummary; role: string }) {
+  const isAdmin = role === 'admin';
   const w = useWindowWidth();
   const isMobile = w < 768;
 
@@ -598,18 +601,18 @@ function RiderTab({ data }: { data: DashboardSummary }) {
             <span style={{ ...S.mono, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em' }}>RIDER TRANSACTIONS TODAY — {riderTxns.length}</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '60px 56px 64px 90px 1fr 100px 90px', padding: '8px 20px', borderBottom: '1px solid var(--border)', ...S.mono, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em', minWidth: 580 }}>
-              <span>TIME</span><span>TYPE</span><span>CCY</span><span>FOREIGN</span><span>RATE / CUSTOMER</span><span>PHP</span><span>THAN</span>
+            <div style={{ display: 'grid', gridTemplateColumns: isAdmin ? '60px 56px 64px 90px 1fr 100px 90px' : '60px 56px 64px 90px 1fr 100px', padding: '8px 20px', borderBottom: '1px solid var(--border)', ...S.mono, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em', minWidth: isAdmin ? 580 : 490 }}>
+              <span>TIME</span><span>TYPE</span><span>CCY</span><span>FOREIGN</span><span>RATE / CUSTOMER</span><span>PHP</span>{isAdmin && <span>THAN</span>}
             </div>
             {riderTxns.map((t, i) => (
-              <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '60px 56px 64px 90px 1fr 100px 90px', padding: '10px 20px', borderBottom: i < riderTxns.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'center', gap: 8, minWidth: 580, background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
+              <div key={t.id} style={{ display: 'grid', gridTemplateColumns: isAdmin ? '60px 56px 64px 90px 1fr 100px 90px' : '60px 56px 64px 90px 1fr 100px', padding: '10px 20px', borderBottom: i < riderTxns.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'center', gap: 8, minWidth: isAdmin ? 580 : 490, background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
                 <span style={{ ...S.mono, fontSize: 10, color: 'var(--muted)' }}>{t.time}</span>
                 <span style={{ ...S.mono, fontSize: 10, fontWeight: 700, color: t.type === 'BUY' ? '#5b8cff' : '#f5a623' }}>{t.type}</span>
                 <span style={{ ...S.mono, fontSize: 12, color: '#e2e6f0' }}>{t.currency}</span>
                 <span style={{ ...S.mono, fontSize: 11, color: '#e2e6f0' }}>{t.foreignAmt.toLocaleString()}</span>
                 <span style={{ ...S.mono, fontSize: 10, color: 'var(--muted)' }}>{t.rate} {t.customer ? `· ${t.customer}` : ''}</span>
                 <span style={{ ...S.mono, fontSize: 11, color: '#e2e6f0', fontWeight: 500 }}>{php(t.phpAmt)}</span>
-                <span style={{ ...S.mono, fontSize: 11, color: t.type === 'SELL' ? '#00d4aa' : 'var(--muted)' }}>{t.type === 'SELL' ? '+' + php(t.than) : '—'}</span>
+                {isAdmin && <span style={{ ...S.mono, fontSize: 11, color: t.type === 'SELL' ? '#00d4aa' : 'var(--muted)' }}>{t.type === 'SELL' ? '+' + php(t.than) : '—'}</span>}
               </div>
             ))}
           </div>
@@ -929,10 +932,10 @@ export default function DashboardShell({ data, role }: { data: DashboardSummary;
       `}</style>
       <Nav active={active} set={setActive} role={role}/>
       <Ticker positions={data.positions}/>
-      {active==='Dashboard'    && <DashboardTab    data={data}/>}
+      {active==='Dashboard'    && <DashboardTab    data={data} role={role}/>}
       {active==='Positions'    && <PositionsTab    data={data}/>}
-      {active==='Transactions' && <TransactionsTab data={data}/>}
-      {active==='Rider'        && <RiderTab        data={data}/>}
+      {active==='Transactions' && <TransactionsTab data={data} role={role}/>}
+      {active==='Rider'        && <RiderTab        data={data} role={role}/>}
       {active==='Rate Board'   && <RateBoardTab    data={data}/>}
       {active==='Tracker'      && <TrackerTab      data={data}/>}
     </div>
