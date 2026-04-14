@@ -118,41 +118,41 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
   const returned  = dispatches.filter(d => d.status === 'RETURNED');
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080a10', color: '#e2e6f0' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
       {/* Nav */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '56px', borderBottom: '1px solid #1e2230', background: 'rgba(15,17,23,0.96)', position: 'sticky', top: 0, zIndex: 100 }}>
+      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '56px', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg)', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#a78bfa,#7c5cbf)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🏍️</div>
           <div>
             <div style={{ ...Y, fontSize: 13, fontWeight: 700 }}>Kedco FX</div>
-            <div style={{ ...M, fontSize: 9, color: '#4a5468' }}>Rider Dispatch</div>
+            <div style={{ ...M, fontSize: 9, color: 'var(--muted)' }}>Rider Dispatch</div>
           </div>
         </div>
-        <a href="/admin" style={{ ...M, fontSize: 11, padding: '6px 16px', borderRadius: 6, border: '1px solid #1e2230', color: '#4a5468', textDecoration: 'none' }}>← Admin</a>
+        <a href="/admin" style={{ ...M, fontSize: 11, padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', color: 'var(--muted)', textDecoration: 'none' }}>← Admin</a>
       </nav>
 
       <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: 0, minHeight: 'calc(100vh - 56px)' }}>
 
         {/* ── LEFT PANEL ── */}
-        <div style={{ padding: '24px 28px', borderRight: selected ? '1px solid #1e2230' : 'none' }}>
+        <div style={{ padding: '24px 28px', borderRight: selected ? '1px solid var(--border)' : 'none' }}>
           <div style={{ ...Y, fontSize: 20, fontWeight: 800, marginBottom: 20 }}>Today&apos;s Riders</div>
 
           {/* Dispatch form */}
           {undispatched.length > 0 && (
-            <div style={{ background: '#0f1117', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 14, padding: '18px 20px', marginBottom: 20 }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 14, padding: '18px 20px', marginBottom: 20 }}>
               <div style={{ ...M, fontSize: 10, color: '#a78bfa', letterSpacing: '0.12em', marginBottom: 14 }}>DISPATCH RIDER</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <select value={selRider} onChange={e => setSelRider(e.target.value)}
-                  style={{ background: '#161922', border: '1px solid #1e2230', borderRadius: 8, padding: '10px 12px', color: selRider ? '#e2e6f0' : '#4a5468', ...M, fontSize: 13, outline: 'none' }}>
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: selRider ? '#e2e6f0' : 'var(--muted)', ...M, fontSize: 13, outline: 'none' }}>
                   <option value="">Select rider…</option>
                   {undispatched.map(r => <option key={r.username} value={r.username}>{r.full_name} ({r.username})</option>)}
                 </select>
                 <input value={cashAmt} onChange={e => setCashAmt(fmtAmt(e.target.value))} placeholder="Starting PHP cash (e.g. 50,000)"
-                  style={{ background: '#161922', border: '1px solid #1e2230', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }} />
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }} />
                 <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)"
-                  style={{ background: '#161922', border: '1px solid #1e2230', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }} />
+                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }} />
                 <button onClick={handleDispatch} disabled={dispatching || !selRider || !cashAmt}
-                  style={{ padding: '12px', borderRadius: 8, border: 'none', background: (!selRider || !cashAmt) ? '#1e2230' : 'linear-gradient(135deg,#a78bfa,#7c5cbf)', color: (!selRider || !cashAmt) ? '#4a5468' : '#fff', ...Y, fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                  style={{ padding: '12px', borderRadius: 8, border: 'none', background: (!selRider || !cashAmt) ? 'var(--border)' : 'linear-gradient(135deg,#a78bfa,#7c5cbf)', color: (!selRider || !cashAmt) ? 'var(--muted)' : '#fff', ...Y, fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
                   {dispatching ? 'DISPATCHING…' : '🏍️ DISPATCH'}
                 </button>
                 {dispError && <div style={{ ...M, fontSize: 11, color: '#ff5c5c' }}>{dispError}</div>}
@@ -167,22 +167,22 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                 {inField.map(d => (
                   <div key={d.id} onClick={() => loadDetail(d)}
-                    style={{ background: selected?.id === d.id ? 'rgba(167,139,250,0.08)' : '#0f1117', border: `1px solid ${selected?.id === d.id ? 'rgba(167,139,250,0.4)' : '#1e2230'}`, borderRadius: 12, padding: '14px 16px', cursor: 'pointer' }}>
+                    style={{ background: selected?.id === d.id ? 'rgba(167,139,250,0.08)' : 'var(--surface)', border: `1px solid ${selected?.id === d.id ? 'rgba(167,139,250,0.4)' : 'var(--border)'}`, borderRadius: 12, padding: '14px 16px', cursor: 'pointer' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <div>
                         <span style={{ ...Y, fontSize: 14, fontWeight: 700 }}>{d.rider_name}</span>
-                        <span style={{ ...M, fontSize: 10, color: '#4a5468', marginLeft: 8 }}>{d.rider_username}</span>
+                        <span style={{ ...M, fontSize: 10, color: 'var(--muted)', marginLeft: 8 }}>{d.rider_username}</span>
                       </div>
                       <span style={{ ...M, fontSize: 10, color: '#a78bfa', background: 'rgba(167,139,250,0.1)', padding: '3px 8px', borderRadius: 20, border: '1px solid rgba(167,139,250,0.2)' }}>IN FIELD</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ ...M, fontSize: 11, color: '#4a5468' }}>Dispatched {d.dispatch_time} · {php(d.cash_php)}</span>
+                      <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>Dispatched {d.dispatch_time} · {php(d.cash_php)}</span>
                       <button onClick={e => { e.stopPropagation(); handleReturn(d); }}
                         style={{ ...M, fontSize: 10, padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.3)', background: 'transparent', color: '#00d4aa', cursor: 'pointer' }}>
                         Mark Returned
                       </button>
                     </div>
-                    {d.notes && <div style={{ ...M, fontSize: 10, color: '#4a5468', marginTop: 4 }}>{d.notes}</div>}
+                    {d.notes && <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{d.notes}</div>}
                   </div>
                 ))}
               </div>
@@ -192,16 +192,16 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
           {/* RETURNED */}
           {returned.length > 0 && (
             <>
-              <div style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em', marginBottom: 10 }}>RETURNED ({returned.length})</div>
+              <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 10 }}>RETURNED ({returned.length})</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {returned.map(d => (
                   <div key={d.id} onClick={() => loadDetail(d)}
-                    style={{ background: '#0f1117', border: '1px solid #1e2230', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', opacity: 0.7 }}>
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', opacity: 0.7 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ ...Y, fontSize: 13, fontWeight: 700 }}>{d.rider_name}</span>
                       <span style={{ ...M, fontSize: 10, color: '#00d4aa' }}>✓ RETURNED {d.return_time}</span>
                     </div>
-                    <div style={{ ...M, fontSize: 11, color: '#4a5468', marginTop: 2 }}>{php(d.cash_php)} dispatched</div>
+                    <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{php(d.cash_php)} dispatched</div>
                   </div>
                 ))}
               </div>
@@ -209,7 +209,7 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
           )}
 
           {dispatches.length === 0 && (
-            <div style={{ ...M, fontSize: 12, color: '#4a5468', textAlign: 'center', padding: '40px 0' }}>No riders dispatched today.</div>
+            <div style={{ ...M, fontSize: 12, color: 'var(--muted)', textAlign: 'center', padding: '40px 0' }}>No riders dispatched today.</div>
           )}
         </div>
 
@@ -219,18 +219,18 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
                 <div style={{ ...Y, fontSize: 18, fontWeight: 800 }}>{selected.rider_name}</div>
-                <div style={{ ...M, fontSize: 11, color: '#4a5468', marginTop: 2 }}>
+                <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
                   {selected.dispatch_time} → {selected.return_time ?? 'in field'} · {php(selected.cash_php)}
                 </div>
               </div>
-              <button onClick={() => setSelected(null)} style={{ ...M, fontSize: 11, background: 'transparent', border: '1px solid #1e2230', borderRadius: 6, padding: '6px 12px', color: '#4a5468', cursor: 'pointer' }}>✕</button>
+              <button onClick={() => setSelected(null)} style={{ ...M, fontSize: 11, background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', color: 'var(--muted)', cursor: 'pointer' }}>✕</button>
             </div>
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               {(['txns', 'borrows'] as const).map(t => (
                 <button key={t} onClick={() => setTab(t)}
-                  style={{ ...M, fontSize: 11, padding: '6px 16px', borderRadius: 6, border: `1px solid ${tab === t ? '#a78bfa44' : '#1e2230'}`, background: tab === t ? 'rgba(167,139,250,0.1)' : 'transparent', color: tab === t ? '#a78bfa' : '#4a5468', cursor: 'pointer' }}>
+                  style={{ ...M, fontSize: 11, padding: '6px 16px', borderRadius: 6, border: `1px solid ${tab === t ? '#a78bfa44' : 'var(--border)'}`, background: tab === t ? 'rgba(167,139,250,0.1)' : 'transparent', color: tab === t ? '#a78bfa' : 'var(--muted)', cursor: 'pointer' }}>
                   {t === 'txns' ? `Transactions (${txns.length})` : `Borrows (${borrows.filter(b => b.is_returned === 'N').length} open)`}
                 </button>
               ))}
@@ -239,9 +239,9 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
             {/* Transactions tab */}
             {tab === 'txns' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {txns.length === 0 && <div style={{ ...M, fontSize: 12, color: '#4a5468' }}>No transactions yet.</div>}
+                {txns.length === 0 && <div style={{ ...M, fontSize: 12, color: 'var(--muted)' }}>No transactions yet.</div>}
                 {txns.map(t => (
-                  <div key={t.id} style={{ background: '#0f1117', border: '1px solid #1e2230', borderRadius: 10, padding: '12px 14px' }}>
+                  <div key={t.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                       <div>
                         <span style={{ ...M, fontSize: 12, fontWeight: 700, color: t.type === 'BUY' ? '#5b8cff' : '#f5a623', marginRight: 8 }}>{t.type}</span>
@@ -250,7 +250,7 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
                       <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ ...M, fontSize: 10, color: '#4a5468' }}>
+                      <div style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>
                         {t.paymentMode.replace('_', ' ')} · {t.time}
                         {t.customer && ` · ${t.customer}`}
                       </div>
@@ -273,15 +273,15 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
             {/* Borrows tab */}
             {tab === 'borrows' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {borrows.length === 0 && <div style={{ ...M, fontSize: 12, color: '#4a5468' }}>No borrows recorded.</div>}
+                {borrows.length === 0 && <div style={{ ...M, fontSize: 12, color: 'var(--muted)' }}>No borrows recorded.</div>}
                 {borrows.map(b => (
-                  <div key={b.id} style={{ background: '#0f1117', border: `1px solid ${b.is_returned === 'Y' ? '#1e2230' : 'rgba(245,166,35,0.3)'}`, borderRadius: 10, padding: '12px 14px', opacity: b.is_returned === 'Y' ? 0.6 : 1 }}>
+                  <div key={b.id} style={{ background: 'var(--surface)', border: `1px solid ${b.is_returned === 'Y' ? 'var(--border)' : 'rgba(245,166,35,0.3)'}`, borderRadius: 10, padding: '12px 14px', opacity: b.is_returned === 'Y' ? 0.6 : 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div style={{ ...M, fontSize: 12, fontWeight: 700, color: b.is_returned === 'Y' ? '#4a5468' : '#f5a623' }}>
+                        <div style={{ ...M, fontSize: 12, fontWeight: 700, color: b.is_returned === 'Y' ? 'var(--muted)' : '#f5a623' }}>
                           {php(b.amount_php)}
                         </div>
-                        <div style={{ ...M, fontSize: 10, color: '#4a5468', marginTop: 2 }}>
+                        <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
                           from {b.source_type === 'BRANCH' ? '🏢' : '🏍️'} {b.source_name}
                           {b.notes && ` · ${b.notes}`}
                         </div>

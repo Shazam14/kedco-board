@@ -8,27 +8,27 @@ export default async function GuidePage() {
   const branchLocation = process.env.BRANCH_LOCATION ?? 'Lapu-Lapu City';
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080a10', color: '#e2e6f0' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
 
       {/* NAV */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '56px', borderBottom: '1px solid #1e2230', background: 'rgba(15,17,23,0.96)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 100 }}>
+      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '56px', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#00d4aa,#00a884)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#000' }}>K</div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e6f0', fontFamily: "'Syne',sans-serif" }}>Kedco FX</div>
-            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: '#4a5468', marginTop: -2 }}>Staff Guide</div>
+            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'var(--muted)', marginTop: -2 }}>Staff Guide</div>
           </div>
         </div>
-        <a href="/dashboard" style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #1e2230', background: 'transparent', color: '#4a5468', fontFamily: "'DM Mono',monospace", fontSize: 11, textDecoration: 'none' }}>← Back to Dashboard</a>
+        <a href="/dashboard" style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', fontFamily: "'DM Mono',monospace", fontSize: 11, textDecoration: 'none' }}>← Back to Dashboard</a>
       </nav>
 
       <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 24px', display: 'flex', flexDirection: 'column', gap: 32 }}>
 
         {/* HEADER */}
         <div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#4a5468', letterSpacing: '0.2em', marginBottom: 8 }}>STAFF GUIDE</div>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'var(--muted)', letterSpacing: '0.2em', marginBottom: 8 }}>STAFF GUIDE</div>
           <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 8 }}>How to use Kedco FX</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: '#4a5468' }}>Quick reference for admin, cashiers, and riders.</div>
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: 'var(--muted)' }}>Quick reference for admin, cashiers, and riders.</div>
         </div>
 
         {/* ADMIN SECTION */}
@@ -65,7 +65,7 @@ export default async function GuidePage() {
         {/* CASHIER SECTION */}
         <Section icon="🖥️" title="Cashier — Counter" color="#5b8cff">
           <Block title="Every transaction">
-            <p style={{ marginBottom: 12, color: '#4a5468' }}>You land here automatically after login at <Route href="/counter">/counter</Route>.</p>
+            <p style={{ marginBottom: 12, color: 'var(--muted)' }}>You land here automatically after login at <Route href="/counter">/counter</Route>.</p>
             <ol>
               <li>Choose <strong>BUY</strong> (customer selling to Kedco) or <strong>SELL</strong> (customer buying from Kedco)</li>
               <li>Pick the currency</li>
@@ -88,7 +88,7 @@ export default async function GuidePage() {
             </ol>
           </Block>
           <Block title="Payment modes">
-            <p style={{ color: '#4a5468' }}>Each transaction can be tagged: <strong>Cash</strong>, <strong>GCash</strong>, <strong>Maya</strong>, <strong>ShopeePay</strong>, <strong>Bank Transfer</strong>, <strong>Cheque</strong>, or <strong>Other</strong>. The daily report breaks these down automatically.</p>
+            <p style={{ color: 'var(--muted)' }}>Each transaction can be tagged: <strong>Cash</strong>, <strong>GCash</strong>, <strong>Maya</strong>, <strong>ShopeePay</strong>, <strong>Bank Transfer</strong>, <strong>Cheque</strong>, or <strong>Other</strong>. The daily report breaks these down automatically.</p>
           </Block>
           <Note>Rider must be dispatched by admin first — admin sets the starting PHP cash. Without dispatch, the balance card won&apos;t show.</Note>
         </Section>
@@ -98,9 +98,9 @@ export default async function GuidePage() {
           <Block title="">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #1e2230' }}>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   {['OLD CSV FILE', 'REPLACED BY'].map(h => (
-                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, color: '#4a5468', letterSpacing: '0.12em', fontWeight: 600 }}>{h}</th>
+                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', fontWeight: 600 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -114,9 +114,9 @@ export default async function GuidePage() {
                   ['CASHIER',       'Daily Report → By Cashier section (BUY total, SELL total, THAN per cashier)'],
                   ['STOCKS LEFT',   'Dashboard → Positions tab (live closing stock)'],
                 ].map(([old, rep], i) => (
-                  <tr key={old} style={{ borderBottom: '1px solid #1e2230', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
+                  <tr key={old} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
                     <td style={{ padding: '10px 12px', color: '#f5a623', fontFamily: "'DM Mono',monospace" }}>{old}</td>
-                    <td style={{ padding: '10px 12px', color: '#4a5468' }}>{rep}</td>
+                    <td style={{ padding: '10px 12px', color: 'var(--muted)' }}>{rep}</td>
                   </tr>
                 ))}
               </tbody>
@@ -136,7 +136,7 @@ export default async function GuidePage() {
               ].map(({ label, color, currencies }) => (
                 <div key={label} style={{ background: `${color}08`, border: `1px solid ${color}22`, borderRadius: 8, padding: '10px 12px' }}>
                   <div style={{ fontSize: 9, color, letterSpacing: '0.15em', marginBottom: 6, fontWeight: 700 }}>{label}</div>
-                  <div style={{ fontSize: 11, color: '#4a5468', lineHeight: 1.8 }}>{currencies}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.8 }}>{currencies}</div>
                 </div>
               ))}
             </div>
@@ -153,7 +153,7 @@ export default async function GuidePage() {
         {/* DAY 1 TEST CHECKLIST */}
         <Section icon="✅" title="Day 1 Test Checklist" color="#a78bfa">
           <Block title="Before you start">
-            <p style={{ color: '#4a5468', marginBottom: 12 }}>Run through this with real numbers from a recent day to verify the system matches your manual books.</p>
+            <p style={{ color: 'var(--muted)', marginBottom: 12 }}>Run through this with real numbers from a recent day to verify the system matches your manual books.</p>
           </Block>
           <Block title="Step 1 — Set rates">
             <ol>
@@ -213,7 +213,7 @@ export default async function GuidePage() {
               ].map(([sys, csv]) => (
                 <div key={sys} style={{ background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.15)', borderRadius: 8, padding: '8px 12px' }}>
                   <div style={{ fontSize: 10, color: '#a78bfa', marginBottom: 2 }}>System: {sys}</div>
-                  <div style={{ fontSize: 10, color: '#4a5468' }}>vs CSV: {csv}</div>
+                  <div style={{ fontSize: 10, color: 'var(--muted)' }}>vs CSV: {csv}</div>
                 </div>
               ))}
             </div>
@@ -226,9 +226,9 @@ export default async function GuidePage() {
           <Block title="">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #1e2230' }}>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   {['ROLE', 'USERNAME', 'DEFAULT PASSWORD'].map(h => (
-                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, color: '#4a5468', letterSpacing: '0.12em', fontWeight: 600 }}>{h}</th>
+                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', fontWeight: 600 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -239,7 +239,7 @@ export default async function GuidePage() {
                   ['Cashiers',    'cashier1 – cashier7',          'Kedco@2026!'],
                   ['Riders',      'rider01 – rider10',            'Kedco@2026!'],
                 ].map(([role, user, pw], i) => (
-                  <tr key={role} style={{ borderBottom: '1px solid #1e2230', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
+                  <tr key={role} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
                     <td style={{ padding: '10px 12px', color: '#e2e6f0', fontWeight: 600 }}>{role}</td>
                     <td style={{ padding: '10px 12px', color: '#00d4aa' }}>{user}</td>
                     <td style={{ padding: '10px 12px', color: '#f5a623' }}>{pw}</td>
@@ -252,13 +252,13 @@ export default async function GuidePage() {
         </Section>
 
         {/* QUICK ROUTES */}
-        <Section icon="📋" title="Quick Routes" color="#4a5468">
+        <Section icon="📋" title="Quick Routes" color="var(--muted)">
           <Block title="">
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'DM Mono',monospace", fontSize: 12 }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #1e2230' }}>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   {['ROUTE', 'WHAT IT DOES'].map(h => (
-                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, color: '#4a5468', letterSpacing: '0.12em', fontWeight: 600 }}>{h}</th>
+                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', fontWeight: 600 }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -277,9 +277,9 @@ export default async function GuidePage() {
                   ['/admin/users',      'Manage staff accounts'],
                   ['/guide',            'This page'],
                 ].map(([route, desc], i) => (
-                  <tr key={route} style={{ borderBottom: '1px solid #1e2230', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
+                  <tr key={route} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
                     <td style={{ padding: '10px 12px' }}><Route href={route}>{route}</Route></td>
-                    <td style={{ padding: '10px 12px', color: '#4a5468' }}>{desc}</td>
+                    <td style={{ padding: '10px 12px', color: 'var(--muted)' }}>{desc}</td>
                   </tr>
                 ))}
               </tbody>
@@ -288,7 +288,7 @@ export default async function GuidePage() {
         </Section>
 
         {/* FAQ */}
-        <Section icon="❓" title="Common Questions" color="#4a5468">
+        <Section icon="❓" title="Common Questions" color="var(--muted)">
           {[
             ['First day setup — where do I start?', 'Go to /admin/rates first to set today\'s rates, then /admin/positions to enter your opening stock. After that you\'re ready to transact. From Day 2 onwards, only rates need to be set — stock carries over automatically from EOD.'],
             ['"Rates not set" on the counter', 'Admin needs to set today\'s rates at /admin/rates first.'],
@@ -296,15 +296,15 @@ export default async function GuidePage() {
             ['Dashboard shows no data', 'Today\'s rates haven\'t been set yet. Admin sets them at /admin/rates.'],
             ['"Session ended due to inactivity"', 'The system logs out after 20 minutes idle — just a security measure. Log back in.'],
           ].map(([q, a]) => (
-            <div key={q} style={{ borderBottom: '1px solid #1e2230', paddingBottom: 16, marginBottom: 16 }}>
+            <div key={q} style={{ borderBottom: '1px solid var(--border)', paddingBottom: 16, marginBottom: 16 }}>
               <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{q}</div>
-              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: '#4a5468', lineHeight: 1.7 }}>{a}</div>
+              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>{a}</div>
             </div>
           ))}
         </Section>
 
         {/* FOOTER */}
-        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#4a5468', textAlign: 'center', paddingTop: 16, borderTop: '1px solid #1e2230' }}>
+        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'var(--muted)', textAlign: 'center', paddingTop: 16, borderTop: '1px solid var(--border)' }}>
           Kedco FX · {branchLocation} · For internal use only
         </div>
 
@@ -317,8 +317,8 @@ export default async function GuidePage() {
 
 function Section({ icon, title, color, children }: { icon: string; title: string; color: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: '#0f1117', border: `1px solid ${color}22`, borderRadius: 14, overflow: 'hidden' }}>
-      <div style={{ padding: '18px 24px', borderBottom: '1px solid #1e2230', display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
+    <div style={{ background: 'var(--surface)', border: `1px solid ${color}22`, borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg,${color},transparent)` }} />
         <span style={{ fontSize: 20 }}>{icon}</span>
         <span style={{ fontFamily: "'Syne',sans-serif", fontSize: 15, fontWeight: 800, color: '#e2e6f0' }}>{title}</span>
@@ -333,7 +333,7 @@ function Section({ icon, title, color, children }: { icon: string; title: string
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      {title && <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#4a5468', letterSpacing: '0.15em', marginBottom: 10 }}>{title.toUpperCase()}</div>}
+      {title && <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'var(--muted)', letterSpacing: '0.15em', marginBottom: 10 }}>{title.toUpperCase()}</div>}
       <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: '#e2e6f0', lineHeight: 1.8 }}>
         {children}
       </div>
@@ -343,7 +343,7 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
 
 function Note({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.15)', borderRadius: 8, fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#4a5468', lineHeight: 1.7 }}>
+    <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.15)', borderRadius: 8, fontFamily: "'DM Mono',monospace", fontSize: 11, color: 'var(--muted)', lineHeight: 1.7 }}>
       {children}
     </div>
   );

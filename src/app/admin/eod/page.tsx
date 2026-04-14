@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 
 const S: Record<string, React.CSSProperties> = {
-  card: { background:'#0f1117', border:'1px solid #1e2230', borderRadius:14, overflow:'hidden' },
+  card: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden' },
   mono: { fontFamily:"'DM Mono',monospace" },
   syne: { fontFamily:"'Syne',sans-serif" },
 };
@@ -52,19 +52,19 @@ export default function EodPage() {
   }
 
   return (
-    <div style={{ minHeight:'100vh', background:'#080a10', color:'#e2e6f0' }}>
+    <div style={{ minHeight:'100vh', background:'var(--bg)', color:'#e2e6f0' }}>
       {/* Nav */}
-      <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 32px', height:'56px', borderBottom:'1px solid #1e2230', background:'rgba(15,17,23,0.96)', backdropFilter:'blur(12px)', position:'sticky', top:0, zIndex:100 }}>
+      <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 32px', height:'56px', borderBottom:'1px solid var(--border)', background:'var(--nav-bg)', backdropFilter:'blur(12px)', position:'sticky', top:0, zIndex:100 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <div style={{ width:28, height:28, borderRadius:8, background:'linear-gradient(135deg,#00d4aa,#00a884)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#000' }}>K</div>
           <div>
             <div style={{ fontSize:13, fontWeight:700, color:'#e2e6f0', ...S.syne }}>Kedco FX</div>
-            <div style={{ ...S.mono, fontSize:9, color:'#4a5468', marginTop:-2 }}>Admin Panel</div>
+            <div style={{ ...S.mono, fontSize:9, color:'var(--muted)', marginTop:-2 }}>Admin Panel</div>
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <a href="/admin" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid #1e2230', color:'#4a5468', ...S.mono, fontSize:11, textDecoration:'none' }}>← Admin</a>
-          <a href="/dashboard" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid #1e2230', color:'#4a5468', ...S.mono, fontSize:11, textDecoration:'none' }}>Dashboard</a>
+          <a href="/admin" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid var(--border)', color:'var(--muted)', ...S.mono, fontSize:11, textDecoration:'none' }}>← Admin</a>
+          <a href="/dashboard" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid var(--border)', color:'var(--muted)', ...S.mono, fontSize:11, textDecoration:'none' }}>Dashboard</a>
         </div>
       </nav>
 
@@ -72,9 +72,9 @@ export default function EodPage() {
 
         {/* Header */}
         <div>
-          <div style={{ ...S.mono, fontSize:10, color:'#4a5468', letterSpacing:'0.2em', marginBottom:6 }}>ADMIN · EOD</div>
+          <div style={{ ...S.mono, fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:6 }}>ADMIN · EOD</div>
           <div style={{ ...S.syne, fontSize:26, fontWeight:800, letterSpacing:'-0.02em' }}>End of Day Close</div>
-          <div style={{ ...S.mono, fontSize:11, color:'#4a5468', marginTop:4 }}>{today.toUpperCase()}</div>
+          <div style={{ ...S.mono, fontSize:11, color:'var(--muted)', marginTop:4 }}>{today.toUpperCase()}</div>
         </div>
 
         {/* What this does */}
@@ -119,7 +119,7 @@ export default function EodPage() {
             <button
               onClick={handleClose}
               disabled={!confirmed || loading}
-              style={{ width:'100%', padding:'14px', borderRadius:8, border:'none', background: (!confirmed || loading) ? '#1e2230' : 'linear-gradient(135deg,#f5a623,#e09000)', color: (!confirmed || loading) ? '#4a5468' : '#000', ...S.syne, fontSize:14, fontWeight:800, cursor: (!confirmed || loading) ? 'not-allowed' : 'pointer', letterSpacing:'0.02em', transition:'all 0.2s' }}
+              style={{ width:'100%', padding:'14px', borderRadius:8, border:'none', background: (!confirmed || loading) ? 'var(--border)' : 'linear-gradient(135deg,#f5a623,#e09000)', color: (!confirmed || loading) ? 'var(--muted)' : '#000', ...S.syne, fontSize:14, fontWeight:800, cursor: (!confirmed || loading) ? 'not-allowed' : 'pointer', letterSpacing:'0.02em', transition:'all 0.2s' }}
             >
               {loading ? 'CLOSING DAY...' : '🔒 CLOSE TODAY\'S DAY'}
             </button>
@@ -134,7 +134,7 @@ export default function EodPage() {
               <div style={{ width:36, height:36, borderRadius:10, background:'rgba(0,212,170,0.12)', border:'1px solid rgba(0,212,170,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>✓</div>
               <div>
                 <div style={{ ...S.syne, fontSize:15, fontWeight:800, color:'#00d4aa' }}>Day Closed Successfully</div>
-                <div style={{ ...S.mono, fontSize:10, color:'#4a5468', marginTop:2 }}>{result.message}</div>
+                <div style={{ ...S.mono, fontSize:10, color:'var(--muted)', marginTop:2 }}>{result.message}</div>
               </div>
             </div>
 
@@ -145,14 +145,14 @@ export default function EodPage() {
                 { label:'TOTAL BOUGHT',       val: php(result.total_bought),    color:'#5b8cff' },
                 { label:'TOTAL SOLD',         val: php(result.total_sold),      color:'#f5a623' },
               ].map(row => (
-                <div key={row.label} style={{ background:'#161922', border:'1px solid #1e2230', borderRadius:10, padding:'14px 18px' }}>
-                  <div style={{ ...S.mono, fontSize:9, color:'#4a5468', letterSpacing:'0.12em', marginBottom:4 }}>{row.label}</div>
+                <div key={row.label} style={{ background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, padding:'14px 18px' }}>
+                  <div style={{ ...S.mono, fontSize:9, color:'var(--muted)', letterSpacing:'0.12em', marginBottom:4 }}>{row.label}</div>
                   <div style={{ ...S.syne, fontSize:20, fontWeight:800, color:row.color }}>{row.val}</div>
                 </div>
               ))}
             </div>
 
-            <div style={{ ...S.mono, fontSize:11, color:'#4a5468', borderTop:'1px solid #1e2230', paddingTop:16, display:'flex', justifyContent:'space-between' }}>
+            <div style={{ ...S.mono, fontSize:11, color:'var(--muted)', borderTop:'1px solid var(--border)', paddingTop:16, display:'flex', justifyContent:'space-between' }}>
               <span>{result.currencies_rolled} currencies rolled forward</span>
               <span>Tomorrow ready: {result.tomorrow_ready}</span>
               <span>Closed by: {result.closed_by}</span>
@@ -162,7 +162,7 @@ export default function EodPage() {
               <a href="/dashboard" style={{ flex:1, padding:'10px', borderRadius:8, border:'1px solid rgba(0,212,170,0.3)', background:'rgba(0,212,170,0.08)', color:'#00d4aa', ...S.syne, fontSize:12, fontWeight:700, textDecoration:'none', textAlign:'center' }}>
                 View Dashboard
               </a>
-              <a href="/admin" style={{ flex:1, padding:'10px', borderRadius:8, border:'1px solid #1e2230', color:'#4a5468', ...S.syne, fontSize:12, fontWeight:700, textDecoration:'none', textAlign:'center' }}>
+              <a href="/admin" style={{ flex:1, padding:'10px', borderRadius:8, border:'1px solid var(--border)', color:'var(--muted)', ...S.syne, fontSize:12, fontWeight:700, textDecoration:'none', textAlign:'center' }}>
                 Admin Home
               </a>
             </div>

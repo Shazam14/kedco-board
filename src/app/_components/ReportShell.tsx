@@ -235,13 +235,13 @@ export default function ReportShell({
         }
       `}</style>
 
-      <div className="print-page" style={{ minHeight: '100vh', background: '#080a10', color: '#e2e6f0' }}>
+      <div className="print-page" style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
 
         {/* ── NAV (hidden on print) ── */}
         <nav className="no-print" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '0 32px', height: '56px', borderBottom: '1px solid #1e2230',
-          background: 'rgba(15,17,23,0.96)', backdropFilter: 'blur(12px)',
+          padding: '0 32px', height: '56px', borderBottom: '1px solid var(--border)',
+          background: 'var(--nav-bg)', backdropFilter: 'blur(12px)',
           position: 'sticky', top: 0, zIndex: 100,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -253,7 +253,7 @@ export default function ReportShell({
             }}>K</div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e6f0', ...Y }}>Kedco FX</div>
-              <div style={{ ...M, fontSize: 9, color: '#4a5468', marginTop: -2 }}>Daily Report</div>
+              <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginTop: -2 }}>Daily Report</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -264,7 +264,7 @@ export default function ReportShell({
               onChange={e => setDate(e.target.value)}
               onBlur={e => goToDate(e.target.value)}
               style={{
-                background: '#0f1117', border: '1px solid #1e2230', borderRadius: 6,
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
                 padding: '6px 12px', color: '#e2e6f0', ...M, fontSize: 12, outline: 'none',
               }}
             />
@@ -279,7 +279,7 @@ export default function ReportShell({
             >
               🖨 Print / Save PDF
             </button>
-            <a href="/admin" style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid #1e2230', color: '#4a5468', ...M, fontSize: 11, textDecoration: 'none' }}>
+            <a href="/admin" style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', color: 'var(--muted)', ...M, fontSize: 11, textDecoration: 'none' }}>
               ← Admin
             </a>
           </div>
@@ -287,7 +287,7 @@ export default function ReportShell({
 
         {/* ── NO DATA STATE ── */}
         {!report && (
-          <div style={{ padding: '80px 32px', textAlign: 'center', ...M, fontSize: 13, color: '#4a5468' }}>
+          <div style={{ padding: '80px 32px', textAlign: 'center', ...M, fontSize: 13, color: 'var(--muted)' }}>
             No transactions found for this date.
           </div>
         )}
@@ -296,14 +296,14 @@ export default function ReportShell({
           <div style={{ padding: '32px 40px', maxWidth: 1100, display: 'flex', flexDirection: 'column', gap: 28 }}>
 
             {/* ── REPORT HEADER ── */}
-            <div style={{ textAlign: 'center', paddingBottom: 16, borderBottom: '1px solid #1e2230' }}>
+            <div style={{ textAlign: 'center', paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
               <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>KEDCO FX — DAILY REPORT</div>
-              <div style={{ ...M, fontSize: 12, color: '#4a5468' }}>
+              <div style={{ ...M, fontSize: 12, color: 'var(--muted)' }}>
                 {new Date(report.date + 'T00:00:00').toLocaleDateString('en-PH', {
                   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
                 }).toUpperCase()}
               </div>
-              <div style={{ ...M, fontSize: 11, color: '#4a5468', marginTop: 4 }}>
+              <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
                 Generated {report.generated_at} · {report.total_transactions} transactions
               </div>
             </div>
@@ -316,20 +316,20 @@ export default function ReportShell({
                 { label: 'TOTAL THAN',   value: php(report.total_than),       color: '#00d4aa' },
               ].map(s => (
                 <div key={s.label} className="print-card" style={{
-                  background: '#0f1117', border: '1px solid #1e2230',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
                   borderRadius: 12, padding: '18px 24px',
                 }}>
-                  <div className="print-muted" style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em', marginBottom: 8 }}>{s.label}</div>
+                  <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>{s.label}</div>
                   <div className="print-accent" style={{ ...Y, fontSize: 26, fontWeight: 800, color: s.color }}>{s.value}</div>
                 </div>
               ))}
             </div>
 
             {/* ── BY CURRENCY (replaces 6 books) ── */}
-            <div className="print-card" style={{ background: '#0f1117', border: '1px solid #1e2230', borderRadius: 14, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e2230' }}>
+            <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>Currency Breakdown</div>
-                <div className="print-muted" style={{ ...M, fontSize: 10, color: '#4a5468', marginTop: 2 }}>
+                <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
                   Replaces BUY × MAIN/2ND/OTHERS and SELL × MAIN/2ND/OTHERS books
                 </div>
               </div>
@@ -337,8 +337,8 @@ export default function ReportShell({
               {/* Column headers */}
               <div className="print-thead" style={{
                 display: 'grid', gridTemplateColumns: '110px 1fr 80px 90px 110px 80px 90px 110px 100px',
-                padding: '8px 20px', background: '#161922', borderBottom: '1px solid #1e2230',
-                ...M, fontSize: 9, color: '#4a5468', letterSpacing: '0.1em',
+                padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
+                ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
               }}>
                 <span>CURRENCY</span><span>NAME</span>
                 <span style={{ textAlign: 'right' }}>BUY #</span>
@@ -360,8 +360,8 @@ export default function ReportShell({
                     <div style={{
                       padding: '7px 20px',
                       background: 'rgba(255,255,255,0.03)',
-                      borderBottom: '1px solid #1e2230',
-                      ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.15em',
+                      borderBottom: '1px solid var(--border)',
+                      ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.15em',
                     }}>
                       {CATEGORY_LABEL[cat] ?? cat}
                     </div>
@@ -371,14 +371,14 @@ export default function ReportShell({
                         display: 'grid',
                         gridTemplateColumns: '110px 1fr 80px 90px 110px 80px 90px 110px 100px',
                         padding: '9px 20px',
-                        borderBottom: '1px solid #1e2230',
+                        borderBottom: '1px solid var(--border)',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
                         alignItems: 'center',
                       }}>
                         <span style={{ ...M, fontSize: 13, color: '#e2e6f0', fontWeight: 700 }}>
                           {r.flag} {r.code}
                         </span>
-                        <span className="print-muted" style={{ ...M, fontSize: 11, color: '#4a5468' }}>{r.name}</span>
+                        <span className="print-muted" style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{r.name}</span>
                         <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>{r.buy_count || '—'}</span>
                         <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>
                           {r.buy_qty > 0 ? r.buy_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}
@@ -393,7 +393,7 @@ export default function ReportShell({
                         <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>
                           {r.sell_php > 0 ? php(r.sell_php) : '—'}
                         </span>
-                        <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : '#4a5468', textAlign: 'right' }}>
+                        <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right' }}>
                           {r.than > 0 ? php(r.than) : '—'}
                         </span>
                       </div>
@@ -403,10 +403,10 @@ export default function ReportShell({
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: '110px 1fr 80px 90px 110px 80px 90px 110px 100px',
-                      padding: '8px 20px', borderBottom: '1px solid #1e2230',
+                      padding: '8px 20px', borderBottom: '1px solid var(--border)',
                       background: 'rgba(255,255,255,0.05)',
                     }}>
-                      <span style={{ ...M, fontSize: 10, color: '#4a5468', gridColumn: '1/3' }}>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)', gridColumn: '1/3' }}>
                         {CATEGORY_LABEL[cat]} subtotal
                       </span>
                       <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>{tot.buy_count}</span>
@@ -443,15 +443,15 @@ export default function ReportShell({
             </div>
 
             {/* ── BY CASHIER (replaces CASHIER sheet) ── */}
-            <div className="print-card" style={{ background: '#0f1117', border: '1px solid #1e2230', borderRadius: 14, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e2230' }}>
+            <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>Per-Cashier Summary</div>
-                <div className="print-muted" style={{ ...M, fontSize: 10, color: '#4a5468', marginTop: 2 }}>Replaces the CASHIER sheet</div>
+                <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>Replaces the CASHIER sheet</div>
               </div>
               <div className="print-thead" style={{
                 display: 'grid', gridTemplateColumns: '160px 80px 130px 80px 130px 130px',
-                padding: '8px 20px', background: '#161922', borderBottom: '1px solid #1e2230',
-                ...M, fontSize: 9, color: '#4a5468', letterSpacing: '0.1em',
+                padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
+                ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
               }}>
                 <span>CASHIER</span>
                 <span style={{ textAlign: 'right' }}>BUY TXN</span>
@@ -464,7 +464,7 @@ export default function ReportShell({
                 <div key={r.cashier} style={{
                   display: 'grid',
                   gridTemplateColumns: '160px 80px 130px 80px 130px 130px',
-                  padding: '10px 20px', borderBottom: '1px solid #1e2230',
+                  padding: '10px 20px', borderBottom: '1px solid var(--border)',
                   background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
                   alignItems: 'center',
                 }}>
@@ -473,7 +473,7 @@ export default function ReportShell({
                   <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>{php(r.buy_php)}</span>
                   <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{r.sell_count}</span>
                   <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{php(r.sell_php)}</span>
-                  <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : '#4a5468', textAlign: 'right' }}>
+                  <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right' }}>
                     {r.than > 0 ? php(r.than) : '—'}
                   </span>
                 </div>
@@ -481,17 +481,17 @@ export default function ReportShell({
             </div>
 
             {/* ── FULL TRANSACTION LOG ── */}
-            <div className="print-card" style={{ background: '#0f1117', border: '1px solid #1e2230', borderRadius: 14, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e2230' }}>
+            <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>Transaction Log</div>
-                <div className="print-muted" style={{ ...M, fontSize: 10, color: '#4a5468', marginTop: 2 }}>
+                <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
                   All {report.total_transactions} transactions for the day
                 </div>
               </div>
               <div className="print-thead" style={{
                 display: 'grid', gridTemplateColumns: '110px 60px 50px 56px 70px 80px 100px 80px 110px 120px',
-                padding: '8px 20px', background: '#161922', borderBottom: '1px solid #1e2230',
-                ...M, fontSize: 9, color: '#4a5468', letterSpacing: '0.1em',
+                padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
+                ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
               }}>
                 <span>RECEIPT</span><span>TIME</span><span>TYPE</span><span>SRC</span>
                 <span>CCY</span><span style={{ textAlign: 'right' }}>FOREIGN</span>
@@ -504,22 +504,22 @@ export default function ReportShell({
                 <div key={t.id} style={{
                   display: 'grid',
                   gridTemplateColumns: '110px 60px 50px 56px 70px 80px 100px 80px 110px 120px',
-                  padding: '8px 20px', borderBottom: '1px solid #1e2230',
+                  padding: '8px 20px', borderBottom: '1px solid var(--border)',
                   background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
                   alignItems: 'center',
                 }}>
-                  <span style={{ ...M, fontSize: 10, color: '#4a5468' }}>{t.id}</span>
-                  <span style={{ ...M, fontSize: 10, color: '#4a5468' }}>{t.time}</span>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.id}</span>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.time}</span>
                   <span style={{ ...M, fontSize: 11, fontWeight: 700, color: t.type === 'BUY' ? '#5b8cff' : '#f5a623' }}>{t.type}</span>
-                  <span style={{ ...M, fontSize: 10, color: '#4a5468' }}>{t.source === 'RIDER' ? 'RIDER' : 'CTR'}</span>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.source === 'RIDER' ? 'RIDER' : 'CTR'}</span>
                   <span style={{ ...M, fontSize: 12, color: '#e2e6f0', fontWeight: 700 }}>{t.currency}</span>
                   <span style={{ ...M, fontSize: 11, color: '#e2e6f0', textAlign: 'right' }}>{fmtFxScreen(t.foreign_amt, t.currency)}</span>
                   <span style={{ ...M, fontSize: 11, color: t.type === 'BUY' ? '#5b8cff' : '#f5a623', textAlign: 'right' }}>{t.rate}</span>
                   <span style={{ ...M, fontSize: 11, color: '#e2e6f0', textAlign: 'right' }}>{php(t.php_amt)}</span>
-                  <span style={{ ...M, fontSize: 11, color: t.than > 0 ? '#00d4aa' : '#4a5468', textAlign: 'right' }}>
+                  <span style={{ ...M, fontSize: 11, color: t.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right' }}>
                     {t.than > 0 ? php(t.than) : '—'}
                   </span>
-                  <span style={{ ...M, fontSize: 10, color: '#4a5468', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {t.cashier}{t.customer ? ` / ${t.customer}` : ''}
                   </span>
                 </div>

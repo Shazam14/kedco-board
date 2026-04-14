@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { CurrencyMeta } from '@/lib/types';
 
 const S: Record<string, React.CSSProperties> = {
-  card: { background:'#0f1117', border:'1px solid #1e2230', borderRadius:14, overflow:'hidden' },
+  card: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden' },
   mono: { fontFamily:"'DM Mono',monospace" },
   syne: { fontFamily:"'Syne',sans-serif" },
 };
@@ -28,16 +28,16 @@ function CategoryBlock({
   const color = label === 'MAIN' ? '#00d4aa' : label === '2ND' ? '#5b8cff' : '#f5a623';
   return (
     <div style={S.card}>
-      <div style={{ padding:'12px 20px', borderBottom:'1px solid #1e2230', background:`rgba(${label==='MAIN'?'0,212,170':label==='2ND'?'91,140,255':'245,166,35'},0.06)`, display:'flex', alignItems:'center', gap:10 }}>
+      <div style={{ padding:'12px 20px', borderBottom:'1px solid var(--border)', background:`rgba(${label==='MAIN'?'0,212,170':label==='2ND'?'91,140,255':'245,166,35'},0.06)`, display:'flex', alignItems:'center', gap:10 }}>
         <div style={{ width:8, height:8, borderRadius:2, background:color }} />
         <span style={{ ...S.syne, fontSize:12, fontWeight:700, color }}>{label}</span>
-        <span style={{ ...S.mono, fontSize:10, color:'#4a5468' }}>{currencies.length} currencies</span>
+        <span style={{ ...S.mono, fontSize:10, color:'var(--muted)' }}>{currencies.length} currencies</span>
       </div>
 
       {/* Header */}
-      <div style={{ display:'grid', gridTemplateColumns:'180px 1fr 1fr 80px', padding:'8px 20px', borderBottom:'1px solid #1e2230', gap:12 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'180px 1fr 1fr 80px', padding:'8px 20px', borderBottom:'1px solid var(--border)', gap:12 }}>
         {['CURRENCY','BUY RATE','SELL RATE','STATUS'].map(h => (
-          <span key={h} style={{ ...S.mono, fontSize:9, color:'#4a5468', letterSpacing:'0.12em' }}>{h}</span>
+          <span key={h} style={{ ...S.mono, fontSize:9, color:'var(--muted)', letterSpacing:'0.12em' }}>{h}</span>
         ))}
       </div>
 
@@ -50,13 +50,13 @@ function CategoryBlock({
         const spreadOk = spread !== null && spread > 0;
 
         return (
-          <div key={c.code} style={{ display:'grid', gridTemplateColumns:'180px 1fr 1fr 80px', padding:'10px 20px', borderBottom:i<currencies.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', gap:12, alignItems:'center' }}>
+          <div key={c.code} style={{ display:'grid', gridTemplateColumns:'180px 1fr 1fr 80px', padding:'10px 20px', borderBottom:i<currencies.length-1?'1px solid var(--border)':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', gap:12, alignItems:'center' }}>
             {/* Currency */}
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ fontSize:18 }}>{c.flag}</span>
               <div>
                 <div style={{ ...S.mono, fontSize:12, color:'#f5a623', fontWeight:600 }}>{c.code}</div>
-                <div style={{ ...S.mono, fontSize:9, color:'#4a5468' }}>{c.name}</div>
+                <div style={{ ...S.mono, fontSize:9, color:'var(--muted)' }}>{c.name}</div>
               </div>
             </div>
 
@@ -67,7 +67,7 @@ function CategoryBlock({
               placeholder={`e.g. ${(0).toFixed(c.decimalPlaces)}`}
               value={v.buy}
               onChange={e => onChange(c.code, 'buy', fmtRate(e.target.value))}
-              style={{ background:'#161922', border:`1px solid ${v.buy ? '#5b8cff44' : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#5b8cff', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
+              style={{ background:'var(--surface2)', border:`1px solid ${v.buy ? '#5b8cff44' : 'var(--border)'}`, borderRadius:6, padding:'8px 12px', color:'#5b8cff', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
             />
 
             {/* Sell rate */}
@@ -78,7 +78,7 @@ function CategoryBlock({
                 placeholder={`e.g. ${(0).toFixed(c.decimalPlaces)}`}
                 value={v.sell}
                 onChange={e => onChange(c.code, 'sell', fmtRate(e.target.value))}
-                style={{ background:'#161922', border:`1px solid ${v.sell ? (spreadOk ? '#00d4aa44' : '#ff5c5c44') : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
+                style={{ background:'var(--surface2)', border:`1px solid ${v.sell ? (spreadOk ? '#00d4aa44' : '#ff5c5c44') : 'var(--border)'}`, borderRadius:6, padding:'8px 12px', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
               />
               {spread !== null && (
                 <div style={{ ...S.mono, fontSize:9, marginTop:2, color: spreadOk ? '#00d4aa' : '#ff5c5c' }}>
@@ -92,7 +92,7 @@ function CategoryBlock({
               {c.rateSet ? (
                 <span style={{ color:'#00d4aa', background:'rgba(0,212,170,0.1)', padding:'3px 8px', borderRadius:20, border:'1px solid rgba(0,212,170,0.2)' }}>SET</span>
               ) : (
-                <span style={{ color:'#4a5468' }}>—</span>
+                <span style={{ color:'var(--muted)' }}>—</span>
               )}
             </div>
           </div>
@@ -165,15 +165,15 @@ export default function RateSetterForm({ currencies }: { currencies: CurrencyMet
       <div style={{ ...S.card, padding:'16px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', border:'1px solid rgba(0,212,170,0.2)' }}>
         <div style={{ display:'flex', gap:24 }}>
           <div>
-            <div style={{ ...S.mono, fontSize:9, color:'#4a5468', letterSpacing:'0.12em', marginBottom:3 }}>CURRENCIES</div>
+            <div style={{ ...S.mono, fontSize:9, color:'var(--muted)', letterSpacing:'0.12em', marginBottom:3 }}>CURRENCIES</div>
             <div style={{ ...S.syne, fontSize:22, fontWeight:800, color:'#e2e6f0' }}>{currencies.length}</div>
           </div>
           <div>
-            <div style={{ ...S.mono, fontSize:9, color:'#4a5468', letterSpacing:'0.12em', marginBottom:3 }}>RATES ENTERED</div>
+            <div style={{ ...S.mono, fontSize:9, color:'var(--muted)', letterSpacing:'0.12em', marginBottom:3 }}>RATES ENTERED</div>
             <div style={{ ...S.syne, fontSize:22, fontWeight:800, color: setCount === currencies.length ? '#00d4aa' : '#f5a623' }}>{setCount}</div>
           </div>
           <div>
-            <div style={{ ...S.mono, fontSize:9, color:'#4a5468', letterSpacing:'0.12em', marginBottom:3 }}>ALREADY SET TODAY</div>
+            <div style={{ ...S.mono, fontSize:9, color:'var(--muted)', letterSpacing:'0.12em', marginBottom:3 }}>ALREADY SET TODAY</div>
             <div style={{ ...S.syne, fontSize:22, fontWeight:800, color:'#5b8cff' }}>{currencies.filter(c => c.rateSet).length}</div>
           </div>
         </div>
@@ -187,7 +187,7 @@ export default function RateSetterForm({ currencies }: { currencies: CurrencyMet
           <button
             onClick={handleSave}
             disabled={saving}
-            style={{ padding:'10px 28px', borderRadius:8, border:'none', background: saving ? '#1e2230' : 'linear-gradient(135deg,#00d4aa,#00a884)', color: saving ? '#4a5468' : '#000', fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing:'0.02em' }}
+            style={{ padding:'10px 28px', borderRadius:8, border:'none', background: saving ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)', color: saving ? 'var(--muted)' : '#000', fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:800, cursor: saving ? 'not-allowed' : 'pointer', letterSpacing:'0.02em' }}
           >
             {saving ? 'SAVING...' : `SAVE ${setCount} RATES`}
           </button>
