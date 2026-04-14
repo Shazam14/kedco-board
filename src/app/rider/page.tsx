@@ -39,5 +39,7 @@ export default async function RiderPage() {
     getBanks(),
   ]);
 
-  return <RiderShell currencies={currencies} banks={banks} username={payload.sub} />;
+  const branchLocation = process.env.BRANCH_LOCATION ?? 'Lapu-Lapu City';
+
+  return <RiderShell currencies={currencies} banks={banks} username={payload.sub} branchLocation={branchLocation} />;
 }
