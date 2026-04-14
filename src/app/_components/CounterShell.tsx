@@ -7,6 +7,17 @@ import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
 
+function useWindowWidth() {
+  const [w, setW] = useState(1440);
+  useEffect(() => {
+    setW(window.innerWidth);
+    const h = () => setW(window.innerWidth);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return w;
+}
+
 const php = (n: number) =>
   '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -26,6 +37,11 @@ export default function CounterShell({
 }) {
   const router = useRouter();
   useIdleTimeout(20);
+
+  const vw       = useWindowWidth();
+  const isMobile = vw < 768;
+  const isTablet = vw >= 768 && vw < 1100;
+  const px       = isMobile ? 16 : isTablet ? 24 : 32;
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -241,7 +257,7 @@ export default function CounterShell({
       {noRatesAtAll && (
         <div style={{
           background: 'rgba(245,166,35,0.1)', borderBottom: '1px solid rgba(245,166,35,0.35)',
-          padding: '12px 32px', display: 'flex', alignItems: 'center', gap: 12,
+          padding: `12px ${px}px`, display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <span style={{ fontSize: 16 }}>⚠️</span>
           <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: '#f5a623' }}>
@@ -252,7 +268,7 @@ export default function CounterShell({
       {!noRatesAtAll && ratesCount < currencies.length && (
         <div style={{
           background: 'rgba(245,166,35,0.06)', borderBottom: '1px solid rgba(245,166,35,0.2)',
-          padding: '10px 32px', display: 'flex', alignItems: 'center', gap: 12,
+          padding: `10px ${px}px`, display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <span style={{ fontSize: 14 }}>ℹ️</span>
           <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#f5a623' }}>
@@ -264,7 +280,7 @@ export default function CounterShell({
       {/* ── NAV ── */}
       <nav style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 32px', height: '56px', borderBottom: '1px solid #1e2230',
+        padding: `0 ${px}px`, height: '56px', borderBottom: '1px solid #1e2230',
         background: 'rgba(15,17,23,0.96)', backdropFilter: 'blur(12px)',
         position: 'sticky', top: 0, zIndex: 100,
       }}>
@@ -292,9 +308,9 @@ export default function CounterShell({
 
       {/* ── BODY ── */}
       <div style={{
-        padding: '28px 32px',
+        padding: `24px ${px}px`,
         display: 'grid',
-        gridTemplateColumns: '400px 1fr',
+        gridTemplateColumns: isMobile || isTablet ? '1fr' : '400px 1fr',
         gap: 24,
         maxWidth: 1280,
       }}>
@@ -517,7 +533,6 @@ export default function CounterShell({
                   ['Amount',   `${fmtFx(flash.foreignAmt, flash.currency, currencies)} ${flash.currency}`],
                   ['Rate',     String(flash.rate)],
                   ['PHP',      php(flash.phpAmt)],
-                  ...(flash.type === 'SELL' ? [['THAN', php(flash.than)]] : []),
                 ].map(([k, v]) => (
                   <div key={k}>
                     <div style={{ ...M, fontSize: 9, color: '#4a5468', marginBottom: 2 }}>{k}</div>
@@ -553,11 +568,10 @@ export default function CounterShell({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 12 }}>
             {[
               { label: 'TOTAL BOUGHT', value: php(totalBought), color: '#5b8cff' },
               { label: 'TOTAL SOLD',   value: php(totalSold),   color: '#f5a623' },
-              { label: 'TOTAL THAN',   value: php(totalThan),   color: '#00d4aa' },
             ].map(s => (
               <div key={s.label} style={{
                 background: '#0f1117', border: '1px solid #1e2230',
@@ -603,7 +617,7 @@ export default function CounterShell({
                 {/* Column labels */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px 100px',
+                  gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px',
                   padding: '8px 20px', borderBottom: '1px solid #1e2230',
                   ...M, fontSize: 9, color: '#4a5468', letterSpacing: '0.1em',
                   whiteSpace: 'nowrap',
@@ -615,7 +629,6 @@ export default function CounterShell({
                   <span>FOREIGN</span>
                   <span>RATE</span>
                   <span>PHP AMT</span>
-                  <span>THAN</span>
                 </div>
 
                 <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 300px)' }}>
@@ -624,7 +637,7 @@ export default function CounterShell({
                       key={t.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px 100px',
+                        gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px',
                         padding: '10px 20px',
                         borderBottom: '1px solid #1e2230',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
@@ -647,12 +660,6 @@ export default function CounterShell({
                         color: t.type === 'BUY' ? '#5b8cff' : '#f5a623',
                       }}>{t.rate}</span>
                       <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
-                      <span style={{
-                        ...M, fontSize: 11,
-                        color: t.than > 0 ? '#00d4aa' : '#4a5468',
-                      }}>
-                        {t.than > 0 ? php(t.than) : '—'}
-                      </span>
                     </div>
                   ))}
                 </div>

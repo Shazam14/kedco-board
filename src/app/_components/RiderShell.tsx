@@ -283,10 +283,9 @@ export default function RiderShell({
           <div style={{ ...Y, fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Today&apos;s Transactions</div>
 
           {/* Totals */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, marginBottom: 16 }}>
             {[
               { label: 'TOTAL PHP', val: php(todayTotal), color: '#e2e6f0' },
-              { label: 'TOTAL THAN', val: php(todayThan), color: todayThan > 0 ? '#00d4aa' : '#4a5468' },
             ].map(({ label, val, color }) => (
               <div key={label} style={{ background: '#0f1117', border: '1px solid #1e2230', borderRadius: 10, padding: '12px 14px' }}>
                 <div style={{ ...M, fontSize: 9, color: '#4a5468', marginBottom: 4 }}>{label}</div>
@@ -312,11 +311,6 @@ export default function RiderShell({
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ ...M, fontSize: 13, fontWeight: 700, color: '#e2e6f0' }}>{php(t.phpAmt)}</div>
-                      {t.than !== 0 && (
-                        <div style={{ ...M, fontSize: 10, color: t.than > 0 ? '#00d4aa' : '#ff5c5c' }}>
-                          THAN {php(t.than)}
-                        </div>
-                      )}
                     </div>
                   </div>
                   {t.customer && <div style={{ ...M, fontSize: 10, color: '#4a5468', marginTop: 4 }}>{t.customer}</div>}
@@ -537,7 +531,6 @@ export default function RiderShell({
                   ['Rate',    String(flash.rate)],
                   ['PHP',     php(flash.phpAmt)],
                   ['Payment', flash.paymentLabel],
-                  ...(flash.type === 'SELL' ? [['THAN', php(flash.than)]] : []),
                 ].map(([k, v]) => (
                   <div key={k}>
                     <div style={{ ...M, fontSize: 9, color: '#4a5468', marginBottom: 2 }}>{k}</div>
