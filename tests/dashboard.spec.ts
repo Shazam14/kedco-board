@@ -60,7 +60,7 @@ test.describe('Dashboard', () => {
   test('Transactions tab loads', async ({ page }) => {
     await page.getByRole('button', { name: 'Transactions' }).click();
     // The source filter has ALL / COUNTER / RIDER buttons
-    await expect(page.getByRole('button', { name: 'ALL', exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole('button', { name: 'ALL', exact: true }).first()).toBeVisible({ timeout: 5_000 });
   });
 
   test('Rate Board tab loads', async ({ page }) => {

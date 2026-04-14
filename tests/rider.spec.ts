@@ -42,7 +42,7 @@ test.describe('Rider screen', () => {
   test('currency picker shows buy and sell rates', async ({ page }) => {
     await page.getByText('Select currency…').click();
     // Should show B: and S: for rates
-    await expect(page.getByText(/B:.*S:/)).toBeVisible();
+    await expect(page.getByText(/B:.*S:/).first()).toBeVisible();
   });
 
   test('selecting currency fills rate field', async ({ page }) => {

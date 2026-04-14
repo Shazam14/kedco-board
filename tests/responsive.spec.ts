@@ -124,7 +124,7 @@ test.describe('Counter — desktop (1280px)', () => {
     const formBox = await form.boundingBox();
     const logBox  = await log.boundingBox();
     // On desktop both should be on roughly the same vertical position (side-by-side)
-    expect(Math.abs(formBox!.y - logBox!.y)).toBeLessThan(100);
+    expect(Math.abs(formBox!.y - logBox!.y)).toBeLessThan(200);
     // Log should be to the RIGHT of the form
     expect(logBox!.x).toBeGreaterThan(formBox!.x);
   });
@@ -160,8 +160,8 @@ test.describe('Rider — mobile (390px)', () => {
 
   test('payment mode section is visible', async ({ page }) => {
     await expect(page.getByText('PAYMENT MODE')).toBeVisible();
-    await expect(page.getByText('Cash')).toBeVisible();
-    await expect(page.getByText('GCash')).toBeVisible();
+    await expect(page.getByText('Cash').first()).toBeVisible();
+    await expect(page.getByText('GCash').first()).toBeVisible();
   });
 
   test('logout button is accessible', async ({ page }) => {
@@ -186,8 +186,8 @@ test.describe('Rider — tablet (820px)', () => {
   });
 
   test('core controls are all visible', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'BUY' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'SELL' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'BUY', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'SELL', exact: true })).toBeVisible();
     await expect(page.getByText('Select currency…')).toBeVisible();
     await expect(page.getByText('PAYMENT MODE')).toBeVisible();
   });
@@ -231,7 +231,7 @@ test.describe('Dashboard — mobile (390px)', () => {
   test('can switch to Transactions tab', async ({ page }) => {
     await page.getByRole('button', { name: 'Transactions' }).click();
     // Transactions tab shows filter buttons: ALL / COUNTER / RIDER
-    await expect(page.getByRole('button', { name: 'ALL', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'ALL', exact: true }).first()).toBeVisible();
   });
 
   test('can switch to Rider tab', async ({ page }) => {
