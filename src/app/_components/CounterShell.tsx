@@ -251,7 +251,7 @@ export default function CounterShell({
   const ratesCount   = currencies.filter(c => c.rateSet).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080a10', color: '#e2e6f0' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
 
       {/* ── RATES WARNING BANNER ── */}
       {noRatesAtAll && (
@@ -280,8 +280,8 @@ export default function CounterShell({
       {/* ── NAV ── */}
       <nav style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: `0 ${px}px`, height: '56px', borderBottom: '1px solid #1e2230',
-        background: 'rgba(15,17,23,0.96)', backdropFilter: 'blur(12px)',
+        padding: `0 ${px}px`, height: '56px', borderBottom: '1px solid var(--border)',
+        background: 'var(--nav-bg)', backdropFilter: 'blur(12px)',
         position: 'sticky', top: 0, zIndex: 100,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -293,14 +293,14 @@ export default function CounterShell({
           }}>K</div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e6f0', ...Y }}>Kedco FX</div>
-            <div style={{ ...M, fontSize: 9, color: '#4a5468', marginTop: -2 }}>Counter</div>
+            <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginTop: -2 }}>Counter</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ ...M, fontSize: 11, color: '#4a5468' }}>
+          <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>
             <span style={{ color: '#e2e6f0' }}>{username}</span>
           </div>
-          <button onClick={handleLogout} style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid #1e2230', background: 'transparent', color: '#4a5468', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}>
+          <button onClick={handleLogout} style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}>
             LOGOUT
           </button>
         </div>
@@ -320,16 +320,16 @@ export default function CounterShell({
 
           {/* Header */}
           <div>
-            <div style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.2em', marginBottom: 2 }}>
+            <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.2em', marginBottom: 2 }}>
               NEW TRANSACTION
             </div>
-            <div style={{ ...M, fontSize: 11, color: '#4a5468' }}>{today.toUpperCase()}</div>
+            <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{today.toUpperCase()}</div>
           </div>
 
           {/* BUY / SELL toggle */}
           <div style={{
             display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0,
-            background: '#0f1117', border: '1px solid #1e2230', borderRadius: 12, padding: 4,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 4,
           }}>
             {(['BUY', 'SELL'] as const).map(t => (
               <button
@@ -346,7 +346,7 @@ export default function CounterShell({
                     : 'transparent',
                   color: type === t
                     ? (t === 'BUY' ? '#5b8cff' : '#f5a623')
-                    : '#4a5468',
+                    : 'var(--muted)',
                   ...Y, fontSize: 15, fontWeight: 800, letterSpacing: '0.05em',
                   transition: 'all 0.15s',
                 }}
@@ -358,16 +358,16 @@ export default function CounterShell({
 
           {/* Currency */}
           <div>
-            <label style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               CURRENCY
             </label>
             <select
               value={ccy?.code ?? ''}
               onChange={e => setCcy(currencies.find(c => c.code === e.target.value) ?? null)}
               style={{
-                width: '100%', background: '#0f1117', border: '1px solid #1e2230',
+                width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
                 borderRadius: 8, padding: '12px 14px',
-                color: ccy ? '#e2e6f0' : '#4a5468',
+                color: ccy ? '#e2e6f0' : 'var(--muted)',
                 ...M, fontSize: 13, outline: 'none', cursor: 'pointer',
               }}
             >
@@ -379,7 +379,7 @@ export default function CounterShell({
               ))}
             </select>
             {ccy?.rateSet && (
-              <div style={{ ...M, fontSize: 10, color: '#4a5468', marginTop: 6 }}>
+              <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 6 }}>
                 Rate board — B: <span style={{ color: '#5b8cff' }}>
                   {ccy.todayBuyRate?.toFixed(ccy.decimalPlaces)}
                 </span>
@@ -397,7 +397,7 @@ export default function CounterShell({
 
           {/* Foreign Amount */}
           <div>
-            <label style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               FOREIGN AMOUNT{ccy ? ` (${ccy.code})` : ''}
             </label>
             <input
@@ -409,7 +409,7 @@ export default function CounterShell({
               onFocus={e => { e.target.select(); setAmt(rawAmt); }}
               placeholder="0.00"
               style={{
-                width: '100%', background: '#0f1117', border: '1px solid #1e2230',
+                width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
                 borderRadius: 8, padding: '12px 14px', color: '#e2e6f0',
                 ...M, fontSize: 20, outline: 'none', boxSizing: 'border-box',
               }}
@@ -418,7 +418,7 @@ export default function CounterShell({
 
           {/* Rate */}
           <div>
-            <label style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               RATE (PHP per {ccy?.code ?? 'unit'})
             </label>
             <input
@@ -429,7 +429,7 @@ export default function CounterShell({
               onBlur={() => setRate(fmtOnBlur(rate))}
               onFocus={e => { e.target.select(); setRate(rawRate); }}
               style={{
-                width: '100%', background: '#0f1117', border: `1px solid ${typeColor}44`,
+                width: '100%', background: 'var(--surface)', border: `1px solid ${typeColor}44`,
                 borderRadius: 8, padding: '12px 14px', color: typeColor,
                 ...M, fontSize: 16, outline: 'none', boxSizing: 'border-box',
               }}
@@ -438,21 +438,21 @@ export default function CounterShell({
 
           {/* PHP Total */}
           <div style={{
-            background: '#0f1117',
-            border: `1px solid ${phpTotal != null ? 'rgba(0,212,170,0.35)' : '#1e2230'}`,
+            background: 'var(--surface)',
+            border: `1px solid ${phpTotal != null ? 'rgba(0,212,170,0.35)' : 'var(--border)'}`,
             borderRadius: 12, padding: '18px 20px', transition: 'border-color 0.2s',
           }}>
-            <div style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em', marginBottom: 8 }}>
+            <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>
               PHP TOTAL
             </div>
-            <div style={{ ...Y, fontSize: 34, fontWeight: 800, color: phpTotal != null ? '#00d4aa' : '#4a5468' }}>
+            <div style={{ ...Y, fontSize: 34, fontWeight: 800, color: phpTotal != null ? '#00d4aa' : 'var(--muted)' }}>
               {phpTotal != null ? php(phpTotal) : '₱ —'}
             </div>
           </div>
 
           {/* Customer */}
           <div>
-            <label style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               CUSTOMER / REF <span style={{ opacity: 0.45 }}>(optional)</span>
             </label>
             <input
@@ -461,7 +461,7 @@ export default function CounterShell({
               onChange={e => setCust(e.target.value)}
               placeholder="Name or reference"
               style={{
-                width: '100%', background: '#0f1117', border: '1px solid #1e2230',
+                width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
                 borderRadius: 8, padding: '12px 14px', color: '#e2e6f0',
                 ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box',
               }}
@@ -470,7 +470,7 @@ export default function CounterShell({
 
           {/* Payment Mode */}
           <div>
-            <label style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               PAYMENT MODE
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -481,9 +481,9 @@ export default function CounterShell({
                   onClick={() => setPayMode(m)}
                   style={{
                     padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
-                    border: `1px solid ${payMode === m ? 'rgba(0,212,170,0.5)' : '#1e2230'}`,
+                    border: `1px solid ${payMode === m ? 'rgba(0,212,170,0.5)' : 'var(--border)'}`,
                     background: payMode === m ? 'rgba(0,212,170,0.1)' : 'transparent',
-                    color: payMode === m ? '#00d4aa' : '#4a5468',
+                    color: payMode === m ? '#00d4aa' : 'var(--muted)',
                     ...M, fontSize: 10, letterSpacing: '0.05em',
                   }}
                 >
@@ -535,7 +535,7 @@ export default function CounterShell({
                   ['PHP',      php(flash.phpAmt)],
                 ].map(([k, v]) => (
                   <div key={k}>
-                    <div style={{ ...M, fontSize: 9, color: '#4a5468', marginBottom: 2 }}>{k}</div>
+                    <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 2 }}>{k}</div>
                     <div style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{v}</div>
                   </div>
                 ))}
@@ -550,11 +550,11 @@ export default function CounterShell({
             style={{
               padding: '16px', borderRadius: 10, border: 'none',
               background: !canSubmit
-                ? '#1e2230'
+                ? 'var(--border)'
                 : type === 'BUY'
                   ? 'linear-gradient(135deg,#5b8cff,#3a6fef)'
                   : 'linear-gradient(135deg,#f5a623,#e09000)',
-              color: !canSubmit ? '#4a5468' : '#000',
+              color: !canSubmit ? 'var(--muted)' : '#000',
               ...Y, fontSize: 14, fontWeight: 800,
               cursor: !canSubmit ? 'not-allowed' : 'pointer',
               letterSpacing: '0.04em', transition: 'all 0.2s',
@@ -574,10 +574,10 @@ export default function CounterShell({
               { label: 'TOTAL SOLD',   value: php(totalSold),   color: '#f5a623' },
             ].map(s => (
               <div key={s.label} style={{
-                background: '#0f1117', border: '1px solid #1e2230',
+                background: 'var(--surface)', border: '1px solid var(--border)',
                 borderRadius: 12, padding: '16px 20px',
               }}>
-                <div style={{ ...M, fontSize: 9, color: '#4a5468', letterSpacing: '0.12em', marginBottom: 8 }}>
+                <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>
                   {s.label}
                 </div>
                 <div style={{ ...Y, fontSize: 20, fontWeight: 800, color: s.color }}>
@@ -589,27 +589,27 @@ export default function CounterShell({
 
           {/* Transaction list */}
           <div style={{
-            background: '#0f1117', border: '1px solid #1e2230',
+            background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 14, overflow: 'hidden', flex: 1,
           }}>
             {/* List header */}
             <div style={{
-              padding: '14px 20px', borderBottom: '1px solid #1e2230',
+              padding: '14px 20px', borderBottom: '1px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
-              <div style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.15em' }}>
+              <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.15em' }}>
                 TODAY&apos;S TRANSACTIONS — {txns.length}
               </div>
               <button
                 onClick={fetchTxns}
-                style={{ background: 'none', border: 'none', color: '#4a5468', cursor: 'pointer', ...M, fontSize: 11 }}
+                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', ...M, fontSize: 11 }}
               >
                 ↺ refresh
               </button>
             </div>
 
             {txns.length === 0 ? (
-              <div style={{ padding: '48px 20px', textAlign: 'center', ...M, fontSize: 11, color: '#4a5468' }}>
+              <div style={{ padding: '48px 20px', textAlign: 'center', ...M, fontSize: 11, color: 'var(--muted)' }}>
                 No transactions yet today.
               </div>
             ) : (
@@ -618,8 +618,8 @@ export default function CounterShell({
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px',
-                  padding: '8px 20px', borderBottom: '1px solid #1e2230',
-                  ...M, fontSize: 9, color: '#4a5468', letterSpacing: '0.1em',
+                  padding: '8px 20px', borderBottom: '1px solid var(--border)',
+                  ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
                   whiteSpace: 'nowrap',
                 }}>
                   <span>RECEIPT</span>
@@ -639,14 +639,14 @@ export default function CounterShell({
                         display: 'grid',
                         gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px',
                         padding: '10px 20px',
-                        borderBottom: '1px solid #1e2230',
+                        borderBottom: '1px solid var(--border)',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
                         alignItems: 'center',
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <span style={{ ...M, fontSize: 10, color: '#4a5468' }}>{t.id}</span>
-                      <span style={{ ...M, fontSize: 10, color: '#4a5468' }}>{t.time}</span>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.id}</span>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.time}</span>
                       <span style={{
                         ...M, fontSize: 11, fontWeight: 700,
                         color: t.type === 'BUY' ? '#5b8cff' : '#f5a623',

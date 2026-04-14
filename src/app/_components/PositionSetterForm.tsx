@@ -16,7 +16,7 @@ function parseQty(val: string): number {
 }
 
 const S: Record<string, React.CSSProperties> = {
-  card: { background:'#0f1117', border:'1px solid #1e2230', borderRadius:14, overflow:'hidden' },
+  card: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:14, overflow:'hidden' },
   mono: { fontFamily:"'DM Mono',monospace" },
   syne: { fontFamily:"'Syne',sans-serif" },
 };
@@ -33,16 +33,16 @@ function CategoryBlock({
   const rgb   = label === 'MAIN' ? '0,212,170'  : label === '2ND' ? '91,140,255' : '245,166,35';
   return (
     <div style={S.card}>
-      <div style={{ padding:'12px 20px', borderBottom:'1px solid #1e2230', background:`rgba(${rgb},0.06)`, display:'flex', alignItems:'center', gap:10 }}>
+      <div style={{ padding:'12px 20px', borderBottom:'1px solid var(--border)', background:`rgba(${rgb},0.06)`, display:'flex', alignItems:'center', gap:10 }}>
         <div style={{ width:8, height:8, borderRadius:2, background:color }} />
         <span style={{ ...S.syne, fontSize:12, fontWeight:700, color }}>{label}</span>
-        <span style={{ ...S.mono, fontSize:10, color:'#4a5468' }}>{positions.length} currencies</span>
+        <span style={{ ...S.mono, fontSize:10, color:'var(--muted)' }}>{positions.length} currencies</span>
       </div>
 
       {/* Header */}
-      <div style={{ display:'grid', gridTemplateColumns:'180px 1fr 1fr 80px', padding:'8px 20px', borderBottom:'1px solid #1e2230', gap:12 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'180px 1fr 1fr 80px', padding:'8px 20px', borderBottom:'1px solid var(--border)', gap:12 }}>
         {['CURRENCY', 'CARRY-IN QTY', 'CARRY-IN RATE (PHP)', 'STATUS'].map(h => (
-          <span key={h} style={{ ...S.mono, fontSize:9, color:'#4a5468', letterSpacing:'0.12em' }}>{h}</span>
+          <span key={h} style={{ ...S.mono, fontSize:9, color:'var(--muted)', letterSpacing:'0.12em' }}>{h}</span>
         ))}
       </div>
 
@@ -55,13 +55,13 @@ function CategoryBlock({
         const phpValue = valid ? qtyNum * rateNum : null;
 
         return (
-          <div key={p.code} style={{ display:'grid', gridTemplateColumns:'180px 1fr 1fr 80px', padding:'10px 20px', borderBottom:i<positions.length-1?'1px solid #1e2230':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', gap:12, alignItems:'center' }}>
+          <div key={p.code} style={{ display:'grid', gridTemplateColumns:'180px 1fr 1fr 80px', padding:'10px 20px', borderBottom:i<positions.length-1?'1px solid var(--border)':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', gap:12, alignItems:'center' }}>
             {/* Currency */}
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ fontSize:18 }}>{p.flag}</span>
               <div>
                 <div style={{ ...S.mono, fontSize:12, color:'#f5a623', fontWeight:600 }}>{p.code}</div>
-                <div style={{ ...S.mono, fontSize:9, color:'#4a5468' }}>{p.name}</div>
+                <div style={{ ...S.mono, fontSize:9, color:'var(--muted)' }}>{p.name}</div>
               </div>
             </div>
 
@@ -73,10 +73,10 @@ function CategoryBlock({
                 placeholder="0"
                 value={v.qty}
                 onChange={e => onChange(p.code, 'qty', fmtQty(e.target.value))}
-                style={{ background:'#161922', border:`1px solid ${v.qty !== '' ? '#5b8cff44' : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#5b8cff', ...S.mono, fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
+                style={{ background:'var(--surface2)', border:`1px solid ${v.qty !== '' ? '#5b8cff44' : 'var(--border)'}`, borderRadius:6, padding:'8px 12px', color:'#5b8cff', ...S.mono, fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
               />
               {phpValue !== null && (
-                <div style={{ ...S.mono, fontSize:9, marginTop:2, color:'#4a5468' }}>
+                <div style={{ ...S.mono, fontSize:9, marginTop:2, color:'var(--muted)' }}>
                   ≈ ₱{Math.round(phpValue).toLocaleString('en-PH')}
                 </div>
               )}
@@ -91,9 +91,9 @@ function CategoryBlock({
                 placeholder={(0).toFixed(p.decimalPlaces)}
                 value={v.rate}
                 onChange={e => onChange(p.code, 'rate', e.target.value)}
-                style={{ background:'#161922', border:`1px solid ${v.rate !== '' ? (rateNum > 0 ? '#00d4aa44' : '#ff5c5c44') : '#1e2230'}`, borderRadius:6, padding:'8px 12px', color:'#00d4aa', ...S.mono, fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
+                style={{ background:'var(--surface2)', border:`1px solid ${v.rate !== '' ? (rateNum > 0 ? '#00d4aa44' : '#ff5c5c44') : 'var(--border)'}`, borderRadius:6, padding:'8px 12px', color:'#00d4aa', ...S.mono, fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' }}
               />
-              <div style={{ ...S.mono, fontSize:9, marginTop:2, color:'#4a5468' }}>
+              <div style={{ ...S.mono, fontSize:9, marginTop:2, color:'var(--muted)' }}>
                 yesterday&apos;s closing sell rate
               </div>
             </div>
@@ -103,7 +103,7 @@ function CategoryBlock({
               {p.positionSet ? (
                 <span style={{ color:'#00d4aa', background:'rgba(0,212,170,0.1)', padding:'3px 8px', borderRadius:20, border:'1px solid rgba(0,212,170,0.2)' }}>SET</span>
               ) : (
-                <span style={{ color:'#4a5468' }}>—</span>
+                <span style={{ color:'var(--muted)' }}>—</span>
               )}
             </div>
           </div>
@@ -182,16 +182,16 @@ export default function PositionSetterForm({ positions }: { positions: PositionM
       <div style={{ ...S.card, padding:'16px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', border:'1px solid rgba(91,140,255,0.2)' }}>
         <div style={{ display:'flex', gap:24 }}>
           <div>
-            <div style={{ ...S.mono, fontSize:9, color:'#4a5468', letterSpacing:'0.12em', marginBottom:3 }}>CURRENCIES</div>
+            <div style={{ ...S.mono, fontSize:9, color:'var(--muted)', letterSpacing:'0.12em', marginBottom:3 }}>CURRENCIES</div>
             <div style={{ ...S.syne, fontSize:22, fontWeight:800, color:'#e2e6f0' }}>{positions.length}</div>
           </div>
           <div>
-            <div style={{ ...S.mono, fontSize:9, color:'#4a5468', letterSpacing:'0.12em', marginBottom:3 }}>ENTERED</div>
-            <div style={{ ...S.syne, fontSize:22, fontWeight:800, color: filledCount > 0 ? '#5b8cff' : '#4a5468' }}>{filledCount}</div>
+            <div style={{ ...S.mono, fontSize:9, color:'var(--muted)', letterSpacing:'0.12em', marginBottom:3 }}>ENTERED</div>
+            <div style={{ ...S.syne, fontSize:22, fontWeight:800, color: filledCount > 0 ? '#5b8cff' : 'var(--muted)' }}>{filledCount}</div>
           </div>
           <div>
-            <div style={{ ...S.mono, fontSize:9, color:'#4a5468', letterSpacing:'0.12em', marginBottom:3 }}>ALREADY SET</div>
-            <div style={{ ...S.syne, fontSize:22, fontWeight:800, color: alreadySet > 0 ? '#00d4aa' : '#4a5468' }}>{alreadySet}</div>
+            <div style={{ ...S.mono, fontSize:9, color:'var(--muted)', letterSpacing:'0.12em', marginBottom:3 }}>ALREADY SET</div>
+            <div style={{ ...S.syne, fontSize:22, fontWeight:800, color: alreadySet > 0 ? '#00d4aa' : 'var(--muted)' }}>{alreadySet}</div>
           </div>
         </div>
 
@@ -204,7 +204,7 @@ export default function PositionSetterForm({ positions }: { positions: PositionM
           <button
             onClick={handleSave}
             disabled={saving || filledCount === 0}
-            style={{ padding:'10px 28px', borderRadius:8, border:'none', background: (saving || filledCount === 0) ? '#1e2230' : 'linear-gradient(135deg,#5b8cff,#3a6bef)', color: (saving || filledCount === 0) ? '#4a5468' : '#fff', ...S.syne, fontSize:13, fontWeight:800, cursor: (saving || filledCount === 0) ? 'not-allowed' : 'pointer', letterSpacing:'0.02em' }}
+            style={{ padding:'10px 28px', borderRadius:8, border:'none', background: (saving || filledCount === 0) ? 'var(--border)' : 'linear-gradient(135deg,#5b8cff,#3a6bef)', color: (saving || filledCount === 0) ? 'var(--muted)' : '#fff', ...S.syne, fontSize:13, fontWeight:800, cursor: (saving || filledCount === 0) ? 'not-allowed' : 'pointer', letterSpacing:'0.02em' }}
           >
             {saving ? 'SAVING...' : `SAVE ${filledCount} POSITIONS`}
           </button>

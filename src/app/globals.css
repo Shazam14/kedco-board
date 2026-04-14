@@ -2,17 +2,18 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #07090d;
-  --surface: #0f1117;
-  --surface2: #161922;
-  --border: #1e2230;
+  --bg: #0c1018;               /* page background — lifted from near-black */
+  --surface: #131c2e;          /* cards, panels — distinct from bg */
+  --surface2: #1a2440;         /* inputs, nested sections */
+  --border: #2a3a5c;           /* borders — actually visible now */
+  --nav-bg: rgba(12,16,24,0.96); /* sticky nav backdrop */
   --accent: #00d4aa;
   --accent2: #f5a623;
   --accent3: #5b8cff;
   --rider: #a78bfa;
   --red: #ff5c5c;
   --text: #e2e6f0;
-  --muted: #4a5468;
+  --muted: #7a8ba8;            /* secondary text — readable (was #4a5468) */
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
