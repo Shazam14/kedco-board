@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import type { DashboardSummary, CurrencyPosition, Transaction } from '@/lib/types';
@@ -371,31 +371,248 @@ function TransactionsTab({ data }: { data: DashboardSummary }) {
   );
 }
 
+interface Dispatch {
+  id: string;
+  rider_username: string;
+  rider_name: string;
+  status: string;
+  dispatch_time: string | null;
+  return_time: string | null;
+  cash_php: number;
+  notes: string | null;
+  dispatched_by: string | null;
+}
+interface RiderUser { username: string; full_name: string; }
+
 function RiderTab({ data }: { data: DashboardSummary }) {
   const w = useWindowWidth();
   const isMobile = w < 768;
-  const riderTxns = data.recentTransactions.filter(t=>t.source==='RIDER');
+
+  const [dispatches,  setDispatches]  = useState<Dispatch[]>([]);
+  const [riders,      setRiders]      = useState<RiderUser[]>([]);
+  const [selRider,    setSelRider]    = useState('');
+  const [cashPhp,     setCashPhp]     = useState('');
+  const [notes,       setNotes]       = useState('');
+  const [dispatching, setDispatching] = useState(false);
+  const [returning,   setReturning]   = useState<string | null>(null);
+  const [dispErr,     setDispErr]     = useState<string | null>(null);
+
+  const fetchDispatches = useCallback(async () => {
+    const res = await fetch('/api/admin/dispatches');
+    if (res.ok) setDispatches(await res.json());
+  }, []);
+
+  useEffect(() => {
+    fetchDispatches();
+    fetch('/api/admin/riders').then(r => r.ok ? r.json() : []).then(setRiders);
+  }, [fetchDispatches]);
+
+  async function handleDispatch() {
+    if (!selRider || !cashPhp || +cashPhp <= 0) return;
+    setDispatching(true);
+    setDispErr(null);
+    const res = await fetch('/api/admin/dispatches', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rider_username: selRider, cash_php: +cashPhp, notes: notes || undefined }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setDispErr(data.detail ?? data.error ?? 'Failed to dispatch');
+    } else {
+      setSelRider(''); setCashPhp(''); setNotes('');
+      await fetchDispatches();
+    }
+    setDispatching(false);
+  }
+
+  async function handleReturn(id: string) {
+    setReturning(id);
+    await fetch(`/api/admin/dispatches/${id}/return`, { method: 'PATCH' });
+    await fetchDispatches();
+    setReturning(null);
+  }
+
+  const inField   = dispatches.filter(d => d.status === 'IN_FIELD');
+  const returned  = dispatches.filter(d => d.status === 'RETURNED');
+  const riderTxns = data.recentTransactions.filter(t => t.source === 'RIDER');
+
+  // Riders not yet dispatched today
+  const dispatchedUsernames = new Set(inField.map(d => d.rider_username));
+  const availableRiders = riders.filter(r => !dispatchedUsernames.has(r.username));
+
+  const pad = isMobile ? '16px' : '28px 32px';
+
   return (
-    <div style={{ ...S.page, padding: isMobile ? '16px' : '28px 32px' }}>
-      <div style={{ ...S.card, padding:'32px', textAlign:'center', color:'#4a5468', fontFamily:"'DM Mono',monospace" }}>
-        <div style={{ fontSize:32, marginBottom:12 }}>🏍️</div>
-        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:700, marginBottom:6, color:'#a78bfa' }}>Rider Management</div>
-        <div style={{ fontSize:11 }}>Full rider dispatch tracking coming soon. Rider transactions below.</div>
+    <div style={{ ...S.page, padding: pad, display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* ── DISPATCH FORM ── */}
+      <div style={S.card}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2230', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 16 }}>🏍️</span>
+          <span style={{ ...S.syne, fontSize: 13, fontWeight: 700, color: '#a78bfa' }}>Dispatch a Rider</span>
+        </div>
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: 'flex-end' }}>
+          <div style={{ flex: 2, minWidth: 0 }}>
+            <label style={{ ...S.mono, fontSize: 9, color: '#4a5468', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>RIDER</label>
+            <select
+              value={selRider}
+              onChange={e => setSelRider(e.target.value)}
+              style={{ width: '100%', background: '#080a10', border: '1px solid #1e2230', borderRadius: 8, padding: '10px 12px', color: selRider ? '#e2e6f0' : '#4a5468', ...S.mono, fontSize: 12, outline: 'none' }}
+            >
+              <option value="">— Select rider —</option>
+              {availableRiders.map(r => (
+                <option key={r.username} value={r.username}>{r.full_name || r.username} ({r.username})</option>
+              ))}
+              {availableRiders.length === 0 && riders.length > 0 && (
+                <option disabled>All riders already dispatched today</option>
+              )}
+            </select>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <label style={{ ...S.mono, fontSize: 9, color: '#4a5468', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>STARTING CASH (PHP)</label>
+            <input
+              type="number"
+              value={cashPhp}
+              onChange={e => setCashPhp(e.target.value)}
+              placeholder="0.00"
+              style={{ width: '100%', background: '#080a10', border: '1px solid #1e2230', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...S.mono, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <label style={{ ...S.mono, fontSize: 9, color: '#4a5468', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>NOTES (optional)</label>
+            <input
+              type="text"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="e.g. Area: Mactan"
+              style={{ width: '100%', background: '#080a10', border: '1px solid #1e2230', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...S.mono, fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
+          <button
+            onClick={handleDispatch}
+            disabled={!selRider || !cashPhp || +cashPhp <= 0 || dispatching}
+            style={{
+              padding: '10px 20px', borderRadius: 8, border: 'none', whiteSpace: 'nowrap',
+              background: (!selRider || !cashPhp || +cashPhp <= 0) ? '#1e2230' : 'rgba(167,139,250,0.2)',
+              color: (!selRider || !cashPhp || +cashPhp <= 0) ? '#4a5468' : '#a78bfa',
+              border: `1px solid ${(!selRider || !cashPhp || +cashPhp <= 0) ? '#1e2230' : 'rgba(167,139,250,0.4)'}`,
+              ...S.mono, fontSize: 11, cursor: (!selRider || !cashPhp || +cashPhp <= 0) ? 'not-allowed' : 'pointer',
+              letterSpacing: '0.05em',
+            }}
+          >
+            {dispatching ? 'DISPATCHING...' : 'DISPATCH'}
+          </button>
+        </div>
+        {dispErr && (
+          <div style={{ margin: '0 20px 16px', padding: '8px 12px', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, ...S.mono, fontSize: 11, color: '#f87171' }}>
+            {dispErr}
+          </div>
+        )}
       </div>
-      {riderTxns.length > 0 && (
+
+      {/* ── IN FIELD ── */}
+      {inField.length > 0 && (
         <div style={S.card}>
-          <div style={{ padding:'18px 24px', borderBottom:'1px solid #1e2230', fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:700 }}>Rider Transactions Today</div>
-          {riderTxns.map((t,i) => (
-            <div key={t.id} style={{ display:'grid', gridTemplateColumns:'80px 58px 70px 100px 1fr 100px 90px', padding:'14px 24px', borderBottom:i<riderTxns.length-1?'1px solid #1e2230':'none', alignItems:'center', gap:12 }}>
-              <span style={{ ...S.mono, fontSize:10, color:'#4a5468' }}>{t.time}</span>
-              <span style={{ ...S.mono, fontSize:10, textAlign:'center', padding:'2px 0', borderRadius:4, color:t.type==='BUY'?'#5b8cff':'#f5a623', background:t.type==='BUY'?'rgba(91,140,255,0.1)':'rgba(245,166,35,0.1)' }}>{t.type}</span>
-              <span style={{ ...S.mono, fontSize:13, color:'#f5a623', fontWeight:500 }}>{t.currency}</span>
-              <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>{t.foreignAmt.toLocaleString()}</span>
-              <span style={{ ...S.mono, fontSize:11, color:'#4a5468' }}>{t.customer||'—'} @ {t.rate}</span>
-              <span style={{ ...S.mono, fontSize:12, fontWeight:500 }}>{php(t.phpAmt)}</span>
-              <span style={{ ...S.mono, fontSize:11, color:t.type==='SELL'?'#00d4aa':'#4a5468' }}>{t.type==='SELL'?'+'+php(t.than):'—'}</span>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e2230', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#a78bfa', boxShadow: '0 0 6px #a78bfa' }} />
+            <span style={{ ...S.mono, fontSize: 10, color: '#a78bfa', letterSpacing: '0.12em' }}>IN FIELD — {inField.length}</span>
+          </div>
+          {inField.map((d, i) => (
+            <div key={d.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
+              padding: '14px 20px', borderBottom: i < inField.length - 1 ? '1px solid #1e2230' : 'none',
+            }}>
+              <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ ...S.syne, fontSize: 13, fontWeight: 700, color: '#e2e6f0' }}>{d.rider_name}</div>
+                  <div style={{ ...S.mono, fontSize: 10, color: '#4a5468' }}>{d.rider_username}</div>
+                </div>
+                <div>
+                  <div style={{ ...S.mono, fontSize: 9, color: '#4a5468', marginBottom: 2 }}>STARTING CASH</div>
+                  <div style={{ ...S.syne, fontSize: 14, fontWeight: 700, color: '#a78bfa' }}>{php(d.cash_php)}</div>
+                </div>
+                {d.dispatch_time && (
+                  <div>
+                    <div style={{ ...S.mono, fontSize: 9, color: '#4a5468', marginBottom: 2 }}>DISPATCHED</div>
+                    <div style={{ ...S.mono, fontSize: 12, color: '#e2e6f0' }}>{d.dispatch_time}</div>
+                  </div>
+                )}
+                {d.notes && (
+                  <div style={{ ...S.mono, fontSize: 11, color: '#4a5468' }}>{d.notes}</div>
+                )}
+              </div>
+              <button
+                onClick={() => handleReturn(d.id)}
+                disabled={returning === d.id}
+                style={{
+                  padding: '7px 16px', borderRadius: 7, border: '1px solid rgba(0,212,170,0.35)',
+                  background: 'rgba(0,212,170,0.08)', color: '#00d4aa',
+                  ...S.mono, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
+                }}
+              >
+                {returning === d.id ? 'MARKING...' : 'MARK RETURNED'}
+              </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {inField.length === 0 && (
+        <div style={{ ...S.card, padding: '24px 20px', textAlign: 'center', ...S.mono, fontSize: 11, color: '#4a5468' }}>
+          No riders currently in the field.
+        </div>
+      )}
+
+      {/* ── RETURNED TODAY ── */}
+      {returned.length > 0 && (
+        <div style={S.card}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e2230' }}>
+            <span style={{ ...S.mono, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em' }}>RETURNED TODAY — {returned.length}</span>
+          </div>
+          {returned.map((d, i) => (
+            <div key={d.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
+              padding: '12px 20px', borderBottom: i < returned.length - 1 ? '1px solid #1e2230' : 'none',
+            }}>
+              <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ ...S.mono, fontSize: 12, color: '#4a5468' }}>{d.rider_name} <span style={{ color: '#4a5468', fontSize: 10 }}>({d.rider_username})</span></div>
+                </div>
+                <div style={{ ...S.mono, fontSize: 11, color: '#4a5468' }}>
+                  {d.dispatch_time && `Dispatched ${d.dispatch_time}`}
+                  {d.dispatch_time && d.return_time && ' → '}
+                  {d.return_time && `Returned ${d.return_time}`}
+                </div>
+              </div>
+              <div style={{ ...S.syne, fontSize: 13, fontWeight: 700, color: '#4a5468' }}>{php(d.cash_php)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── RIDER TRANSACTIONS TODAY ── */}
+      {riderTxns.length > 0 && (
+        <div style={S.card}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid #1e2230' }}>
+            <span style={{ ...S.mono, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em' }}>RIDER TRANSACTIONS TODAY — {riderTxns.length}</span>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '60px 56px 64px 90px 1fr 100px 90px', padding: '8px 20px', borderBottom: '1px solid #1e2230', ...S.mono, fontSize: 9, color: '#4a5468', letterSpacing: '0.1em', minWidth: 580 }}>
+              <span>TIME</span><span>TYPE</span><span>CCY</span><span>FOREIGN</span><span>RATE / CUSTOMER</span><span>PHP</span><span>THAN</span>
+            </div>
+            {riderTxns.map((t, i) => (
+              <div key={t.id} style={{ display: 'grid', gridTemplateColumns: '60px 56px 64px 90px 1fr 100px 90px', padding: '10px 20px', borderBottom: i < riderTxns.length - 1 ? '1px solid #1e2230' : 'none', alignItems: 'center', gap: 8, minWidth: 580, background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
+                <span style={{ ...S.mono, fontSize: 10, color: '#4a5468' }}>{t.time}</span>
+                <span style={{ ...S.mono, fontSize: 10, fontWeight: 700, color: t.type === 'BUY' ? '#5b8cff' : '#f5a623' }}>{t.type}</span>
+                <span style={{ ...S.mono, fontSize: 12, color: '#e2e6f0' }}>{t.currency}</span>
+                <span style={{ ...S.mono, fontSize: 11, color: '#e2e6f0' }}>{t.foreignAmt.toLocaleString()}</span>
+                <span style={{ ...S.mono, fontSize: 10, color: '#4a5468' }}>{t.rate} {t.customer ? `· ${t.customer}` : ''}</span>
+                <span style={{ ...S.mono, fontSize: 11, color: '#e2e6f0', fontWeight: 500 }}>{php(t.phpAmt)}</span>
+                <span style={{ ...S.mono, fontSize: 11, color: t.type === 'SELL' ? '#00d4aa' : '#4a5468' }}>{t.type === 'SELL' ? '+' + php(t.than) : '—'}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
