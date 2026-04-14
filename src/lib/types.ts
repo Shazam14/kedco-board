@@ -27,6 +27,7 @@ export interface Transaction {
   than: number;
   cashier: string;
   customer?: string;
+  paymentMode?: string;
 }
 
 export interface CurrencyMeta {

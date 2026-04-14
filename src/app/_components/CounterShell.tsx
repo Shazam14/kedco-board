@@ -18,9 +18,11 @@ const fmtFx = (amt: number, code: string, currencies: { code: string; decimalPla
 export default function CounterShell({
   currencies,
   username,
+  branchLocation,
 }: {
   currencies: CurrencyMeta[];
   username: string;
+  branchLocation: string;
 }) {
   const router = useRouter();
   useIdleTimeout(20);
@@ -30,11 +32,15 @@ export default function CounterShell({
     router.push('/login');
   }
 
-  const [type, setType]       = useState<'BUY' | 'SELL'>('BUY');
-  const [ccy,  setCcy]        = useState<CurrencyMeta | null>(null);
-  const [amt,  setAmt]        = useState('');
-  const [rate, setRate]       = useState('');
-  const [cust, setCust]       = useState('');
+  const PAY_MODES = ['CASH', 'GCASH', 'MAYA', 'SHOPEEPAY', 'BANK TRANSFER', 'CHEQUE', 'OTHER'] as const;
+  type PayMode = typeof PAY_MODES[number];
+
+  const [type,    setType]    = useState<'BUY' | 'SELL'>('BUY');
+  const [ccy,     setCcy]     = useState<CurrencyMeta | null>(null);
+  const [amt,     setAmt]     = useState('');
+  const [rate,    setRate]    = useState('');
+  const [cust,    setCust]    = useState('');
+  const [payMode, setPayMode] = useState<PayMode>('CASH');
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const [flash,   setFlash]   = useState<Transaction | null>(null);
@@ -97,6 +103,7 @@ export default function CounterShell({
           rate: +rawRate,
           cashier: username,
           customer: cust || undefined,
+          payment_mode: payMode,
         }),
       });
       const data = await res.json();
@@ -108,6 +115,7 @@ export default function CounterShell({
           currency: data.currency, foreignAmt: data.foreign_amt,
           rate: data.rate, phpAmt: data.php_amt, than: data.than,
           cashier: data.cashier, customer: data.customer ?? undefined,
+          paymentMode: data.payment_mode ?? payMode,
         };
         setFlash(txn);
         setAmt('');
@@ -121,70 +129,97 @@ export default function CounterShell({
   }
 
   function printReceipt(txn: Transaction) {
-    const w = window.open('', '_blank', 'width=420,height=580');
+    const w = window.open('', '_blank', 'width=320,height=700');
     if (!w) return;
-    const date = new Date().toLocaleDateString('en-PH', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-    });
-    const isSell = txn.type === 'SELL';
+
+    // Date format: Apr 13 2026 (Mon) 12:42PM
+    const d = new Date();
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const hh = d.getHours() % 12 || 12;
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ap = d.getHours() < 12 ? 'AM' : 'PM';
+    const dateStr = `${MONTHS[d.getMonth()]} ${d.getDate()} ${d.getFullYear()} (${DAYS[d.getDay()]}) ${hh}:${mm}${ap}`;
+
+    const fmtPhp  = txn.phpAmt.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtAmt  = fmtFx(txn.foreignAmt, txn.currency, currencies);
+    const fmtRate = txn.rate.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+    const pm      = txn.paymentMode ?? 'CASH';
+
     w.document.write(`<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Receipt ${txn.id}</title>
+<title>OR#${txn.id}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Courier New', monospace; background: #fff; color: #111;
-         padding: 24px; font-size: 13px; line-height: 1.6; max-width: 380px; margin: 0 auto; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    background: #fff; color: #000;
+    padding: 10px 8px;
+    font-size: 12px;
+    line-height: 1.65;
+    width: 300px;
+    margin: 0 auto;
+  }
   .center { text-align: center; }
-  .logo { font-size: 20px; font-weight: 900; letter-spacing: 0.05em; margin-bottom: 2px; }
-  .sub  { font-size: 11px; color: #555; margin-bottom: 2px; }
-  .divider { border: none; border-top: 1px dashed #999; margin: 10px 0; }
-  .receipt-no { font-size: 11px; color: #555; margin-top: 6px; }
-  .badge { display: inline-block; border: 2px solid #111; padding: 2px 10px;
-           font-size: 12px; font-weight: 900; letter-spacing: 0.15em; margin: 8px 0; }
-  table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-  td { padding: 4px 0; vertical-align: top; }
-  td.label { color: #555; font-size: 11px; width: 48%; }
-  td.value { font-weight: 700; text-align: right; }
-  .big-php { font-size: 22px; font-weight: 900; text-align: center;
-             border: 2px solid #111; padding: 8px; margin: 10px 0; }
-  .footer { font-size: 10px; color: #888; text-align: center; margin-top: 14px; }
+  .bold   { font-weight: bold; }
+  .dot    { border-top: 1px dashed #000; margin: 6px 0; }
+  .row    { display: flex; justify-content: space-between; }
+  .field  { margin-bottom: 1px; }
   @media print {
-    body { padding: 8px; }
-    @page { margin: 8mm; }
+    body { padding: 4px 4px; }
+    @page { margin: 0; size: 80mm auto; }
   }
 </style>
-<script>window.onload = () => { window.print(); }</script>
+<script>window.onload = () => window.print();</script>
 </head>
 <body>
-<div class="center">
-  <div class="logo">KEDCO FX</div>
-  <div class="sub">Pusok, Lapu-Lapu City, Cebu</div>
-  <div class="sub">Foreign Exchange Services</div>
-  <div class="receipt-no">${txn.id}</div>
+
+<div class="center bold">Kedco Foreign Exchange Services</div>
+<div class="center">${branchLocation}</div>
+
+<div style="margin-top:6px">
+  <div>${dateStr}</div>
+  <div>TM#001</div>
+  <div>OR#${txn.id}</div>
 </div>
-<hr class="divider">
-<div class="center"><span class="badge">${txn.type}</span></div>
-<table>
-  <tr><td class="label">Date</td><td class="value">${date}</td></tr>
-  <tr><td class="label">Time</td><td class="value">${txn.time}</td></tr>
-  <tr><td class="label">Cashier</td><td class="value">${txn.cashier}</td></tr>
-  ${txn.customer ? `<tr><td class="label">Customer</td><td class="value">${txn.customer}</td></tr>` : ''}
+
+<div class="dot"></div>
+<div class="center bold">${txn.type}</div>
+<div class="dot"></div>
+
+<table style="width:100%; border-collapse:collapse; font-size:12px;">
+  <tr>
+    <td style="padding:1px 0; white-space:nowrap">${txn.currency}</td>
+    <td style="padding:1px 0; text-align:center; white-space:nowrap">${fmtAmt}&nbsp;x&nbsp;@&nbsp;${fmtRate}</td>
+    <td style="padding:1px 0; text-align:right; white-space:nowrap">${fmtPhp}</td>
+  </tr>
 </table>
-<hr class="divider">
-<table>
-  <tr><td class="label">Currency</td><td class="value">${txn.currency}</td></tr>
-  <tr><td class="label">Foreign Amount</td><td class="value">${fmtFx(txn.foreignAmt, txn.currency, currencies)} ${txn.currency}</td></tr>
-  <tr><td class="label">Rate (PHP / ${txn.currency})</td><td class="value">${txn.rate}</td></tr>
-</table>
-<div class="big-php">PHP ${txn.phpAmt.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>
-<hr class="divider">
-<div class="footer">
-  ${isSell ? `<div style="margin-bottom:6px">This receipt confirms the sale of ${fmtFx(txn.foreignAmt, txn.currency, currencies)} ${txn.currency} to the customer.</div>` : `<div style="margin-bottom:6px">This receipt confirms the purchase of ${fmtFx(txn.foreignAmt, txn.currency, currencies)} ${txn.currency} from the customer.</div>`}
-  Thank you for transacting with Kedco FX.<br>
-  Please keep this receipt for your records.
-</div>
+
+<div class="dot"></div>
+
+<div class="row"><span>TOTAL</span><span>${fmtPhp}</span></div>
+<div class="row"><span>${pm}</span><span>${fmtPhp}</span></div>
+
+<div class="dot"></div>
+
+<div class="field"># PAX &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</div>
+<div class="field">CASHIER &nbsp;&nbsp;: ${txn.cashier}</div>
+
+<div style="margin-top:8px"></div>
+
+<div class="field">SOLD TO &nbsp;&nbsp;:</div>
+<div class="field">ADDRESS &nbsp;&nbsp;:</div>
+<div class="field">TIN &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</div>
+<div class="field">BUSINESS STY :</div>
+<div class="field">SIGNATURE &nbsp;:</div>
+
+<div class="dot"></div>
+
+<div class="center">Thank you.</div>
+<div class="center">This is not an official receipt.</div>
+
 </body>
 </html>`);
     w.document.close();
@@ -415,6 +450,31 @@ export default function CounterShell({
                 ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box',
               }}
             />
+          </div>
+
+          {/* Payment Mode */}
+          <div>
+            <label style={{ ...M, fontSize: 10, color: '#4a5468', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              PAYMENT MODE
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {PAY_MODES.map(m => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setPayMode(m)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
+                    border: `1px solid ${payMode === m ? 'rgba(0,212,170,0.5)' : '#1e2230'}`,
+                    background: payMode === m ? 'rgba(0,212,170,0.1)' : 'transparent',
+                    color: payMode === m ? '#00d4aa' : '#4a5468',
+                    ...M, fontSize: 10, letterSpacing: '0.05em',
+                  }}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Error */}

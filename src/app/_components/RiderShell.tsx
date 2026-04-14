@@ -45,11 +45,12 @@ const PAYMENT_MODES = [
 const NEEDS_BANK = ['BANK_TRANSFER', 'CHEQUE'];
 
 export default function RiderShell({
-  currencies, banks, username,
+  currencies, banks, username, branchLocation,
 }: {
   currencies: CurrencyMeta[];
   banks: Bank[];
   username: string;
+  branchLocation: string;
 }) {
   const router = useRouter();
 
