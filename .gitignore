@@ -4,3 +4,7 @@ node_modules
 .env.local
 .vercel
 next-env.d.ts
+# Playwright
+/playwright-report
+/test-results
+tests/.auth
