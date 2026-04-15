@@ -18,13 +18,18 @@ function makeJWT(sub, role) {
 
 // ── User map ─────────────────────────────────────────────────────────────────
 const USERS = {
-  admin:        { role: 'admin',      full_name: 'Admin User' },
-  supervisor1:  { role: 'supervisor', full_name: 'Supervisor One' },
-  supervisor2:  { role: 'supervisor', full_name: 'Supervisor Two' },
-  cashier1:     { role: 'cashier',    full_name: 'Cashier One' },
-  cashier2:     { role: 'cashier',    full_name: 'Cashier Two' },
-  rider01:      { role: 'rider',      full_name: 'Rider One' },
-  rider02:      { role: 'rider',      full_name: 'Rider Two' },
+  admin:        { role: 'admin',      full_name: 'Admin User',     is_demo: false },
+  supervisor1:  { role: 'supervisor', full_name: 'Supervisor One', is_demo: false },
+  supervisor2:  { role: 'supervisor', full_name: 'Supervisor Two', is_demo: false },
+  cashier1:     { role: 'cashier',    full_name: 'Cashier One',    is_demo: false },
+  cashier2:     { role: 'cashier',    full_name: 'Cashier Two',    is_demo: false },
+  rider01:      { role: 'rider',      full_name: 'Rider One',      is_demo: false },
+  rider02:      { role: 'rider',      full_name: 'Rider Two',      is_demo: false },
+  // ── Demo / recording accounts (excluded from reports, EOD, shift log) ──
+  admintest:    { role: 'admin',      full_name: 'Admin (Demo)',   is_demo: true },
+  cashiertest:  { role: 'cashier',    full_name: 'Cashier (Demo)', is_demo: true },
+  ridertest:    { role: 'rider',      full_name: 'Rider (Demo)',   is_demo: true },
+  devtest:      { role: 'admin',      full_name: 'Dev (Demo)',     is_demo: true },
 };
 
 // ── Fixture data ─────────────────────────────────────────────────────────────
@@ -106,13 +111,13 @@ const AUDIT_LOG = [
 ];
 
 const BANKS = [
-  { id: 1, name: 'BDO',       code: 'BDO' },
-  { id: 2, name: 'BPI',       code: 'BPI' },
-  { id: 3, name: 'Metrobank', code: 'MBK' },
+  { id: 1, name: 'BDO',       code: 'BDO', is_active: true, sort_order: 1 },
+  { id: 2, name: 'BPI',       code: 'BPI', is_active: true, sort_order: 2 },
+  { id: 3, name: 'Metrobank', code: 'MBK', is_active: true, sort_order: 3 },
 ];
 
 const ALL_USERS = Object.entries(USERS).map(([username, u]) => ({
-  username, full_name: u.full_name, role: u.role, is_active: true,
+  username, full_name: u.full_name, role: u.role, is_active: true, is_demo: u.is_demo,
 }));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -189,11 +194,21 @@ const server = createServer(async (req, res) => {
   // Dashboard summary
   if (method === 'GET' && url === '/api/v1/dashboard/summary') return json(res, DASHBOARD_SUMMARY);
 
-  // Banks (rider page)
+  // Banks (rider page — payment modes)
   if (method === 'GET' && url === '/api/v1/banks') return json(res, BANKS);
 
-  // Users list (admin rider dispatch form)
-  if (method === 'GET' && url === '/api/v1/users/') return json(res, ALL_USERS);
+  // Banks (admin manage banks page — server component)
+  if (method === 'GET' && url === '/api/v1/admin/banks') return json(res, BANKS);
+  if (method === 'POST' && url === '/api/v1/admin/banks') {
+    const body = JSON.parse(await readBody(req));
+    const newBank = { id: BANKS.length + 1, name: body.name, code: body.code, is_active: true, sort_order: BANKS.length + 1 };
+    BANKS.push(newBank);
+    return json(res, newBank, 201);
+  }
+  if (method === 'PATCH' && url === '/api/v1/admin/banks') return json(res, { message: 'Updated' });
+
+  // Users list (admin rider dispatch form) — handle both /users and /users/
+  if (method === 'GET' && (url === '/api/v1/users/' || url === '/api/v1/users')) return json(res, ALL_USERS);
 
   // Today's dispatches (rider tab)
   if (method === 'GET' && url === '/api/v1/rider/dispatches/today') return json(res, []);
@@ -286,6 +301,36 @@ const server = createServer(async (req, res) => {
   if (method === 'POST' && url === '/api/v1/rates/today') {
     return json(res, { message: 'Rates saved' });
   }
+
+  // Daily report (admin report page — server component)
+  if (method === 'GET' && /^\/api\/v1\/report\/daily/.test(url)) {
+    return json(res, {
+      date:               today,
+      generated_at:       new Date().toLocaleTimeString('en-PH', { hour:'2-digit', minute:'2-digit' }),
+      total_transactions: 3,
+      total_bought_php:   46250,
+      total_sold_php:     11200,
+      total_than:         100,
+      by_currency: [
+        { code:'USD', name:'US Dollar',     flag:'🇺🇸', category:'MAIN', decimal_places:2,
+          buy_count:1, buy_qty:500,   buy_php:27750, sell_count:1, sell_qty:200, sell_php:11200, than:100 },
+        { code:'JPY', name:'Japanese Yen',  flag:'🇯🇵', category:'MAIN', decimal_places:0,
+          buy_count:1, buy_qty:50000, buy_php:18500, sell_count:0, sell_qty:0,   sell_php:0,    than:0   },
+      ],
+      by_cashier: [
+        { cashier:'cashier1', buy_count:2, buy_php:46250, sell_count:1, sell_php:11200, than:100 },
+      ],
+      transactions: [
+        { id:'TXN-001', time:'09:30 AM', type:'BUY',  source:'COUNTER', currency:'USD', foreign_amt:500,   rate:55.50, php_amt:27750, than:0,   cashier:'cashier1', customer:'Juan dela Cruz' },
+        { id:'TXN-002', time:'10:15 AM', type:'BUY',  source:'COUNTER', currency:'JPY', foreign_amt:50000, rate:0.37,  php_amt:18500, than:0,   cashier:'cashier1', customer:'Walk-in' },
+        { id:'TXN-003', time:'11:00 AM', type:'SELL', source:'COUNTER', currency:'USD', foreign_amt:200,   rate:56.00, php_amt:11200, than:100, cashier:'cashier1', customer:'Maria Santos' },
+      ],
+    });
+  }
+
+  // EOD positions (used by admin/eod and admin/positions backends)
+  if (method === 'POST' && url === '/api/v1/eod/close') return json(res, { message: 'Day closed.' });
+  if (method === 'POST' && url === '/api/v1/positions/today') return json(res, { message: 'Positions saved.' });
 
   // Audit log
   if (method === 'GET' && url === '/api/v1/audit/log') {

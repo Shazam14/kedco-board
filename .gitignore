@@ -8,3 +8,5 @@ next-env.d.ts
 /playwright-report
 /test-results
 tests/.auth
+# Build artifacts
+tsconfig.tsbuildinfo

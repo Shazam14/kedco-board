@@ -22,6 +22,7 @@ interface UserRow {
   role:      string;
   branch:    string | null;
   is_active: boolean;
+  is_demo:   boolean;
 }
 
 interface EditState {
@@ -160,7 +161,12 @@ export default function AdminUsersPage() {
                   <div style={{ display:'grid', gridTemplateColumns:'140px 1fr 120px 80px 80px', padding:'10px 20px', borderBottom: i < roleUsers.length-1 ? '1px solid #1e2230' : 'none', background: isEditing ? 'rgba(255,255,255,0.03)' : i%2===0 ? 'transparent' : 'rgba(255,255,255,0.012)', gap:12, alignItems:'center' }}>
 
                     {/* Username */}
-                    <div style={{ ...S.mono, fontSize:12, color: ROLE_COLOR[role] }}>{u.username}</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <span style={{ ...S.mono, fontSize:12, color: ROLE_COLOR[role] }}>{u.username}</span>
+                      {u.is_demo && (
+                        <span style={{ ...S.mono, fontSize:9, padding:'1px 6px', borderRadius:10, background:'rgba(91,140,255,0.1)', border:'1px solid rgba(91,140,255,0.25)', color:'#5b8cff', letterSpacing:'0.08em' }}>DEMO</span>
+                      )}
+                    </div>
 
                     {/* Name + branch — editable */}
                     {isEditing ? (
