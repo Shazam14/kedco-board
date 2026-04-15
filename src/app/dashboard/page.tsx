@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { redirect } from 'next/navigation';
 import { getDashboardSummary, getTokenRole } from '@/lib/api';
 import DashboardShell from '@/app/_components/DashboardShell';

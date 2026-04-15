@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { redirect } from 'next/navigation';
 import { getCurrencies, getTokenRole, getTokenUsername } from '@/lib/api';
 import CounterShell from '@/app/_components/CounterShell';
