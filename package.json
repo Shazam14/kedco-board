@@ -10,7 +10,9 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "record:demo": "npx playwright test --config=playwright.demo.config.ts",
+    "copy-videos": "mkdir -p public/videos && cp test-results/admin-daily-Admin-daily-workflow-chromium/video.webm public/videos/admin-daily.webm 2>/dev/null; cp test-results/admin-Admin-walkthrough-chromium/video.webm public/videos/admin.webm 2>/dev/null; cp test-results/cashier-Cashier-walkthrough-chromium/video.webm public/videos/cashier.webm 2>/dev/null; cp test-results/rider-Rider-walkthrough-chromium/video.webm public/videos/rider.webm 2>/dev/null; echo 'Videos copied to public/videos/'"
   },
   "dependencies": {
     "@zxing/browser": "^0.1.5",

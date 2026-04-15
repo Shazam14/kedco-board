@@ -31,6 +31,38 @@ export default async function GuidePage() {
           <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: 'var(--muted)' }}>Quick reference for admin, cashiers, and riders.</div>
         </div>
 
+        {/* DEMO VIDEOS */}
+        <Section icon="🎬" title="Demo Videos" color="#00d4aa">
+          <Block title="Watch before your first shift">
+            <p style={{ marginBottom: 16, color: 'var(--muted)' }}>
+              Short screen recordings of the real system — click play, watch, then do it yourself.
+            </p>
+          </Block>
+          {[
+            { file: 'admin-daily', label: 'Admin — Daily Workflow', desc: 'Set rates · Counter · Positions · Dispatch rider · Manage users · EOD · Report', color: '#00d4aa' },
+            { file: 'admin',       label: 'Admin — Full Walkthrough', desc: 'Every admin page in one continuous tour', color: '#5b8cff' },
+            { file: 'cashier',     label: 'Cashier — Counter Workflow', desc: 'Open shift · BUY · SELL · Close shift', color: '#5b8cff' },
+            { file: 'rider',       label: 'Rider — Field Screen', desc: 'Login · BUY · SELL on mobile', color: '#a78bfa' },
+          ].map(v => (
+            <div key={v.file} style={{ background: 'var(--surface2)', border: `1px solid ${v.color}22`, borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 13, fontWeight: 700, color: '#e2e6f0' }}>{v.label}</div>
+                  <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>{v.desc}</div>
+                </div>
+              </div>
+              <video
+                controls
+                style={{ width: '100%', display: 'block', maxHeight: 400, background: '#000' }}
+                src={`/videos/${v.file}.webm`}
+              />
+            </div>
+          ))}
+          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>
+            Videos not loading? Run: <code style={{ color: '#00d4aa' }}>npm run copy-videos</code> after re-recording the demo.
+          </div>
+        </Section>
+
         {/* ADMIN SECTION */}
         <Section icon="👑" title="Admin (Ken)" color="#00d4aa">
           <Block title="Day 1 — First time setup only">
