@@ -129,6 +129,37 @@ function readBody(req) {
   });
 }
 
+// ── Shift state (mutable, resets on each mock-api process start) ─────────────
+const today = new Date().toISOString().split('T')[0];
+
+// cashier1 starts with an open shift so existing counter tests keep passing
+const SHIFTS = new Map([
+  ['cashier1', {
+    id: 'shift-cashier1-today',
+    date: today,
+    cashier: 'cashier1',
+    cashier_name: 'Cashier One',
+    status: 'OPEN',
+    opened_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(), // 2h ago
+    closed_at: null,
+    opening_cash_php: 10000,
+    closing_cash_php: null,
+    expected_cash_php: null,
+    cash_variance: null,
+    txn_count: 3,
+    total_sold_php: 29000,
+    total_bought_php: 11500,
+    total_than: 450,
+    notes: null,
+  }],
+]);
+
+function makeShiftOut(cashier) {
+  const s = SHIFTS.get(cashier);
+  if (!s || s.status !== 'OPEN') return null;
+  return s;
+}
+
 // ── Server ────────────────────────────────────────────────────────────────────
 const server = createServer(async (req, res) => {
   const url    = (req.url ?? '').split('?')[0];
@@ -267,6 +298,74 @@ const server = createServer(async (req, res) => {
     if (action) results = results.filter(e => e.action     === action);
     if (user)   results = results.filter(e => e.changed_by === user);
     return json(res, results);
+  }
+
+  // ── Shifts ───────────────────────────────────────────────────────────────
+  // GET /api/v1/shifts/active — returns open shift for current cashier or 404
+  if (method === 'GET' && url === '/api/v1/shifts/active') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const shift   = makeShiftOut(payload.sub);
+    if (!shift) return json(res, { detail: 'No active shift.' }, 404);
+    return json(res, shift);
+  }
+
+  // POST /api/v1/shifts/open
+  if (method === 'POST' && url === '/api/v1/shifts/open') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const cashier = payload.sub ?? 'cashier1';
+    const body    = JSON.parse(await readBody(req));
+    if (SHIFTS.has(cashier) && SHIFTS.get(cashier).status === 'OPEN') {
+      return json(res, { detail: 'You already have an open shift today.' }, 409);
+    }
+    const shift = {
+      id: `shift-${cashier}-${Date.now()}`,
+      date: today,
+      cashier,
+      cashier_name: USERS[cashier]?.full_name ?? cashier,
+      status: 'OPEN',
+      opened_at: new Date().toISOString(),
+      closed_at: null,
+      opening_cash_php: body.opening_cash_php,
+      closing_cash_php: null,
+      expected_cash_php: null,
+      cash_variance: null,
+      txn_count: 0,
+      total_sold_php: 0,
+      total_bought_php: 0,
+      total_than: 0,
+      notes: body.notes ?? null,
+    };
+    SHIFTS.set(cashier, shift);
+    return json(res, shift, 201);
+  }
+
+  // POST /api/v1/shifts/close
+  if (method === 'POST' && url === '/api/v1/shifts/close') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const cashier = payload.sub ?? 'cashier1';
+    const body    = JSON.parse(await readBody(req));
+    const shift   = SHIFTS.get(cashier);
+    if (!shift || shift.status !== 'OPEN') {
+      return json(res, { detail: 'No open shift found for today.' }, 404);
+    }
+    const expected = Math.round((shift.opening_cash_php + shift.total_sold_php - shift.total_bought_php) * 100) / 100;
+    const variance = Math.round((body.closing_cash_php - expected) * 100) / 100;
+    Object.assign(shift, {
+      status: 'CLOSED',
+      closed_at: new Date().toISOString(),
+      closing_cash_php: body.closing_cash_php,
+      expected_cash_php: expected,
+      cash_variance: variance,
+    });
+    return json(res, shift);
+  }
+
+  // GET /api/v1/shifts/today — admin view
+  if (method === 'GET' && url === '/api/v1/shifts/today') {
+    return json(res, [...SHIFTS.values()]);
   }
 
   // Fallback

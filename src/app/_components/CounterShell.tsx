@@ -52,6 +52,61 @@ export default function CounterShell({
   const PAY_MODES = ['CASH', 'GCASH', 'MAYA', 'SHOPEEPAY', 'BANK TRANSFER', 'CHEQUE', 'OTHER'] as const;
   type PayMode = typeof PAY_MODES[number];
 
+  // ── Shift state ──────────────────────────────────────────────────────────
+  type Shift = {
+    id: string; cashier: string; cashier_name: string; status: string;
+    opened_at: string; opening_cash_php: number;
+    closing_cash_php?: number; expected_cash_php?: number; cash_variance?: number;
+    txn_count?: number; total_sold_php?: number; total_bought_php?: number; total_than?: number;
+  };
+  const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
+  const [openingCash,   setOpeningCash]   = useState('');
+  const [closingCash,   setClosingCash]   = useState('');
+  const [shiftLoading,  setShiftLoading]  = useState(false);
+  const [shiftError,    setShiftError]    = useState<string | null>(null);
+  const [showEndModal,  setShowEndModal]  = useState(false);
+  const [shiftClosed,   setShiftClosed]   = useState<Shift | null>(null);
+
+  useEffect(() => {
+    fetch('/api/counter/shift', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => setShift(data.status === 'OPEN' ? data : null))
+      .catch(() => setShift(null));
+  }, []);
+
+  async function handleOpenShift() {
+    const cash = parseFloat(openingCash.replace(/,/g, ''));
+    if (isNaN(cash) || cash < 0) { setShiftError('Enter a valid opening cash amount.'); return; }
+    setShiftLoading(true); setShiftError(null);
+    try {
+      const res = await fetch('/api/counter/shift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'open', opening_cash_php: cash }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setShiftError(data.detail ?? 'Failed to open shift.'); }
+      else { setShift(data); setOpeningCash(''); }
+    } finally { setShiftLoading(false); }
+  }
+
+  async function handleCloseShift() {
+    const cash = parseFloat(closingCash.replace(/,/g, ''));
+    if (isNaN(cash) || cash < 0) { setShiftError('Enter actual closing cash amount.'); return; }
+    setShiftLoading(true); setShiftError(null);
+    try {
+      const res = await fetch('/api/counter/shift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'close', closing_cash_php: cash }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setShiftError(data.detail ?? 'Failed to close shift.'); }
+      else { setShiftClosed(data); setShift(null); setShowEndModal(false); setClosingCash(''); }
+    } finally { setShiftLoading(false); }
+  }
+
+  // ── Transaction state ─────────────────────────────────────────────────────
   const [type,     setType]     = useState<'BUY' | 'SELL'>('BUY');
   const [ccy,      setCcy]      = useState<CurrencyMeta | null>(null);
   const [amt,      setAmt]      = useState('');
@@ -256,8 +311,193 @@ export default function CounterShell({
   const noRatesAtAll = currencies.every(c => !c.rateSet);
   const ratesCount   = currencies.filter(c => c.rateSet).length;
 
+  const overlayStyle: React.CSSProperties = {
+    position: 'fixed', inset: 0, zIndex: 200,
+    background: 'rgba(7,9,13,0.92)', backdropFilter: 'blur(8px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+  };
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 16, padding: 32, width: '100%', maxWidth: 440,
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
+
+      {/* ── OPEN SHIFT OVERLAY (blocks counter until shift is opened) ── */}
+      {shift === null && !shiftClosed && (
+        <div style={overlayStyle}>
+          <div style={cardStyle}>
+            <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.2em', marginBottom: 8 }}>
+              START SHIFT
+            </div>
+            <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
+              Open Your Shift
+            </div>
+            <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 28 }}>
+              Count your drawer and enter the opening PHP cash before processing transactions.
+            </div>
+
+            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              OPENING CASH (PHP)
+            </label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={openingCash}
+              onChange={e => setOpeningCash(e.target.value.replace(/[^0-9.,]/g, ''))}
+              onFocus={e => e.target.select()}
+              placeholder="0.00"
+              autoFocus
+              data-testid="opening-cash-input"
+              style={{
+                width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '14px 16px', color: '#e2e6f0',
+                ...M, fontSize: 24, outline: 'none', boxSizing: 'border-box', marginBottom: 20,
+              }}
+            />
+
+            {shiftError && (
+              <div style={{ ...M, fontSize: 11, color: '#ff5c5c', marginBottom: 16 }}>✗ {shiftError}</div>
+            )}
+
+            <button
+              onClick={handleOpenShift}
+              disabled={shiftLoading || !openingCash}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 10, border: 'none',
+                background: shiftLoading || !openingCash ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)',
+                color: shiftLoading || !openingCash ? 'var(--muted)' : '#000',
+                ...Y, fontSize: 14, fontWeight: 800, cursor: shiftLoading || !openingCash ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {shiftLoading ? 'OPENING...' : 'OPEN SHIFT'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── SHIFT CLOSED CONFIRMATION ── */}
+      {shiftClosed && (
+        <div style={overlayStyle}>
+          <div style={cardStyle}>
+            <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.2em', marginBottom: 8 }}>
+              SHIFT CLOSED
+            </div>
+            <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 24 }}>
+              Shift Summary
+            </div>
+            {[
+              ['Transactions',    String(shiftClosed.txn_count ?? 0)],
+              ['Total Sold (PHP)', php(shiftClosed.total_sold_php ?? 0)],
+              ['Total Bought (PHP)', php(shiftClosed.total_bought_php ?? 0)],
+              ['Total THAN',       php(shiftClosed.total_than ?? 0)],
+              ['Opening Cash',     php(shiftClosed.opening_cash_php)],
+              ['Expected Cash',    php(shiftClosed.expected_cash_php ?? 0)],
+              ['Actual Cash',      php(shiftClosed.closing_cash_php ?? 0)],
+              ['Variance',         php(shiftClosed.cash_variance ?? 0)],
+            ].map(([k, v]) => (
+              <div key={k} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '8px 0', borderBottom: '1px solid var(--border)',
+              }}>
+                <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{k}</span>
+                <span style={{
+                  ...M, fontSize: 12,
+                  color: k === 'Variance'
+                    ? ((shiftClosed.cash_variance ?? 0) === 0 ? '#00d4aa' : '#ff5c5c')
+                    : '#e2e6f0',
+                  fontWeight: k === 'Variance' ? 700 : 400,
+                }}>{v}</span>
+              </div>
+            ))}
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 10, border: 'none',
+                background: 'linear-gradient(135deg,#00d4aa,#00a884)',
+                color: '#000', ...Y, fontSize: 14, fontWeight: 800, cursor: 'pointer', marginTop: 24,
+              }}
+            >
+              LOGOUT
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── END SHIFT MODAL ── */}
+      {showEndModal && shift && (
+        <div style={overlayStyle}>
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <div style={{ ...M, fontSize: 10, color: '#f5a623', letterSpacing: '0.2em', marginBottom: 4 }}>
+                  END SHIFT
+                </div>
+                <div style={{ ...Y, fontSize: 20, fontWeight: 800 }}>Close Your Shift</div>
+              </div>
+              <button onClick={() => { setShowEndModal(false); setShiftError(null); }}
+                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>
+                ✕
+              </button>
+            </div>
+
+            {/* Shift summary so far */}
+            {[
+              ['Transactions',       String(shift.txn_count ?? txns.length)],
+              ['Total Sold (PHP)',   php(shift.total_sold_php ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
+              ['Total Bought (PHP)', php(shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0))],
+              ['Opening Cash',       php(shift.opening_cash_php)],
+            ].map(([k, v]) => (
+              <div key={k} style={{
+                display: 'flex', justifyContent: 'space-between',
+                padding: '7px 0', borderBottom: '1px solid var(--border)',
+              }}>
+                <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{k}</span>
+                <span style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>{v}</span>
+              </div>
+            ))}
+
+            <div style={{ marginTop: 20 }}>
+              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+                ACTUAL CLOSING CASH (PHP) — count your drawer
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={closingCash}
+                onChange={e => setClosingCash(e.target.value.replace(/[^0-9.,]/g, ''))}
+                onFocus={e => e.target.select()}
+                placeholder="0.00"
+                autoFocus
+                data-testid="closing-cash-input"
+                style={{
+                  width: '100%', background: 'var(--bg)', border: '1px solid rgba(245,166,35,0.4)',
+                  borderRadius: 8, padding: '14px 16px', color: '#f5a623',
+                  ...M, fontSize: 22, outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {shiftError && (
+              <div style={{ ...M, fontSize: 11, color: '#ff5c5c', marginTop: 12 }}>✗ {shiftError}</div>
+            )}
+
+            <button
+              onClick={handleCloseShift}
+              disabled={shiftLoading || !closingCash}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 10, border: 'none', marginTop: 20,
+                background: shiftLoading || !closingCash ? 'var(--border)' : 'linear-gradient(135deg,#f5a623,#e09000)',
+                color: shiftLoading || !closingCash ? 'var(--muted)' : '#000',
+                ...Y, fontSize: 14, fontWeight: 800, cursor: shiftLoading || !closingCash ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {shiftLoading ? 'CLOSING...' : 'CLOSE SHIFT'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {scanning && (
         <IDScanner
@@ -313,10 +553,23 @@ export default function CounterShell({
             <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginTop: -2 }}>Counter</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>
             <span style={{ color: '#e2e6f0' }}>{username}</span>
           </div>
+          {shift && (
+            <button
+              onClick={() => { setShiftError(null); setShowEndModal(true); }}
+              style={{
+                padding: '5px 14px', borderRadius: 6,
+                border: '1px solid rgba(245,166,35,0.4)',
+                background: 'rgba(245,166,35,0.08)',
+                color: '#f5a623', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
+              }}
+            >
+              END SHIFT
+            </button>
+          )}
           <button onClick={handleLogout} style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}>
             LOGOUT
           </button>

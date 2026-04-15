@@ -54,6 +54,20 @@ export default async function GuidePage() {
               <li><Route href="/admin/rates">/admin/rates</Route> — view or update today&apos;s rates anytime</li>
             </ul>
           </Block>
+          <Block title="During the day — monitoring cashier shifts">
+            <p style={{ marginBottom: 10, color: 'var(--muted)' }}>Go to <Route href="/admin/shifts">/admin/shifts</Route> to see every cashier&apos;s shift for today:</p>
+            <ul>
+              <li>Who opened a shift and at what time</li>
+              <li>How many transactions each cashier did</li>
+              <li>Total sold, total bought, total THAN per cashier</li>
+              <li>Shift status — OPEN (still working) or CLOSED (ended shift)</li>
+              <li>On close: expected cash, actual cash declared, and variance</li>
+            </ul>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.15)', borderRadius: 8, fontSize: 11, color: 'var(--muted)', lineHeight: 1.7 }}>
+              A <strong style={{ color: '#ff5c5c' }}>negative variance</strong> on close means the cashier is short — investigate before end of day.
+              A <strong style={{ color: '#00d4aa' }}>zero variance</strong> means the drawer counted perfectly.
+            </div>
+          </Block>
           <Block title="End of day">
             <ol>
               <li>Go to <Route href="/admin/eod">/admin/eod</Route> → <strong>End of Day</strong> — closes the day, calculates THAN, carries stock to tomorrow</li>
@@ -64,8 +78,18 @@ export default async function GuidePage() {
 
         {/* CASHIER SECTION */}
         <Section icon="🖥️" title="Cashier — Counter" color="#5b8cff">
-          <Block title="Every transaction">
+          <Block title="Starting your shift">
             <p style={{ marginBottom: 12, color: 'var(--muted)' }}>You land here automatically after login at <Route href="/counter">/counter</Route>.</p>
+            <ol>
+              <li><strong>Count your drawer</strong> — tally the PHP cash you are starting with</li>
+              <li style={{ marginTop: 8 }}>The screen will show an <strong>Open Shift</strong> overlay — enter your opening cash amount and tap <strong>OPEN SHIFT</strong></li>
+              <li style={{ marginTop: 8 }}>The counter unlocks — you can now process transactions</li>
+            </ol>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(91,140,255,0.06)', border: '1px solid rgba(91,140,255,0.15)', borderRadius: 8, fontSize: 11, color: '#5b8cff' }}>
+              You must open a shift before the first transaction of the day. The system blocks the counter until this is done.
+            </div>
+          </Block>
+          <Block title="Every transaction">
             <ol>
               <li>Choose <strong>BUY</strong> (customer selling to Kedco) or <strong>SELL</strong> (customer buying from Kedco)</li>
               <li>Pick the currency</li>
@@ -74,6 +98,18 @@ export default async function GuidePage() {
               <li>Select <strong>payment mode</strong> — Cash, GCash, Maya, ShopeePay, Bank Transfer, Cheque, or Other (default is Cash)</li>
               <li>Hit <strong>Submit</strong> → print receipt for the customer</li>
             </ol>
+          </Block>
+          <Block title="Ending your shift">
+            <ol>
+              <li>Tap the <strong>END SHIFT</strong> button in the top-right of the counter screen</li>
+              <li style={{ marginTop: 8 }}>The system shows your shift summary — transaction count, total sold, total bought, opening cash</li>
+              <li style={{ marginTop: 8 }}><strong>Count your drawer</strong> — enter the actual PHP cash you have now</li>
+              <li style={{ marginTop: 8 }}>Tap <strong>CLOSE SHIFT</strong> — the system calculates the expected amount and shows you the variance</li>
+            </ol>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(91,140,255,0.06)', border: '1px solid rgba(91,140,255,0.15)', borderRadius: 8, fontSize: 11, color: '#5b8cff', lineHeight: 1.7 }}>
+              <strong>Expected cash formula:</strong> Opening cash + all SELL receipts − all BUY payouts.<br />
+              A zero variance means your drawer matches perfectly. A negative variance means you&apos;re short — flag it to admin.
+            </div>
           </Block>
           <Note>If the screen shows a &quot;rates not set&quot; warning — let admin know to set today&apos;s rates first.</Note>
         </Section>
@@ -170,23 +206,40 @@ export default async function GuidePage() {
               <li style={{ marginTop: 6 }}>Check: Dashboard → Capital tab shows total PHP capital (should match your manual tally)</li>
             </ol>
           </Block>
-          <Block title="Step 3 — Test a BUY transaction (counter)">
+          <Block title="Step 3 — Open a cashier shift">
             <ol>
               <li>Log in as <strong>cashier1</strong> → auto-lands on <Route href="/counter">/counter</Route></li>
+              <li style={{ marginTop: 6 }}>The <strong>Open Shift</strong> overlay appears — enter ₱10,000 as the opening cash (test amount)</li>
+              <li style={{ marginTop: 6 }}>Tap <strong>OPEN SHIFT</strong> — counter unlocks</li>
+              <li style={{ marginTop: 6 }}>Log in as admin → go to <Route href="/admin/shifts">/admin/shifts</Route> — verify cashier1&apos;s shift shows as OPEN</li>
+            </ol>
+          </Block>
+          <Block title="Step 4 — Test a BUY transaction (counter)">
+            <ol>
+              <li>Still logged in as cashier1 on the counter</li>
               <li style={{ marginTop: 6 }}>Select BUY, pick a currency (e.g. USD), enter amount and rate</li>
               <li style={{ marginTop: 6 }}>Submit → receipt prints (or opens print dialog)</li>
               <li style={{ marginTop: 6 }}>Check: Dashboard → Transactions shows this transaction</li>
               <li style={{ marginTop: 6 }}>Check: Dashboard → Positions — USD stock went up by the amount you bought</li>
             </ol>
           </Block>
-          <Block title="Step 4 — Test a SELL transaction (counter)">
+          <Block title="Step 5 — Test a SELL transaction (counter)">
             <ol>
               <li>On the same counter, select SELL, pick same currency</li>
               <li style={{ marginTop: 6 }}>Submit → check that THAN (gain) appears on the receipt and on Dashboard</li>
               <li style={{ marginTop: 6 }}>Check: THAN = (sell rate − average cost) × units sold — compare to your manual calculation</li>
             </ol>
           </Block>
-          <Block title="Step 5 — Test a rider transaction">
+          <Block title="Step 6 — Close the cashier shift">
+            <ol>
+              <li>On the counter, tap <strong>END SHIFT</strong> (top right, amber button)</li>
+              <li style={{ marginTop: 6 }}>The modal shows: transactions done, total sold, total bought, opening cash</li>
+              <li style={{ marginTop: 6 }}>Count your test drawer → enter the actual cash → tap <strong>CLOSE SHIFT</strong></li>
+              <li style={{ marginTop: 6 }}>Check: <Route href="/admin/shifts">/admin/shifts</Route> shows the shift as CLOSED with expected cash, actual cash, and variance</li>
+              <li style={{ marginTop: 6 }}>Verify: expected cash = ₱10,000 opening + SELL receipts − BUY payouts</li>
+            </ol>
+          </Block>
+          <Block title="Step 7 — Test a rider transaction">
             <ol>
               <li>Log in as <strong>admin</strong> → Dashboard → Riders tab → dispatch a rider with starting PHP cash</li>
               <li style={{ marginTop: 6 }}>Log in as <strong>rider01</strong> on a phone → PHP balance card shows starting cash</li>
@@ -194,7 +247,7 @@ export default async function GuidePage() {
               <li style={{ marginTop: 6 }}>Check: admin can see rider&apos;s transactions in the Riders tab</li>
             </ol>
           </Block>
-          <Block title="Step 6 — Run End of Day">
+          <Block title="Step 8 — Run End of Day">
             <ol>
               <li>Log in as admin → <Route href="/admin/eod">/admin/eod</Route> → run EOD</li>
               <li style={{ marginTop: 6 }}>Go to <Route href="/admin/report">/admin/report</Route> → print to PDF</li>
@@ -274,6 +327,7 @@ export default async function GuidePage() {
                   ['/admin/positions',  'Opening positions (Day 1 setup only)'],
                   ['/admin/eod',        'End of day'],
                   ['/admin/report',     'Daily report — print to PDF'],
+                  ['/admin/shifts',     'Teller shift log — all cashier shifts today, variance on close'],
                   ['/admin/users',      'Manage staff accounts'],
                   ['/guide',            'This page'],
                 ].map(([route, desc], i) => (
@@ -292,6 +346,8 @@ export default async function GuidePage() {
           {[
             ['First day setup — where do I start?', 'Go to /admin/rates first to set today\'s rates, then /admin/positions to enter your opening stock. After that you\'re ready to transact. From Day 2 onwards, only rates need to be set — stock carries over automatically from EOD.'],
             ['"Rates not set" on the counter', 'Admin needs to set today\'s rates at /admin/rates first.'],
+            ['The counter is blocked with "Open Shift"', 'Count your drawer and enter the opening PHP cash. You must open a shift before the counter unlocks. This is by design — it ensures every cashier\'s cash is tracked from the start.'],
+            ['What is the expected closing cash?', 'Opening cash + total PHP received from SELLs − total PHP paid out for BUYs. If your count matches this number, variance is zero. A mismatch means short or over — flag it to admin.'],
             ['What is THAN?', 'Kedco\'s margin per sell transaction — the difference between your average cost for the currency and what you sold it for. Your profit per transaction.'],
             ['Dashboard shows no data', 'Today\'s rates haven\'t been set yet. Admin sets them at /admin/rates.'],
             ['"Session ended due to inactivity"', 'The system logs out after 20 minutes idle — just a security measure. Log back in.'],
