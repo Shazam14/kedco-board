@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CurrencyMeta, Transaction } from '@/lib/types';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
+import { useNumberInput } from '@/hooks/useNumberInput';
 import IDScanner, { type ScannedID } from '@/app/_components/IDScanner';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
@@ -60,8 +61,8 @@ export default function CounterShell({
     txn_count?: number; total_sold_php?: number; total_bought_php?: number; total_than?: number;
   };
   const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
-  const [openingCash,   setOpeningCash]   = useState('');
-  const [closingCash,   setClosingCash]   = useState('');
+  const openingCashInput = useNumberInput('', 2);
+  const closingCashInput = useNumberInput('', 2);
   const [shiftLoading,  setShiftLoading]  = useState(false);
   const [shiftError,    setShiftError]    = useState<string | null>(null);
   const [showEndModal,  setShowEndModal]  = useState(false);
@@ -75,7 +76,7 @@ export default function CounterShell({
   }, []);
 
   async function handleOpenShift() {
-    const cash = parseFloat(openingCash.replace(/,/g, ''));
+    const cash = parseFloat(openingCashInput.raw);
     if (isNaN(cash) || cash < 0) { setShiftError('Enter a valid opening cash amount.'); return; }
     setShiftLoading(true); setShiftError(null);
     try {
@@ -86,12 +87,12 @@ export default function CounterShell({
       });
       const data = await res.json();
       if (!res.ok) { setShiftError(data.detail ?? 'Failed to open shift.'); }
-      else { setShift(data); setOpeningCash(''); }
+      else { setShift(data); openingCashInput.setValue(''); }
     } finally { setShiftLoading(false); }
   }
 
   async function handleCloseShift() {
-    const cash = parseFloat(closingCash.replace(/,/g, ''));
+    const cash = parseFloat(closingCashInput.raw);
     if (isNaN(cash) || cash < 0) { setShiftError('Enter actual closing cash amount.'); return; }
     setShiftLoading(true); setShiftError(null);
     try {
@@ -102,15 +103,15 @@ export default function CounterShell({
       });
       const data = await res.json();
       if (!res.ok) { setShiftError(data.detail ?? 'Failed to close shift.'); }
-      else { setShiftClosed(data); setShift(null); setShowEndModal(false); setClosingCash(''); }
+      else { setShiftClosed(data); setShift(null); setShowEndModal(false); closingCashInput.setValue(''); }
     } finally { setShiftLoading(false); }
   }
 
   // ── Transaction state ─────────────────────────────────────────────────────
   const [type,     setType]     = useState<'BUY' | 'SELL'>('BUY');
   const [ccy,      setCcy]      = useState<CurrencyMeta | null>(null);
-  const [amt,      setAmt]      = useState('');
-  const [rate,     setRate]     = useState('');
+  const amtInput  = useNumberInput('', 8);
+  const rateInput = useNumberInput('', 8);
   const [cust,     setCust]     = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -134,7 +135,8 @@ export default function CounterShell({
   useEffect(() => {
     if (!ccy) return;
     const r = type === 'BUY' ? ccy.todayBuyRate : ccy.todaySellRate;
-    setRate(r != null ? r.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 8 }) : '');
+    rateInput.setValue(r != null ? String(r) : '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ccy, type]);
 
   const fetchTxns = useCallback(async () => {
@@ -142,24 +144,13 @@ export default function CounterShell({
     if (res.ok) setTxns(await res.json());
   }, []);
 
-  // Strip commas before any numeric operation (inputs may be comma-formatted)
-  const rawAmt  = amt.replace(/,/g, '');
-  const rawRate = rate.replace(/,/g, '');
-
   const phpTotal =
-    ccy && rawAmt && rawRate && +rawAmt > 0 && +rawRate > 0
-      ? +rawAmt * +rawRate
+    ccy && amtInput.raw && rateInput.raw && +amtInput.raw > 0 && +rateInput.raw > 0
+      ? +amtInput.raw * +rateInput.raw
       : null;
 
   const canSubmit =
-    !!ccy?.rateSet && !!rawAmt && +rawAmt > 0 && !!rawRate && +rawRate > 0 && !loading;
-
-  // Format a numeric string with commas (for blur handler)
-  const fmtOnBlur = (val: string, maxDp = 8) => {
-    const n = parseFloat(val.replace(/,/g, ''));
-    if (isNaN(n)) return val;
-    return n.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: maxDp });
-  };
+    !!ccy?.rateSet && !!amtInput.raw && +amtInput.raw > 0 && !!rateInput.raw && +rateInput.raw > 0 && !loading;
 
   async function handleSubmit() {
     if (!canSubmit || !ccy) return;
@@ -173,8 +164,8 @@ export default function CounterShell({
           type,
           source: 'COUNTER',
           currency: ccy.code,
-          foreign_amt: +rawAmt,
-          rate: +rawRate,
+          foreign_amt: +amtInput.raw,
+          rate: +rateInput.raw,
           cashier: username,
           customer: cust || undefined,
           id_number: idNumber || undefined,
@@ -194,7 +185,7 @@ export default function CounterShell({
           paymentMode: data.payment_mode ?? payMode,
         };
         setFlash(txn);
-        setAmt('');
+        amtInput.setValue('');
         setCust('');
         setIdNumber('');
         await fetchTxns();
@@ -344,9 +335,10 @@ export default function CounterShell({
             <input
               type="text"
               inputMode="decimal"
-              value={openingCash}
-              onChange={e => setOpeningCash(e.target.value.replace(/[^0-9.,]/g, ''))}
-              onFocus={e => e.target.select()}
+              ref={openingCashInput.ref}
+              value={openingCashInput.value}
+              onChange={openingCashInput.onChange}
+              onFocus={openingCashInput.onFocus}
               placeholder="0.00"
               autoFocus
               data-testid="opening-cash-input"
@@ -363,12 +355,12 @@ export default function CounterShell({
 
             <button
               onClick={handleOpenShift}
-              disabled={shiftLoading || !openingCash}
+              disabled={shiftLoading || !openingCashInput.value}
               style={{
                 width: '100%', padding: '14px', borderRadius: 10, border: 'none',
-                background: shiftLoading || !openingCash ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)',
-                color: shiftLoading || !openingCash ? 'var(--muted)' : '#000',
-                ...Y, fontSize: 14, fontWeight: 800, cursor: shiftLoading || !openingCash ? 'not-allowed' : 'pointer',
+                background: shiftLoading || !openingCashInput.value ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)',
+                color: shiftLoading || !openingCashInput.value ? 'var(--muted)' : '#000',
+                ...Y, fontSize: 14, fontWeight: 800, cursor: shiftLoading || !openingCashInput.value ? 'not-allowed' : 'pointer',
               }}
             >
               {shiftLoading ? 'OPENING...' : 'OPEN SHIFT'}
@@ -465,9 +457,10 @@ export default function CounterShell({
               <input
                 type="text"
                 inputMode="decimal"
-                value={closingCash}
-                onChange={e => setClosingCash(e.target.value.replace(/[^0-9.,]/g, ''))}
-                onFocus={e => e.target.select()}
+                ref={closingCashInput.ref}
+                value={closingCashInput.value}
+                onChange={closingCashInput.onChange}
+                onFocus={closingCashInput.onFocus}
                 placeholder="0.00"
                 autoFocus
                 data-testid="closing-cash-input"
@@ -485,12 +478,12 @@ export default function CounterShell({
 
             <button
               onClick={handleCloseShift}
-              disabled={shiftLoading || !closingCash}
+              disabled={shiftLoading || !closingCashInput.value}
               style={{
                 width: '100%', padding: '14px', borderRadius: 10, border: 'none', marginTop: 20,
-                background: shiftLoading || !closingCash ? 'var(--border)' : 'linear-gradient(135deg,#f5a623,#e09000)',
-                color: shiftLoading || !closingCash ? 'var(--muted)' : '#000',
-                ...Y, fontSize: 14, fontWeight: 800, cursor: shiftLoading || !closingCash ? 'not-allowed' : 'pointer',
+                background: shiftLoading || !closingCashInput.value ? 'var(--border)' : 'linear-gradient(135deg,#f5a623,#e09000)',
+                color: shiftLoading || !closingCashInput.value ? 'var(--muted)' : '#000',
+                ...Y, fontSize: 14, fontWeight: 800, cursor: shiftLoading || !closingCashInput.value ? 'not-allowed' : 'pointer',
               }}
             >
               {shiftLoading ? 'CLOSING...' : 'CLOSE SHIFT'}
@@ -673,10 +666,10 @@ export default function CounterShell({
             <input
               type="text"
               inputMode="decimal"
-              value={amt}
-              onChange={e => setAmt(e.target.value.replace(/[^0-9.,]/g, ''))}
-              onBlur={() => setAmt(fmtOnBlur(amt))}
-              onFocus={e => { e.target.select(); setAmt(rawAmt); }}
+              ref={amtInput.ref}
+              value={amtInput.value}
+              onChange={amtInput.onChange}
+              onFocus={amtInput.onFocus}
               placeholder="0.00"
               style={{
                 width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
@@ -694,10 +687,10 @@ export default function CounterShell({
             <input
               type="text"
               inputMode="decimal"
-              value={rate}
-              onChange={e => setRate(e.target.value.replace(/[^0-9.,]/g, ''))}
-              onBlur={() => setRate(fmtOnBlur(rate))}
-              onFocus={e => { e.target.select(); setRate(rawRate); }}
+              ref={rateInput.ref}
+              value={rateInput.value}
+              onChange={rateInput.onChange}
+              onFocus={rateInput.onFocus}
               style={{
                 width: '100%', background: 'var(--surface)', border: `1px solid ${typeColor}44`,
                 borderRadius: 8, padding: '12px 14px', color: typeColor,
