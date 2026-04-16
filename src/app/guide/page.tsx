@@ -41,6 +41,7 @@ export default async function GuidePage() {
           {[
             { file: 'admin-daily', label: 'Admin — Daily Workflow', desc: 'Set rates · Counter · Positions · Dispatch rider · Manage users · EOD · Report', color: '#00d4aa' },
             { file: 'admin',       label: 'Admin — Full Walkthrough', desc: 'Every admin page in one continuous tour', color: '#5b8cff' },
+            { file: 'credits',     label: 'Admin — Special Credits', desc: 'Create UPFRONT credit · Create installment credit · Mark payment received · Cancel', color: '#f5a623' },
             { file: 'cashier',     label: 'Cashier — Counter Workflow', desc: 'Open shift · BUY · SELL · Close shift', color: '#5b8cff' },
             { file: 'rider',       label: 'Rider — Field Screen', desc: 'Login · BUY · SELL on mobile', color: '#a78bfa' },
           ].map(v => (
@@ -105,6 +106,33 @@ export default async function GuidePage() {
               <li>Go to <Route href="/admin/eod">/admin/eod</Route> → <strong>End of Day</strong> — closes the day, calculates THAN, carries stock to tomorrow</li>
               <li style={{ marginTop: 8 }}>Go to <Route href="/admin/report">/admin/report</Route> → <strong>Daily Report</strong> — full breakdown by currency and cashier, print or save as PDF</li>
             </ol>
+          </Block>
+          <Block title="Special Credits — lending to trusted customers">
+            <p style={{ marginBottom: 12, color: 'var(--muted)' }}>
+              Go to <Route href="/admin/credits">/admin/credits</Route> to create and manage credits extended to special customers.
+              Only admin can access this screen.
+            </p>
+            <p style={{ marginBottom: 10, fontWeight: 600 }}>Option A — Upfront interest:</p>
+            <ol>
+              <li>Click <strong>+ New Credit</strong></li>
+              <li style={{ marginTop: 6 }}>Enter customer name, currency, principal amount, and interest</li>
+              <li style={{ marginTop: 6 }}>Select <strong>Upfront (Option A)</strong> — system shows how much Ken gives out and how much interest is kept</li>
+              <li style={{ marginTop: 6 }}>Set the payback due date → <strong>Save Credit</strong></li>
+              <li style={{ marginTop: 6 }}>When the customer pays back — expand the credit → click <strong>Mark Paid</strong></li>
+            </ol>
+            <p style={{ marginTop: 14, marginBottom: 10, fontWeight: 600 }}>Option B — Installment:</p>
+            <ol>
+              <li>Same as above but select <strong>Installment (Option B)</strong></li>
+              <li style={{ marginTop: 6 }}>Enter the number of payments — system auto-computes the amount per payment</li>
+              <li style={{ marginTop: 6 }}>Set each due date (Ken picks the exact calendar dates)</li>
+              <li style={{ marginTop: 6 }}>As each payment arrives — expand the credit → <strong>Mark Paid</strong> on that installment</li>
+              <li style={{ marginTop: 6 }}>Credit auto-completes when all installments are paid</li>
+            </ol>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.15)', borderRadius: 8, fontSize: 11, color: '#f5a623', lineHeight: 1.7 }}>
+              Credits show up in the Daily Report under <strong>Special Credits</strong> — disbursements (cash out),
+              payments received (cash in), and interest income for the day.
+              Overdue installments are highlighted in red automatically.
+            </div>
           </Block>
         </Section>
 
@@ -361,6 +389,7 @@ export default async function GuidePage() {
                   ['/admin/report',     'Daily report — print to PDF'],
                   ['/admin/shifts',     'Teller shift log — all cashier shifts today, variance on close'],
                   ['/admin/users',      'Manage staff accounts'],
+                  ['/admin/credits',    'Special credits — lending tracker for trusted customers (admin only)'],
                   ['/guide',            'This page'],
                 ].map(([route, desc], i) => (
                   <tr key={route} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
