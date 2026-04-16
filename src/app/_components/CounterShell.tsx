@@ -563,6 +563,9 @@ export default function CounterShell({
               END SHIFT
             </button>
           )}
+          <a href="/passbook" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.3)', background: 'transparent', color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
+            PASSBOOK
+          </a>
           <button onClick={handleLogout} style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}>
             LOGOUT
           </button>
