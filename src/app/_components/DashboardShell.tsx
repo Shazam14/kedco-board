@@ -43,9 +43,14 @@ interface TrackerEntry {
   status: 'PENDING' | 'FULLY PAID';
   depositedDate?: string; branch: string;
 }
-interface PassbookEntry {
-  id: string; date: string; amount: number;
-  description: string; refId?: string; branch: string;
+interface PbEntry {
+  id: string; bank_code: string; bank_name: string;
+  amount: number; deposited_date: string; logged_by: string;
+  notes: string | null; running_total: number;
+}
+interface PbBank {
+  bank_id: number; bank_name: string; bank_code: string;
+  total: number; entries: PbEntry[];
 }
 
 const S: Record<string, React.CSSProperties> = {
@@ -692,19 +697,27 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
   const [role, setRole]         = useState<'ADMIN'|'CASHIER'>('CASHIER');
   const [view, setView]         = useState<'balances'|'passbook'>('balances');
   const [entries, setEntries]   = useState<TrackerEntry[]>([]);
-  const [passbook, setPb]       = useState<PassbookEntry[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [branch, setBranch]     = useState('PUSOK');
   const [f, setF] = useState({ customer:'', currency:'USD', foreignAmt:'', cashPaid:'', checkNo:'', bank:'' });
+  const [pbData, setPbData]     = useState<PbBank[]>([]);
+  const [pbSel, setPbSel]       = useState<number | null>(null);
+  const [pbLoading, setPbLoading] = useState(false);
 
   useEffect(() => {
-    try {
-      const e = localStorage.getItem('kedco-tracker'); if (e) setEntries(JSON.parse(e));
-      const p = localStorage.getItem('kedco-passbook'); if (p) setPb(JSON.parse(p));
-    } catch {}
+    try { const e = localStorage.getItem('kedco-tracker'); if (e) setEntries(JSON.parse(e)); } catch {}
   }, []);
   useEffect(() => { localStorage.setItem('kedco-tracker', JSON.stringify(entries)); }, [entries]);
-  useEffect(() => { localStorage.setItem('kedco-passbook', JSON.stringify(passbook)); }, [passbook]);
+
+  useEffect(() => {
+    if (view !== 'passbook') return;
+    setPbLoading(true);
+    fetch('/api/admin/passbook')
+      .then(r => r.ok ? r.json() : [])
+      .then((d: PbBank[]) => { setPbData(d); if (d.length && pbSel === null) setPbSel(d[0].bank_id); })
+      .finally(() => setPbLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
 
   const rate     = positions.find(c => c.code === f.currency)?.todaySellRate ?? 0;
   const totalPhp = (parseFloat(f.foreignAmt) || 0) * rate;
@@ -722,24 +735,19 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
       status: isPaid ? 'FULLY PAID' : 'PENDING', branch,
     };
     setEntries(prev => [entry, ...prev]);
-    if (!isPaid) {
-      const pb: PassbookEntry = { id:`PB-${Date.now()}`, date: new Date().toLocaleDateString('en-PH'), amount: checkAmt, description:`Pending check — ${f.customer} (${f.checkNo||'no ref'})`, refId: entry.id, branch };
-      setPb(prev => [pb, ...prev]);
-    }
     setF({ customer:'', currency:'USD', foreignAmt:'', cashPaid:'', checkNo:'', bank:'' });
     setShowForm(false);
   };
 
   const markDeposited = (id: string) => {
     setEntries(prev => prev.map(e => e.id === id ? { ...e, status: 'FULLY PAID' as const, depositedDate: new Date().toLocaleDateString('en-PH') } : e));
-    setPb(prev => prev.map(p => p.refId === id ? { ...p, description: p.description.replace('Pending check', 'Deposited check') } : p));
   };
 
   const pending      = entries.filter(e => e.status === 'PENDING');
   const paid         = entries.filter(e => e.status === 'FULLY PAID');
   const pendingTotal = pending.reduce((s, e) => s + e.checkAmt, 0);
-  const branchPb     = passbook.filter(p => p.branch === branch);
-  const pbBalance    = branchPb.reduce((s, p) => s + p.amount, 0);
+  const pbBank       = pbData.find(b => b.bank_id === pbSel) ?? null;
+  const pbGrandTotal = pbData.reduce((s, b) => s + b.total, 0);
 
   const inp = (label: string, key: keyof typeof f, opts?: { type?: string; placeholder?: string }) => (
     <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
@@ -886,35 +894,67 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
 
       {view === 'passbook' && (
         <>
-          {role === 'ADMIN' && <div style={{ ...S.card, padding:'24px 28px', border:'1px solid rgba(91,140,255,0.28)', position:'relative', overflow:'hidden' }}>
+          {/* Grand total + link to full passbook */}
+          <div style={{ ...S.card, padding:'24px 28px', border:'1px solid rgba(91,140,255,0.28)', position:'relative', overflow:'hidden', display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
             <div style={{ position:'absolute', top:-40, right:-40, width:130, height:130, borderRadius:'50%', background:'radial-gradient(circle,rgba(91,140,255,0.1) 0%,transparent 70%)', pointerEvents:'none' }}/>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:8 }}>PASSBOOK BALANCE · {branch} BRANCH</div>
-            <div style={{ fontFamily:"'Syne',sans-serif", fontSize:42, fontWeight:800, color:'#5b8cff', lineHeight:1, marginBottom:8 }}>{php(pbBalance)}</div>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)' }}>{branchPb.length} deposit{branchPb.length!==1?'s':''} recorded</div>
-          </div>}
-          <div style={S.card}>
-            <div style={{ padding:'14px 22px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}><div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700 }}>Deposit Log</div></div>
-            {branchPb.length === 0 ? (
-              <div style={{ padding:'40px', textAlign:'center', fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)' }}>No deposits recorded.</div>
-            ) : (
-              <>
-                <div style={{ display:'grid', gridTemplateColumns:'100px 1fr 140px', padding:'9px 22px', borderBottom:'1px solid var(--border)', fontFamily:"'DM Mono',monospace", fontSize:9, color:'var(--muted)', letterSpacing:'0.1em', gap:12 }}>
-                  <span>DATE</span><span>DESCRIPTION</span><span style={{ textAlign:'right' }}>AMOUNT</span>
-                </div>
-                {branchPb.map((p, i) => (
-                  <div key={p.id} style={{ display:'grid', gridTemplateColumns:'100px 1fr 140px', padding:'13px 22px', borderBottom:i<branchPb.length-1?'1px solid var(--border)':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:12 }}>
-                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)' }}>{p.date}</span>
-                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11 }}>{p.description}</span>
-                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:13, color:'#5b8cff', fontWeight:600, textAlign:'right' }}>{php(p.amount)}</span>
-                  </div>
-                ))}
-                <div style={{ display:'grid', gridTemplateColumns:'100px 1fr 140px', padding:'13px 22px', borderTop:'2px solid rgba(91,140,255,0.35)', background:'rgba(91,140,255,0.06)', gap:12, alignItems:'center' }}>
-                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', gridColumn:'span 2' }}>TOTAL BALANCE</span>
-                  <span style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, color:'#5b8cff', textAlign:'right' }}>{php(pbBalance)}</span>
-                </div>
-              </>
-            )}
+            <div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:8 }}>TOTAL ALL BANKS</div>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontSize:42, fontWeight:800, color:'#5b8cff', lineHeight:1, marginBottom:8 }}>{pbLoading ? '…' : php(pbGrandTotal)}</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)' }}>{pbData.length} bank{pbData.length !== 1 ? 's' : ''} · {pbData.reduce((s,b)=>s+b.entries.length,0)} deposit{pbData.reduce((s,b)=>s+b.entries.length,0)!==1?'s':''}</div>
+            </div>
+            <a href="/admin/passbook" style={{ fontFamily:"'DM Mono',monospace", fontSize:10, padding:'6px 16px', borderRadius:6, border:'1px solid rgba(91,140,255,0.35)', color:'#5b8cff', textDecoration:'none', whiteSpace:'nowrap' }}>Full View →</a>
           </div>
+
+          {/* Bank tabs */}
+          {pbData.length > 0 && (
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+              {pbData.map(b => (
+                <button key={b.bank_id} onClick={() => setPbSel(b.bank_id)}
+                  style={{ fontFamily:"'DM Mono',monospace", fontSize:10, padding:'7px 16px', borderRadius:7, cursor:'pointer', letterSpacing:'0.08em', border:`1px solid ${pbSel===b.bank_id?'#5b8cff':'var(--border)'}`, background:pbSel===b.bank_id?'rgba(91,140,255,0.1)':'transparent', color:pbSel===b.bank_id?'#5b8cff':'var(--muted)' }}>
+                  {b.bank_code} <span style={{ marginLeft:6 }}>{php(b.total)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Selected bank ledger */}
+          {pbBank && (
+            <div style={S.card}>
+              <div style={{ padding:'14px 22px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div style={{ fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700 }}>{pbBank.bank_name}</div>
+                <span style={{ fontFamily:"'Syne',sans-serif", fontSize:14, fontWeight:800, color:'#5b8cff' }}>{php(pbBank.total)}</span>
+              </div>
+              {pbBank.entries.length === 0 ? (
+                <div style={{ padding:'40px', textAlign:'center', fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)' }}>No deposits yet.</div>
+              ) : (
+                <>
+                  <div style={{ display:'grid', gridTemplateColumns:'100px 1fr 120px 130px', padding:'9px 22px', borderBottom:'1px solid var(--border)', fontFamily:"'DM Mono',monospace", fontSize:9, color:'var(--muted)', letterSpacing:'0.1em', gap:12 }}>
+                    <span>DATE</span><span>NOTES</span><span>LOGGED BY</span><span style={{ textAlign:'right' }}>AMOUNT</span>
+                  </div>
+                  {[...pbBank.entries].reverse().map((e, i) => (
+                    <div key={e.id} style={{ display:'grid', gridTemplateColumns:'100px 1fr 120px 130px', padding:'12px 22px', borderBottom:i<pbBank.entries.length-1?'1px solid var(--border)':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:12 }}>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)' }}>{new Date(e.deposited_date+'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</span>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: e.notes ? '#e2e6f0' : 'var(--muted)', fontStyle: e.notes ? 'normal' : 'italic' }}>{e.notes ?? '—'}</span>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)' }}>{e.logged_by}</span>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:13, color:'#5b8cff', fontWeight:600, textAlign:'right' }}>{php(e.amount)}</span>
+                    </div>
+                  ))}
+                  <div style={{ display:'grid', gridTemplateColumns:'100px 1fr 120px 130px', padding:'13px 22px', borderTop:'2px solid rgba(91,140,255,0.35)', background:'rgba(91,140,255,0.06)', gap:12, alignItems:'center' }}>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', gridColumn:'span 3' }}>BALANCE</span>
+                    <span style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, color:'#5b8cff', textAlign:'right' }}>{php(pbBank.total)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {!pbLoading && pbData.length === 0 && (
+            <div style={{ ...S.card, padding:'48px', textAlign:'center' }}>
+              <div style={{ fontSize:32, marginBottom:12 }}>📒</div>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:700, marginBottom:6 }}>No banks set up yet</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)' }}>Add banks in Admin → Manage Banks, then cashiers can log deposits.</div>
+            </div>
+          )}
         </>
       )}
     </div>

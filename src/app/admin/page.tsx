@@ -66,6 +66,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     color: '#f5a623',
   },
   {
+    href:  '/admin/passbook',
+    icon:  '📒',
+    title: 'Bank Passbook',
+    desc:  'View all bank deposits per account. Running balance per bank at a glance.',
+    color: '#00d4aa',
+  },
+  {
     href:  '/admin/audit',
     icon:  '🔍',
     title: 'Audit Trail',
