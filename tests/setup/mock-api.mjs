@@ -116,6 +116,25 @@ const BANKS = [
   { id: 3, name: 'Metrobank', code: 'MBK', is_active: true, sort_order: 3 },
 ];
 
+// ── Special Credits ───────────────────────────────────────────────────────────
+let CREDITS = [
+  {
+    id: 'credit-001',
+    customer_name: 'Sample Customer',
+    currency_code: 'PHP',
+    principal: 50000,
+    interest: 2500,
+    credit_type: 'UPFRONT',
+    status: 'ACTIVE',
+    disbursed_date: new Date().toISOString().split('T')[0],
+    notes: 'Existing test credit',
+    created_by: 'admin',
+    installments: [
+      { id: 'inst-001', installment_no: 1, due_date: '2026-05-15', amount: 50000, paid_at: null, received_by: null },
+    ],
+  },
+];
+
 const ALL_USERS = Object.entries(USERS).map(([username, u]) => ({
   username, full_name: u.full_name, role: u.role, is_active: true, is_demo: u.is_demo,
 }));
@@ -196,6 +215,66 @@ const server = createServer(async (req, res) => {
 
   // Banks (rider page — payment modes)
   if (method === 'GET' && url === '/api/v1/banks') return json(res, BANKS);
+
+  // ── Special Credits ──────────────────────────────────────────────────────
+  if (method === 'GET' && /^\/api\/v1\/credits\/?(\?.*)?$/.test(url)) {
+    const qs = new URLSearchParams((url.split('?')[1] ?? ''));
+    const sf = qs.get('status_filter');
+    const result = sf ? CREDITS.filter(c => c.status === sf) : CREDITS;
+    return json(res, result);
+  }
+  if (method === 'POST' && url === '/api/v1/credits/') {
+    const body = JSON.parse(await readBody(req));
+    const id = `credit-${Date.now()}`;
+    const credit = {
+      id,
+      customer_name:  body.customer_name,
+      currency_code:  body.currency_code,
+      principal:      body.principal,
+      interest:       body.interest,
+      credit_type:    body.credit_type,
+      status:         'ACTIVE',
+      disbursed_date: body.disbursed_date,
+      notes:          body.notes ?? null,
+      created_by:     'admin',
+      installments:   body.installments.map((inst, i) => ({
+        id:             `inst-${id}-${i+1}`,
+        installment_no: i + 1,
+        due_date:       inst.due_date,
+        amount:         inst.amount,
+        paid_at:        null,
+        received_by:    null,
+      })),
+    };
+    CREDITS.unshift(credit);
+    return json(res, credit, 201);
+  }
+  if (method === 'GET' && /^\/api\/v1\/credits\/[^/]+$/.test(url)) {
+    const id = url.split('/').pop();
+    const credit = CREDITS.find(c => c.id === id);
+    if (!credit) return json(res, { detail: 'Not found' }, 404);
+    return json(res, credit);
+  }
+  if (method === 'PATCH' && /\/installments\/.+\/pay$/.test(url)) {
+    const parts   = url.split('/');
+    const creditId = parts[parts.indexOf('credits') + 1];
+    const instId   = parts[parts.indexOf('installments') + 1];
+    const credit = CREDITS.find(c => c.id === creditId);
+    if (!credit) return json(res, { detail: 'Not found' }, 404);
+    const inst = credit.installments.find(i => i.id === instId);
+    if (!inst) return json(res, { detail: 'Not found' }, 404);
+    inst.paid_at = new Date().toISOString().split('T')[0];
+    inst.received_by = 'admin';
+    if (credit.installments.every(i => i.paid_at)) credit.status = 'COMPLETED';
+    return json(res, credit);
+  }
+  if (method === 'PATCH' && /\/credits\/.+\/cancel$/.test(url)) {
+    const id = url.split('/').at(-2);
+    const credit = CREDITS.find(c => c.id === id);
+    if (!credit) return json(res, { detail: 'Not found' }, 404);
+    credit.status = 'CANCELLED';
+    return json(res, credit);
+  }
 
   // Banks (admin manage banks page — server component)
   if (method === 'GET' && url === '/api/v1/admin/banks') return json(res, BANKS);
@@ -325,6 +404,15 @@ const server = createServer(async (req, res) => {
         { id:'TXN-002', time:'10:15 AM', type:'BUY',  source:'COUNTER', currency:'JPY', foreign_amt:50000, rate:0.37,  php_amt:18500, than:0,   cashier:'cashier1', customer:'Walk-in' },
         { id:'TXN-003', time:'11:00 AM', type:'SELL', source:'COUNTER', currency:'USD', foreign_amt:200,   rate:56.00, php_amt:11200, than:100, cashier:'cashier1', customer:'Maria Santos' },
       ],
+      special_credits: {
+        disbursements: [
+          { id: 'credit-001', customer_name: 'Sample Customer', currency_code: 'PHP', principal: 50000, interest: 2500, credit_type: 'UPFRONT', cash_out: 47500 },
+        ],
+        payments: [],
+        total_cash_out: 47500,
+        total_cash_in: 0,
+        interest_income: 2500,
+      },
     });
   }
 

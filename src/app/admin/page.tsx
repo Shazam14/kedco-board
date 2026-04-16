@@ -59,6 +59,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     color: '#5b8cff',
   },
   {
+    href:  '/admin/credits',
+    icon:  '💰',
+    title: 'Special Credits',
+    desc:  'Track credit extended to special customers — upfront or installment with custom due dates.',
+    color: '#f5a623',
+  },
+  {
     href:  '/admin/audit',
     icon:  '🔍',
     title: 'Audit Trail',
