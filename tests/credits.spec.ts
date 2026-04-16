@@ -39,9 +39,10 @@ test.describe('Special Credits page', () => {
 
   test('Cancel button closes form', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Credit' }).click();
-    await expect(page.getByText('NEW CREDIT')).toBeVisible();
-    await page.getByRole('button', { name: 'Cancel' }).click();
-    await expect(page.getByText('NEW CREDIT')).not.toBeVisible();
+    await expect(page.getByText('NEW CREDIT', { exact: true })).toBeVisible();
+    // The toggle button changes to 'Cancel' — click it to close the form
+    await page.getByRole('button', { name: 'Cancel' }).first().click();
+    await expect(page.getByText('NEW CREDIT', { exact: true })).not.toBeVisible();
   });
 
   test('expand/collapse credit row', async ({ page }) => {
@@ -69,7 +70,7 @@ test.describe('Create UPFRONT credit (Option A)', () => {
 
     // Option A is default — verify the summary text appears
     await expect(page.getByText(/Ken gives:/)).toBeVisible();
-    await expect(page.getByText(/95,000.00 PHP/)).toBeVisible();
+    await expect(page.getByText(/₱95,000\.00/)).toBeVisible();
 
     // Set payback due date
     await page.locator('input[type="date"]').last().fill('2026-05-16');
@@ -96,8 +97,8 @@ test.describe('Create INSTALLMENT credit (Option B)', () => {
     await page.getByRole('button', { name: 'Installment (Option B)' }).click();
 
     // Verify total due summary
-    await expect(page.getByText(/105,000.00 PHP/)).toBeVisible();
-    await expect(page.getByText(/52,500.00 PHP/)).toBeVisible();
+    await expect(page.getByText(/₱105,000\.00/)).toBeVisible();
+    await expect(page.getByText(/₱52,500\.00/)).toBeVisible();
 
     // 2 payments (default) — fill both due dates
     const datePickers = page.locator('input[type="date"]');
@@ -122,6 +123,10 @@ test.describe('Credit actions', () => {
     // Click Mark Paid
     await page.getByRole('button', { name: 'Mark Paid' }).click();
 
+    // Sample Customer is UPFRONT (1 installment) — marking it paid completes the credit.
+    // Switch to COMPLETED filter so the row stays visible.
+    await page.getByRole('button', { name: 'COMPLETED' }).click();
+
     // Paid confirmation appears
     await expect(page.getByText(/Paid .+ by admin/)).toBeVisible();
   });
@@ -143,6 +148,9 @@ test.describe('Credit actions', () => {
     await page.getByText('Customer To Cancel').click();
     page.once('dialog', dialog => dialog.accept());
     await page.getByRole('button', { name: 'Cancel Credit' }).click();
+
+    // Cancelled credits leave the ACTIVE filter — switch to CANCELLED to see the badge
+    await page.getByRole('button', { name: 'CANCELLED' }).click();
 
     // Status badge changes to CANCELLED
     await expect(page.locator('span', { hasText: 'CANCELLED' }).first()).toBeVisible();
