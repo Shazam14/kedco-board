@@ -56,17 +56,16 @@ export function tableLabel(table: string): string {
 // ── Timestamp formatting ─────────────────────────────────────────────────────
 
 /**
- * Format ISO timestamp → "Apr 14, 2026 · 14:32"
- * Uses a fixed locale so tests are deterministic.
+ * Format ISO timestamp → "Apr 14, 2026 · 14:32" in Philippine time.
  */
 export function formatTimestamp(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   const date = d.toLocaleDateString('en-PH', {
-    month: 'short', day: 'numeric', year: 'numeric',
+    timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric',
   });
   const time = d.toLocaleTimeString('en-PH', {
-    hour: '2-digit', minute: '2-digit', hour12: false,
+    timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: false,
   });
   return `${date} · ${time}`;
 }

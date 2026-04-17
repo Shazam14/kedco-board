@@ -538,7 +538,24 @@ export default function CounterShell({
               </div>
             ))}
 
-            <div style={{ marginTop: 20 }}>
+            {/* Expected closing cash — cashier compares this against their physical count */}
+            {(() => {
+              const soldAmt   = shift.total_sold_php   ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0);
+              const boughtAmt = shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
+              const expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt;
+              return (
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 14px', marginTop: 12, borderRadius: 8,
+                  background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.3)',
+                }}>
+                  <span style={{ ...M, fontSize: 11, color: '#f5a623', letterSpacing: '0.1em' }}>EXPECTED CASH</span>
+                  <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: '#f5a623' }}>{php(expected)}</span>
+                </div>
+              );
+            })()}
+
+            <div style={{ marginTop: 16 }}>
               <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
                 ACTUAL CLOSING CASH (PHP) — count your drawer
               </label>

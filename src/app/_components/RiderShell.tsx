@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CurrencyMeta, Transaction } from '@/lib/types';
+import { useNumberInput } from '@/hooks/useNumberInput';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -14,19 +15,6 @@ function fmtFx(amt: number, code: string, currencies: { code: string; decimalPla
   return amt.toLocaleString('en-PH', { minimumFractionDigits: dp, maximumFractionDigits: dp });
 }
 
-function fmtRate(val: string): string {
-  const cleaned = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-  const [intPart, decPart] = cleaned.split('.');
-  const formatted = (intPart || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return decPart !== undefined ? `${formatted}.${decPart}` : formatted;
-}
-
-function fmtAmt(val: string): string {
-  const cleaned = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-  const [intPart, decPart] = cleaned.split('.');
-  const formatted = (intPart || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return decPart !== undefined ? `${formatted}.${decPart}` : formatted;
-}
 
 interface Bank     { id: number; name: string; code: string; }
 interface Dispatch { id: string; cash_php: number; status: string; dispatch_time: string | null; }
@@ -61,8 +49,8 @@ export default function RiderShell({
 
   const [type,        setType]        = useState<'BUY' | 'SELL'>('BUY');
   const [ccy,         setCcy]         = useState<CurrencyMeta | null>(null);
-  const [amt,         setAmt]         = useState('');
-  const [rate,        setRate]        = useState('');
+  const amtInput  = useNumberInput('', 8);
+  const rateInput = useNumberInput('', 6);
   const [cust,        setCust]        = useState('');
   const [payMode,     setPayMode]     = useState('CASH');
   const [bankId,      setBankId]      = useState<number | null>(null);
@@ -83,7 +71,7 @@ export default function RiderShell({
   const [dispatchId,   setDispatchId]   = useState<string | null>(null);
   const [borrowSrcType,setBorrowSrcType] = useState<'BRANCH'|'RIDER'>('BRANCH');
   const [borrowSrc,    setBorrowSrc]    = useState('');
-  const [borrowAmt,    setBorrowAmt]    = useState('');
+  const borrowAmtInput = useNumberInput('', 2);
   const [borrowNote,   setBorrowNote]   = useState('');
   const [borrowSaving, setBorrowSaving] = useState(false);
   const [borrowOk,     setBorrowOk]     = useState(false);
@@ -92,7 +80,8 @@ export default function RiderShell({
   useEffect(() => {
     if (!ccy) return;
     const r = type === 'BUY' ? ccy.todayBuyRate : ccy.todaySellRate;
-    setRate(r != null ? fmtRate(String(r)) : '');
+    rateInput.setValue(r != null ? String(r) : '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ccy, type]);
 
   // Reset bank when payment mode changes away from bank/cheque
@@ -126,13 +115,11 @@ export default function RiderShell({
 
   useEffect(() => { if (dispatchId) fetchBorrows(); }, [dispatchId, fetchBorrows]);
 
-  const rawAmt  = amt.replace(/,/g, '');
-  const rawRate = rate.replace(/,/g, '');
-  const phpTotal = ccy && rawAmt && rawRate && +rawAmt > 0 && +rawRate > 0
-    ? +rawAmt * +rawRate : null;
+  const phpTotal = ccy && amtInput.raw && rateInput.raw && +amtInput.raw > 0 && +rateInput.raw > 0
+    ? +amtInput.raw * +rateInput.raw : null;
 
-  const canSubmit = !!ccy?.rateSet && !!rawAmt && +rawAmt > 0
-    && !!rawRate && +rawRate > 0
+  const canSubmit = !!ccy?.rateSet && !!amtInput.raw && +amtInput.raw > 0
+    && !!rateInput.raw && +rateInput.raw > 0
     && (!NEEDS_BANK.includes(payMode) || bankId !== null)
     && !loading;
 
@@ -148,8 +135,8 @@ export default function RiderShell({
           type,
           source: 'RIDER',
           currency: ccy.code,
-          foreign_amt: +rawAmt,
-          rate: +rawRate,
+          foreign_amt: +amtInput.raw,
+          rate: +rateInput.raw,
           cashier: username,
           customer: cust || undefined,
           payment_mode: payMode,
@@ -170,7 +157,7 @@ export default function RiderShell({
           cashier: data.cashier, customer: data.customer ?? undefined,
           paymentLabel: bankName ? `${modeLabel} · ${bankName}` : modeLabel,
         });
-        setAmt(''); setCust(''); setPayMode('CASH'); setBankId(null); setPayPending(false);
+        amtInput.setValue(''); setCust(''); setPayMode('CASH'); setBankId(null); setPayPending(false);
         await fetchTxns();
         setTimeout(() => setFlash(null), 6000);
       }
@@ -180,7 +167,7 @@ export default function RiderShell({
   }
 
   async function handleBorrow() {
-    if (!dispatchId || !borrowSrc || !borrowAmt) return;
+    if (!dispatchId || !borrowSrc || !borrowAmtInput.raw) return;
     setBorrowSaving(true);
     const res = await fetch('/api/rider/borrow', {
       method: 'POST',
@@ -189,13 +176,13 @@ export default function RiderShell({
         dispatch_id: dispatchId,
         source_type: borrowSrcType,
         source_name: borrowSrc,
-        amount_php: +borrowAmt.replace(/,/g, ''),
+        amount_php: +borrowAmtInput.raw,
         notes: borrowNote || undefined,
       }),
     });
     if (res.ok) {
       setBorrowOk(true);
-      setBorrowSrc(''); setBorrowAmt(''); setBorrowNote('');
+      setBorrowSrc(''); borrowAmtInput.setValue(''); setBorrowNote('');
       fetchBorrows();
       setTimeout(() => { setBorrowOk(false); setShowBorrow(false); }, 2000);
     }
@@ -378,9 +365,10 @@ export default function RiderShell({
             </label>
             <input
               type="text" inputMode="decimal"
-              value={amt}
-              onChange={e => setAmt(fmtAmt(e.target.value))}
-              onFocus={e => { e.target.select(); setAmt(rawAmt); }}
+              ref={amtInput.ref}
+              value={amtInput.value}
+              onChange={amtInput.onChange}
+              onFocus={amtInput.onFocus}
               placeholder="0.00"
               style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px', color: '#e2e6f0', ...M, fontSize: 22, outline: 'none', boxSizing: 'border-box' }}
             />
@@ -393,9 +381,10 @@ export default function RiderShell({
             </label>
             <input
               type="text" inputMode="decimal"
-              value={rate}
-              onChange={e => setRate(fmtRate(e.target.value))}
-              onFocus={e => { e.target.select(); setRate(rawRate); }}
+              ref={rateInput.ref}
+              value={rateInput.value}
+              onChange={rateInput.onChange}
+              onFocus={rateInput.onFocus}
               style={{ width: '100%', background: 'var(--surface)', border: `1px solid ${typeColor}44`, borderRadius: 10, padding: '16px', color: typeColor, ...M, fontSize: 18, outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
@@ -495,7 +484,12 @@ export default function RiderShell({
                   <input value={borrowSrc} onChange={e => setBorrowSrc(e.target.value)}
                     placeholder={borrowSrcType === 'BRANCH' ? 'Branch name' : 'Rider name'}
                     style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
-                  <input value={borrowAmt} onChange={e => setBorrowAmt(fmtAmt(e.target.value))}
+                  <input
+                    type="text" inputMode="decimal"
+                    ref={borrowAmtInput.ref}
+                    value={borrowAmtInput.value}
+                    onChange={borrowAmtInput.onChange}
+                    onFocus={borrowAmtInput.onFocus}
                     placeholder="Amount (PHP)"
                     style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
                   <input value={borrowNote} onChange={e => setBorrowNote(e.target.value)}
@@ -503,8 +497,8 @@ export default function RiderShell({
                     style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8 }} />
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <button onClick={() => setShowBorrow(false)} style={{ padding: '10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 12, cursor: 'pointer' }}>Cancel</button>
-                    <button onClick={handleBorrow} disabled={borrowSaving || !borrowSrc || !borrowAmt}
-                      style={{ padding: '10px', borderRadius: 8, border: 'none', background: (!borrowSrc || !borrowAmt) ? 'var(--border)' : '#f5a623', color: (!borrowSrc || !borrowAmt) ? 'var(--muted)' : '#000', ...M, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                    <button onClick={handleBorrow} disabled={borrowSaving || !borrowSrc || !borrowAmtInput.raw}
+                      style={{ padding: '10px', borderRadius: 8, border: 'none', background: (!borrowSrc || !borrowAmtInput.raw) ? 'var(--border)' : '#f5a623', color: (!borrowSrc || !borrowAmtInput.raw) ? 'var(--muted)' : '#000', ...M, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                       {borrowOk ? '✓ Saved!' : borrowSaving ? '…' : 'Save'}
                     </button>
                   </div>

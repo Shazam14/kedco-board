@@ -1,5 +1,7 @@
 'use client';
 import { useState } from 'react';
+import { useNumberInput } from '@/hooks/useNumberInput';
+import { fmtDate, fmtDateTime, todayPHT } from '@/lib/pht';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -12,7 +14,9 @@ const inp: React.CSSProperties = {
 const label: React.CSSProperties = { fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'var(--muted)', marginBottom: 4, display: 'block', letterSpacing: '0.08em' };
 
 interface Installment { id: string; installment_no: number; due_date: string; amount: number; paid_at: string | null; received_by: string | null; }
-interface Credit { id: string; customer_name: string; currency_code: string; principal: number; interest: number; credit_type: string; status: string; disbursed_date: string; notes: string | null; created_by: string; installments: Installment[]; }
+interface Draw        { id: string; amount: number; notes: string | null; created_by: string; created_at: string; }
+interface Credit      { id: string; customer_name: string; currency_code: string; principal: number; interest: number; credit_type: string; status: string; disbursed_date: string; notes: string | null; created_by: string; installments: Installment[]; draws: Draw[]; }
+interface DrawRules   { interval_minutes: number; max_per_day: number; max_amount: number; }
 
 const php = (n: number, currency = 'PHP') =>
   currency === 'PHP'
@@ -21,23 +25,35 @@ const php = (n: number, currency = 'PHP') =>
 
 const STATUS_COLOR: Record<string, string> = { ACTIVE: '#f5a623', COMPLETED: '#00d4aa', CANCELLED: '#ff5c5c' };
 
-function fmtDate(d: string) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
 export default function CreditShell({ credits: initial }: { credits: Credit[] }) {
   const [credits, setCredits]         = useState<Credit[]>(initial);
   const [filter, setFilter]           = useState<'ALL' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'>('ACTIVE');
   const [showForm, setShowForm]       = useState(false);
   const [expanded, setExpanded]       = useState<string | null>(null);
-  const [busy, setBusy]               = useState<string | null>(null); // id of item being updated
+  const [busy, setBusy]               = useState<string | null>(null);
   const [error, setError]             = useState<string | null>(null);
+
+  // Draw state
+  const [drawCreditId, setDrawCreditId] = useState<string | null>(null);
+  const drawAmtInput                    = useNumberInput('', 2);
+  const [drawNote, setDrawNote]         = useState('');
+  const [drawSaving, setDrawSaving]     = useState(false);
+  const [drawError, setDrawError]       = useState<string | null>(null);
+
+  // Settings
+  const [showSettings, setShowSettings]     = useState(false);
+  const [rules, setRules]                   = useState<DrawRules | null>(null);
+  const [ruleInterval, setRuleInterval]     = useState('');
+  const [ruleMaxDay, setRuleMaxDay]         = useState('');
+  const [ruleMaxAmt, setRuleMaxAmt]         = useState('');
+  const [rulesSaving, setRulesSaving]       = useState(false);
 
   // ── New credit form state ─────────────────────────────────────────────────
   const [fName, setFName]             = useState('');
   const [fCurrency, setFCurrency]     = useState('PHP');
-  const [fPrincipal, setFPrincipal]   = useState('');
-  const [fInterest, setFInterest]     = useState('');
+  const fPrincipalInput               = useNumberInput('', 2);
+  const fInterestRateInput            = useNumberInput('', 4);
   const [fType, setFType]             = useState<'UPFRONT' | 'INSTALLMENT'>('UPFRONT');
   const [fDate, setFDate]             = useState('');
   const [fNotes, setFNotes]           = useState('');
@@ -46,7 +62,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
   const [saving, setSaving]           = useState(false);
 
   function resetForm() {
-    setFName(''); setFCurrency('PHP'); setFPrincipal(''); setFInterest('');
+    setFName(''); setFCurrency('PHP'); fPrincipalInput.setValue(''); fInterestRateInput.setValue('');
     setFType('UPFRONT'); setFDate(''); setFNotes(''); setFCount('2'); setFDates(['', '']);
   }
 
@@ -60,13 +76,14 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
     });
   }
 
-  const principal = parseFloat(fPrincipal) || 0;
-  const interest  = parseFloat(fInterest)  || 0;
-  const count     = parseInt(fCount) || 1;
+  const principal    = parseFloat(fPrincipalInput.raw) || 0;
+  const interestRate = parseFloat(fInterestRateInput.raw) || 0;
+  const interest     = Math.round(principal * interestRate / 100 * 100) / 100;
+  const count        = parseInt(fCount) || 1;
   const amountPerInstallment = fType === 'UPFRONT' ? principal : Math.round(((principal + interest) / count) * 100) / 100;
 
   async function submitCredit() {
-    if (!fName.trim() || !fPrincipal || !fInterest || !fDate) { setError('Fill in all required fields.'); return; }
+    if (!fName.trim() || !fPrincipalInput.raw || !fInterestRateInput.raw || !fDate) { setError('Fill in all required fields.'); return; }
     if (fDates.some(d => !d)) { setError('Set all due dates.'); return; }
 
     setSaving(true); setError(null);
@@ -119,6 +136,50 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
     setBusy(null);
   }
 
+  async function handleDraw() {
+    if (!drawCreditId || !drawAmtInput.raw) return;
+    setDrawSaving(true); setDrawError(null);
+    const res = await fetch(`/api/admin/credits/${drawCreditId}/draws`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: +drawAmtInput.raw, notes: drawNote.trim() || null }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setCredits(prev => prev.map(c => c.id === drawCreditId ? data : c));
+      setDrawCreditId(null); drawAmtInput.setValue(''); setDrawNote('');
+    } else {
+      setDrawError(data.detail ?? 'Failed to record draw.');
+    }
+    setDrawSaving(false);
+  }
+
+  async function loadRules() {
+    const res = await fetch('/api/admin/credits/settings/draw-rules');
+    if (res.ok) {
+      const r: DrawRules = await res.json();
+      setRules(r);
+      setRuleInterval(String(r.interval_minutes));
+      setRuleMaxDay(String(r.max_per_day));
+      setRuleMaxAmt(String(r.max_amount));
+    }
+  }
+
+  async function saveRules() {
+    setRulesSaving(true);
+    const res = await fetch('/api/admin/credits/settings/draw-rules', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        interval_minutes: parseInt(ruleInterval) || 60,
+        max_per_day:      parseInt(ruleMaxDay)   || 24,
+        max_amount:       parseFloat(ruleMaxAmt) || 0,
+      }),
+    });
+    if (res.ok) setRules(await res.json());
+    setRulesSaving(false);
+  }
+
   const filtered = credits.filter(c => filter === 'ALL' || c.status === filter);
 
   return (
@@ -139,11 +200,45 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
         <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.2em', marginBottom: 4 }}>ADMIN · SPECIAL CREDITS</div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div style={{ ...Y, fontSize: 24, fontWeight: 800 }}>Special Customer Credits</div>
-          <button onClick={() => { setShowForm(v => !v); setError(null); }}
-            style={{ ...Y, fontSize: 12, fontWeight: 800, padding: '8px 20px', borderRadius: 8, border: 'none', background: showForm ? 'var(--surface2)' : 'linear-gradient(135deg,#00d4aa,#00a884)', color: showForm ? 'var(--muted)' : '#000', cursor: 'pointer' }}>
-            {showForm ? 'Cancel' : '+ New Credit'}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => { setShowSettings(v => !v); if (!rules) loadRules(); }}
+              style={{ ...M, fontSize: 11, padding: '7px 16px', borderRadius: 8, border: '1px solid var(--border)', background: showSettings ? 'var(--surface2)' : 'transparent', color: 'var(--muted)', cursor: 'pointer' }}>
+              ⚙ Rules
+            </button>
+            <button onClick={() => { setShowForm(v => !v); setError(null); }}
+              style={{ ...Y, fontSize: 12, fontWeight: 800, padding: '8px 20px', borderRadius: 8, border: 'none', background: showForm ? 'var(--surface2)' : 'linear-gradient(135deg,#00d4aa,#00a884)', color: showForm ? 'var(--muted)' : '#000', cursor: 'pointer' }}>
+              {showForm ? 'Cancel' : '+ New Credit'}
+            </button>
+          </div>
         </div>
+
+        {/* ── Draw rules settings ─────────────────────────────────────── */}
+        {showSettings && (
+          <div style={{ background: 'var(--surface)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 14, padding: '20px 24px', marginBottom: 20 }}>
+            <div style={{ ...M, fontSize: 10, color: '#a78bfa', letterSpacing: '0.12em', marginBottom: 16 }}>DRAW RULES (ADMIN)</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
+              <div>
+                <span style={label}>MIN. INTERVAL (minutes)</span>
+                <input type="number" min={0} value={ruleInterval} onChange={e => setRuleInterval(e.target.value)} style={inp} />
+                <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginTop: 3 }}>0 = no cooldown</div>
+              </div>
+              <div>
+                <span style={label}>MAX DRAWS PER DAY</span>
+                <input type="number" min={0} value={ruleMaxDay} onChange={e => setRuleMaxDay(e.target.value)} style={inp} />
+                <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginTop: 3 }}>0 = unlimited</div>
+              </div>
+              <div>
+                <span style={label}>MAX AMOUNT PER DRAW</span>
+                <input type="number" min={0} value={ruleMaxAmt} onChange={e => setRuleMaxAmt(e.target.value)} style={inp} />
+                <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginTop: 3 }}>0 = unlimited</div>
+              </div>
+            </div>
+            <button onClick={saveRules} disabled={rulesSaving}
+              style={{ ...M, fontSize: 11, padding: '8px 20px', borderRadius: 8, border: 'none', background: rulesSaving ? 'var(--surface2)' : '#a78bfa', color: rulesSaving ? 'var(--muted)' : '#000', cursor: rulesSaving ? 'default' : 'pointer' }}>
+              {rulesSaving ? 'Saving…' : 'Save Rules'}
+            </button>
+          </div>
+        )}
 
         {/* ── Create form ─────────────────────────────────────────────── */}
         {showForm && (
@@ -162,11 +257,37 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
 
             {/* Row 2 */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 14 }}>
-              <div><span style={label}>PRINCIPAL *</span>
-                <input type="number" value={fPrincipal} onChange={e => setFPrincipal(e.target.value)} placeholder="100000" style={inp} />
+              <div>
+                <span style={label}>PRINCIPAL *</span>
+                <input
+                  type="text" inputMode="decimal"
+                  ref={fPrincipalInput.ref}
+                  value={fPrincipalInput.value}
+                  onChange={fPrincipalInput.onChange}
+                  onFocus={fPrincipalInput.onFocus}
+                  placeholder="100,000"
+                  style={inp}
+                />
               </div>
-              <div><span style={label}>INTEREST *</span>
-                <input type="number" value={fInterest} onChange={e => setFInterest(e.target.value)} placeholder="5000" style={inp} />
+              <div>
+                <span style={label}>INTEREST RATE % *</span>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text" inputMode="decimal"
+                    ref={fInterestRateInput.ref}
+                    value={fInterestRateInput.value}
+                    onChange={fInterestRateInput.onChange}
+                    onFocus={fInterestRateInput.onFocus}
+                    placeholder="5"
+                    style={{ ...inp, paddingRight: 28 }}
+                  />
+                  <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', ...M, fontSize: 13, color: 'var(--muted)', pointerEvents: 'none' }}>%</span>
+                </div>
+                {principal > 0 && interestRate > 0 && (
+                  <div style={{ ...M, fontSize: 10, color: '#00d4aa', marginTop: 4 }}>
+                    = {php(interest, fCurrency)} interest
+                  </div>
+                )}
               </div>
               <div><span style={label}>DISBURSED DATE *</span>
                 <input type="date" value={fDate} onChange={e => setFDate(e.target.value)} style={inp} />
@@ -256,7 +377,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
           const isOpen   = expanded === credit.id;
           const paid     = credit.installments.filter(i => i.paid_at).length;
           const total    = credit.installments.length;
-          const overdue  = credit.installments.filter(i => !i.paid_at && i.due_date < new Date().toISOString().slice(0, 10));
+          const overdue  = credit.installments.filter(i => !i.paid_at && i.due_date < todayPHT());
 
           return (
             <div key={credit.id} style={{ background: 'var(--surface)', border: `1px solid ${overdue.length && credit.status === 'ACTIVE' ? 'rgba(255,92,92,0.3)' : 'var(--border)'}`, borderRadius: 14, marginBottom: 12, overflow: 'hidden' }}>
@@ -293,7 +414,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
 
                   <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: 10 }}>PAYMENT SCHEDULE</div>
                   {credit.installments.map(inst => {
-                    const isOverdue = !inst.paid_at && inst.due_date < new Date().toISOString().slice(0, 10);
+                    const isOverdue = !inst.paid_at && inst.due_date < todayPHT();
                     return (
                       <div key={inst.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -322,8 +443,31 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
                     );
                   })}
 
+                  {/* Draw history */}
+                  {credit.draws.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: 8 }}>ADDITIONAL DRAWS</div>
+                      {credit.draws.map((d, i) => (
+                        <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div>
+                            <span style={{ ...M, fontSize: 11, color: '#f5a623', fontWeight: 700 }}>{php(d.amount, credit.currency_code)}</span>
+                            {d.notes && <span style={{ ...M, fontSize: 10, color: 'var(--muted)', marginLeft: 10 }}>{d.notes}</span>}
+                          </div>
+                          <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>
+                            #{i + 1} · {fmtDateTime(d.created_at)} · {d.created_by}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {credit.status === 'ACTIVE' && (
-                    <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <button
+                        onClick={() => { setDrawCreditId(credit.id); setDrawError(null); drawAmtInput.setValue(''); setDrawNote(''); }}
+                        style={{ ...M, fontSize: 10, padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(245,166,35,0.35)', background: 'rgba(245,166,35,0.07)', color: '#f5a623', cursor: 'pointer' }}>
+                        + Add Draw
+                      </button>
                       <button
                         onClick={() => cancelCredit(credit)}
                         disabled={busy === credit.id}
@@ -338,6 +482,49 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
           );
         })}
       </div>
+
+      {/* ── Add Draw Modal ── */}
+      {drawCreditId && (() => {
+        const credit = credits.find(c => c.id === drawCreditId);
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 14, padding: '28px', width: '100%', maxWidth: 420 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                <div>
+                  <div style={{ ...M, fontSize: 10, color: '#f5a623', letterSpacing: '0.2em', marginBottom: 4 }}>ADD DRAW</div>
+                  <div style={{ ...Y, fontSize: 17, fontWeight: 800 }}>{credit?.customer_name}</div>
+                </div>
+                <button onClick={() => setDrawCreditId(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <span style={label}>AMOUNT ({credit?.currency_code ?? 'PHP'}) *</span>
+                <input
+                  type="text" inputMode="decimal"
+                  ref={drawAmtInput.ref}
+                  value={drawAmtInput.value}
+                  onChange={drawAmtInput.onChange}
+                  onFocus={drawAmtInput.onFocus}
+                  placeholder="0.00"
+                  autoFocus
+                  style={{ ...inp, fontSize: 18 }}
+                />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <span style={label}>NOTES (optional)</span>
+                <input value={drawNote} onChange={e => setDrawNote(e.target.value)} placeholder="Reason for this draw" style={inp} />
+              </div>
+
+              {drawError && <div style={{ ...M, fontSize: 11, color: '#ff5c5c', marginBottom: 12 }}>{drawError}</div>}
+
+              <button onClick={handleDraw} disabled={drawSaving || !drawAmtInput.raw}
+                style={{ width: '100%', padding: '12px', borderRadius: 8, border: 'none', background: (!drawAmtInput.raw || drawSaving) ? 'var(--border)' : 'linear-gradient(135deg,#f5a623,#e09000)', color: (!drawAmtInput.raw || drawSaving) ? 'var(--muted)' : '#000', ...Y, fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                {drawSaving ? 'Recording…' : 'Record Draw'}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
