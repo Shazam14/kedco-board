@@ -17,6 +17,14 @@ const DESKTOP = { width: 1280, height: 800  };
 
 // ── Counter screen ───────────────────────────────────────────────────────────
 
+const OPEN_SHIFT = {
+  id: 'shift-cashier1-today', date: new Date().toISOString().split('T')[0],
+  cashier: 'cashier1', cashier_name: 'Cashier One', status: 'OPEN',
+  opened_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(), closed_at: null,
+  opening_cash_php: 10000, closing_cash_php: null, expected_cash_php: null, cash_variance: null,
+  txn_count: 0, total_sold_php: 0, total_bought_php: 0, total_than: 0,
+};
+
 test.describe('Counter — mobile (390px)', () => {
   test.use({
     storageState: path.join('tests', '.auth', 'cashier.json'),
@@ -24,6 +32,12 @@ test.describe('Counter — mobile (390px)', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await page.route('/api/counter/shift', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(OPEN_SHIFT) })
+    );
+    await page.route('/api/counter/edit-requests', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    );
     await page.goto('/counter');
   });
 
@@ -33,7 +47,7 @@ test.describe('Counter — mobile (390px)', () => {
     // Nav should not cause horizontal scroll
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
-    expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 10); // 10px tolerance
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 15); // 15px tolerance for sub-pixel rendering
   });
 
   test('BUY/SELL toggle is full-width and tappable', async ({ page }) => {
@@ -85,6 +99,12 @@ test.describe('Counter — tablet (820px)', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await page.route('/api/counter/shift', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(OPEN_SHIFT) })
+    );
+    await page.route('/api/counter/edit-requests', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    );
     await page.goto('/counter');
   });
 

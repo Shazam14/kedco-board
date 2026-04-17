@@ -13,5 +13,5 @@ export default async function CounterPage() {
   const currencies = await getCurrencies();
   const branchLocation = process.env.BRANCH_LOCATION ?? 'Lapu-Lapu City';
 
-  return <CounterShell currencies={currencies} username={username ?? 'cashier'} branchLocation={branchLocation} />;
+  return <CounterShell currencies={currencies} username={username ?? 'cashier'} role={role} branchLocation={branchLocation} />;
 }

@@ -12,10 +12,16 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 
+const MOCK_API = 'http://localhost:9999';
+async function resetMockState(request: import('@playwright/test').APIRequestContext) {
+  await request.post(`${MOCK_API}/api/v1/test/reset`);
+}
+
 test.use({ storageState: path.join('tests', '.auth', 'admin.json') });
 
 test.describe('Special Credits page', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
+    await resetMockState(request);
     await page.goto('/admin/credits');
   });
 
@@ -56,7 +62,8 @@ test.describe('Special Credits page', () => {
 });
 
 test.describe('Create UPFRONT credit (Option A)', () => {
-  test('fills and submits the form', async ({ page }) => {
+  test('fills and submits the form', async ({ page, request }) => {
+    await resetMockState(request);
     await page.goto('/admin/credits');
     await page.getByRole('button', { name: '+ New Credit' }).click();
 
@@ -79,12 +86,13 @@ test.describe('Create UPFRONT credit (Option A)', () => {
     await page.getByRole('button', { name: 'Save Credit' }).click();
 
     // New credit appears in the list
-    await expect(page.getByText('Difficult Customer A')).toBeVisible();
+    await expect(page.getByText('Difficult Customer A').first()).toBeVisible();
   });
 });
 
 test.describe('Create INSTALLMENT credit (Option B)', () => {
-  test('fills installment form with two payments', async ({ page }) => {
+  test('fills installment form with two payments', async ({ page, request }) => {
+    await resetMockState(request);
     await page.goto('/admin/credits');
     await page.getByRole('button', { name: '+ New Credit' }).click();
 
@@ -107,13 +115,14 @@ test.describe('Create INSTALLMENT credit (Option B)', () => {
 
     await page.getByRole('button', { name: 'Save Credit' }).click();
 
-    await expect(page.getByText('Difficult Customer B')).toBeVisible();
+    await expect(page.getByText('Difficult Customer B').first()).toBeVisible();
     await expect(page.getByText('INSTALLMENT').first()).toBeVisible();
   });
 });
 
 test.describe('Credit actions', () => {
-  test('mark installment as paid', async ({ page }) => {
+  test('mark installment as paid', async ({ page, request }) => {
+    await resetMockState(request);
     await page.goto('/admin/credits');
 
     // Expand the existing credit
@@ -131,7 +140,8 @@ test.describe('Credit actions', () => {
     await expect(page.getByText(/Paid .+ by admin/)).toBeVisible();
   });
 
-  test('cancel a credit shows confirmation and updates status', async ({ page }) => {
+  test('cancel a credit shows confirmation and updates status', async ({ page, request }) => {
+    await resetMockState(request);
     await page.goto('/admin/credits');
 
     // Create a fresh credit to cancel

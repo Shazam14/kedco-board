@@ -14,6 +14,11 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 
+const MOCK_API = 'http://localhost:9999';
+async function resetMockState(request: import('@playwright/test').APIRequestContext) {
+  await request.post(`${MOCK_API}/api/v1/test/reset`);
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Intercept the client-side shift check and return 404 (no active shift). */
@@ -53,7 +58,11 @@ const MOCK_OPEN_SHIFT = {
 test.describe('Counter — shift already open', () => {
   test.use({ storageState: path.join('tests', '.auth', 'cashier.json') });
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
+    await resetMockState(request);
+    await page.route('/api/counter/edit-requests', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    );
     await page.goto('/counter');
   });
 

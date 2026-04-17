@@ -8,8 +8,22 @@ import path from 'path';
 
 test.use({ storageState: path.join('tests', '.auth', 'cashier.json') });
 
+const OPEN_SHIFT = {
+  id: 'shift-cashier1-today', date: new Date().toISOString().split('T')[0],
+  cashier: 'cashier1', cashier_name: 'Cashier One', status: 'OPEN',
+  opened_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(), closed_at: null,
+  opening_cash_php: 10000, closing_cash_php: null, expected_cash_php: null, cash_variance: null,
+  txn_count: 0, total_sold_php: 0, total_bought_php: 0, total_than: 0,
+};
+
 test.describe('Counter screen', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('/api/counter/shift', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(OPEN_SHIFT) })
+    );
+    await page.route('/api/counter/edit-requests', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    );
     await page.goto('/counter');
   });
 
