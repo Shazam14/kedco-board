@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import type { DashboardSummary, CurrencyPosition, Transaction } from '@/lib/types';
+import { todayLongPHT, nowTimePHT } from '@/lib/pht';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const php = (n: number) => '₱' + Math.round(n).toLocaleString('en-PH');
@@ -90,8 +91,8 @@ function Nav({ active, set, role }: { active:string; set:(s:string)=>void; role:
   const now    = useLiveClock();
   const w      = useWindowWidth();
   const isMobile = w < 768;
-  const dateStr = now ? now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
-  const timeStr = now ? now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true }) : '';
+  const dateStr = now ? now.toLocaleDateString('en-PH', { timeZone:'Asia/Manila', month:'short', day:'numeric', year:'numeric' }) : '';
+  const timeStr = now ? now.toLocaleTimeString('en-PH', { timeZone:'Asia/Manila', hour:'2-digit', minute:'2-digit', hour12:true }) : '';
   const tabs = ['Dashboard','Positions','Transactions','Rider','Rate Board','Tracker'];
 
   async function handleLogout() {
@@ -633,7 +634,7 @@ function RateBoardTab({ data }: { data: DashboardSummary }) {
   const { positions } = data;
   const [today, setToday] = useState('');
   useEffect(() => {
-    setToday(new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }));
+    setToday(todayLongPHT());
   }, []);
   const half  = Math.ceil(positions.length / 2);
   const left  = positions.slice(0, half);
@@ -933,7 +934,7 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
                   </div>
                   {[...pbBank.entries].reverse().map((e, i) => (
                     <div key={e.id} style={{ display:'grid', gridTemplateColumns:'100px 1fr 120px 130px', padding:'12px 22px', borderBottom:i<pbBank.entries.length-1?'1px solid var(--border)':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:12 }}>
-                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)' }}>{new Date(e.deposited_date+'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric'})}</span>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)' }}>{new Date(e.deposited_date+'T00:00:00+08:00').toLocaleDateString('en-PH',{timeZone:'Asia/Manila',month:'short',day:'numeric'})}</span>
                       <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color: e.notes ? '#e2e6f0' : 'var(--muted)', fontStyle: e.notes ? 'normal' : 'italic' }}>{e.notes ?? '—'}</span>
                       <span style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)' }}>{e.logged_by}</span>
                       <span style={{ fontFamily:"'DM Mono',monospace", fontSize:13, color:'#5b8cff', fontWeight:600, textAlign:'right' }}>{php(e.amount)}</span>

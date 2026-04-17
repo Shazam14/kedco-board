@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { fmtDate } from '@/lib/pht';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -26,9 +27,6 @@ interface BankSummary {
 const php = (n: number) =>
   '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function fmtDate(d: string) {
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-}
 
 export default function PassbookShell({ data }: { data: BankSummary[] }) {
   const [selected, setSelected] = useState<number | null>(

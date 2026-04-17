@@ -14,7 +14,7 @@ function decodeToken(token: string) {
 
 async function getCurrencies(token: string): Promise<CurrencyMeta[]> {
   try {
-    const res = await fetch(`${API_URL}/api/v1/currencies/meta`, {
+    const res = await fetch(`${API_URL}/api/v1/currencies/`, {
       headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
     });
     if (!res.ok) return [];
