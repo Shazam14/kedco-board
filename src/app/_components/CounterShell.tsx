@@ -31,10 +31,12 @@ const fmtFx = (amt: number, code: string, currencies: { code: string; decimalPla
 export default function CounterShell({
   currencies,
   username,
+  role = 'cashier',
   branchLocation,
 }: {
   currencies: CurrencyMeta[];
   username: string;
+  role?: string;
   branchLocation: string;
 }) {
   const router = useRouter();
@@ -293,6 +295,92 @@ export default function CounterShell({
     w.document.close();
   }
 
+  // ── Edit request state ───────────────────────────────────────────────────
+  type EditDraft = { customer: string; payment_mode: string; rate: string; foreign_amt: string; note: string };
+  const [editTxn,     setEditTxn]     = useState<Transaction | null>(null);
+  const [editDraft,   setEditDraft]   = useState<EditDraft | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError,   setEditError]   = useState<string | null>(null);
+  const [editSent,    setEditSent]    = useState(false);
+  const [pendingEdits, setPendingEdits] = useState<Set<string>>(new Set());
+
+  // Restore pending badges on mount
+  useEffect(() => {
+    fetch('/api/counter/edit-requests')
+      .then(r => r.ok ? r.json() : [])
+      .then((ids: string[]) => setPendingEdits(new Set(ids)))
+      .catch(() => {});
+  }, []);
+
+  function openEdit(t: Transaction) {
+    setEditTxn(t);
+    setEditDraft({
+      customer:     t.customer ?? '',
+      payment_mode: t.paymentMode ?? 'CASH',
+      rate:         String(t.rate),
+      foreign_amt:  String(t.foreignAmt),
+      note:         '',
+    });
+    setEditError(null);
+    setEditSent(false);
+  }
+
+  function buildEditBody(draft: EditDraft, txn: Transaction): Record<string, unknown> {
+    const body: Record<string, unknown> = {};
+    if (draft.customer     !== (txn.customer ?? ''))        body.customer     = draft.customer || null;
+    if (draft.payment_mode !== (txn.paymentMode ?? 'CASH')) body.payment_mode = draft.payment_mode;
+    const newRate = parseFloat(draft.rate);
+    const newAmt  = parseFloat(draft.foreign_amt);
+    if (!isNaN(newRate) && newRate !== txn.rate)        body.rate        = newRate;
+    if (!isNaN(newAmt)  && newAmt  !== txn.foreignAmt) body.foreign_amt = newAmt;
+    return body;
+  }
+
+  async function handleEditRequest() {
+    if (!editTxn || !editDraft) return;
+    const body = buildEditBody(editDraft, editTxn);
+    if (editDraft.note.trim()) body.note = editDraft.note.trim();
+    if (Object.keys(body).filter(k => k !== 'note').length === 0) {
+      setEditError('No changes detected.'); return;
+    }
+    setEditLoading(true); setEditError(null);
+    try {
+      const res = await fetch(`/api/counter/transactions/${editTxn.id}/edit-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { setEditError(data.detail ?? 'Failed to submit request'); return; }
+      setPendingEdits(prev => new Set([...prev, editTxn.id]));
+      setEditSent(true);
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  async function handleAdminEdit() {
+    if (!editTxn || !editDraft) return;
+    const body = buildEditBody(editDraft, editTxn);
+    if (Object.keys(body).length === 0) {
+      setEditError('No changes detected.'); return;
+    }
+    setEditLoading(true); setEditError(null);
+    try {
+      const res = await fetch(`/api/counter/transactions/${editTxn.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { setEditError(data.detail ?? 'Failed to save'); return; }
+      setEditTxn(null); setEditDraft(null);
+      await fetchTxns();
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
   // Running totals
   const totalBought = txns.filter(t => t.type === 'BUY').reduce((s, t) => s + t.phpAmt, 0);
   const totalSold   = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
@@ -501,6 +589,143 @@ export default function CounterShell({
           }}
           onClose={() => setScanning(false)}
         />
+      )}
+
+      {/* ── EDIT TRANSACTION MODAL ── */}
+      {editTxn && editDraft && (
+        <div style={overlayStyle}>
+          <div style={{ ...cardStyle, maxWidth: 480 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <div style={{ ...M, fontSize: 10, color: '#f5a623', letterSpacing: '0.2em', marginBottom: 4 }}>
+                  {role === 'admin' ? 'EDIT TRANSACTION' : 'REQUEST EDIT'}
+                </div>
+                <div style={{ ...Y, fontSize: 18, fontWeight: 800 }}>{editTxn.id}</div>
+                <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                  {editTxn.type} · {editTxn.currency} · {editTxn.time}
+                </div>
+              </div>
+              <button onClick={() => { setEditTxn(null); setEditDraft(null); setEditError(null); setEditSent(false); }}
+                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>
+                ✕
+              </button>
+            </div>
+
+            {editSent ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>⏳</div>
+                <div style={{ ...Y, fontSize: 16, fontWeight: 800, color: '#f5a623', marginBottom: 8 }}>Request Submitted</div>
+                <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 24 }}>
+                  Waiting for admin approval. The transaction will update once approved.
+                </div>
+                <button
+                  onClick={() => { setEditTxn(null); setEditDraft(null); setEditSent(false); }}
+                  style={{ padding: '10px 28px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 12, cursor: 'pointer' }}
+                >Close</button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {role !== 'admin' && (
+                  <div style={{ ...M, fontSize: 10, color: 'var(--muted)', background: 'rgba(245,166,35,0.07)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 8, padding: '8px 14px' }}>
+                    Changes won&apos;t apply until admin approves.
+                  </div>
+                )}
+
+                <div>
+                  <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>CUSTOMER</label>
+                  <input
+                    type="text"
+                    value={editDraft.customer}
+                    onChange={e => setEditDraft({ ...editDraft, customer: e.target.value })}
+                    placeholder="Name or reference"
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>PAYMENT MODE</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {PAY_MODES.map(m => (
+                      <button key={m} type="button" onClick={() => setEditDraft({ ...editDraft, payment_mode: m })} style={{
+                        padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
+                        border: `1px solid ${editDraft.payment_mode === m ? 'rgba(0,212,170,0.5)' : 'var(--border)'}`,
+                        background: editDraft.payment_mode === m ? 'rgba(0,212,170,0.1)' : 'transparent',
+                        color: editDraft.payment_mode === m ? '#00d4aa' : 'var(--muted)',
+                        ...M, fontSize: 10,
+                      }}>{m}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>FOREIGN AMOUNT</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editDraft.foreign_amt}
+                      onChange={e => setEditDraft({ ...editDraft, foreign_amt: e.target.value })}
+                      style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: '#e2e6f0', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>RATE</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editDraft.rate}
+                      onChange={e => setEditDraft({ ...editDraft, rate: e.target.value })}
+                      style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${editTxn.type === 'BUY' ? 'rgba(91,140,255,0.4)' : 'rgba(245,166,35,0.4)'}`, borderRadius: 8, padding: '10px 14px', color: editTxn.type === 'BUY' ? '#5b8cff' : '#f5a623', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {(() => {
+                  const r = parseFloat(editDraft.rate);
+                  const a = parseFloat(editDraft.foreign_amt);
+                  const preview = !isNaN(r) && !isNaN(a) && r > 0 && a > 0 ? r * a : null;
+                  return preview != null ? (
+                    <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>
+                      PHP preview: <span style={{ color: '#00d4aa' }}>{php(preview)}</span>
+                    </div>
+                  ) : null;
+                })()}
+
+                <div>
+                  <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
+                    REASON <span style={{ opacity: 0.45 }}>(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editDraft.note}
+                    onChange={e => setEditDraft({ ...editDraft, note: e.target.value })}
+                    placeholder="e.g. wrong rate entered"
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: '#e2e6f0', ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                {editError && (
+                  <div style={{ ...M, fontSize: 11, color: '#ff5c5c', background: 'rgba(255,92,92,0.08)', border: '1px solid rgba(255,92,92,0.2)', borderRadius: 8, padding: '8px 14px' }}>
+                    ✗ {editError}
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
+                  <button
+                    onClick={() => { setEditTxn(null); setEditDraft(null); setEditError(null); }}
+                    style={{ padding: '12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 12, cursor: 'pointer' }}
+                  >Cancel</button>
+                  <button
+                    onClick={role === 'admin' ? handleAdminEdit : handleEditRequest}
+                    disabled={editLoading}
+                    data-testid="edit-submit-btn"
+                    style={{ padding: '12px', borderRadius: 8, border: 'none', background: editLoading ? 'var(--border)' : 'linear-gradient(135deg,#f5a623,#e09000)', color: editLoading ? 'var(--muted)' : '#000', ...Y, fontSize: 13, fontWeight: 800, cursor: editLoading ? 'not-allowed' : 'pointer' }}
+                  >{editLoading ? (role === 'admin' ? 'SAVING...' : 'SUBMITTING...') : (role === 'admin' ? 'SAVE CHANGES' : 'SEND REQUEST')}</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ── RATES WARNING BANNER ── */}
@@ -909,7 +1134,7 @@ export default function CounterShell({
                 {/* Column labels */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px',
+                  gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px 48px',
                   padding: '8px 20px', borderBottom: '1px solid var(--border)',
                   ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
                   whiteSpace: 'nowrap',
@@ -921,6 +1146,7 @@ export default function CounterShell({
                   <span>FOREIGN</span>
                   <span>RATE</span>
                   <span>PHP AMT</span>
+                  <span />
                 </div>
 
                 <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 300px)' }}>
@@ -929,7 +1155,7 @@ export default function CounterShell({
                       key={t.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px',
+                        gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px 48px',
                         padding: '10px 20px',
                         borderBottom: '1px solid var(--border)',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
@@ -952,6 +1178,25 @@ export default function CounterShell({
                         color: t.type === 'BUY' ? '#5b8cff' : '#f5a623',
                       }}>{t.rate}</span>
                       <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
+                      {pendingEdits.has(t.id) ? (
+                        <span title="Edit request pending admin approval" style={{
+                          ...M, fontSize: 9, color: '#f5a623',
+                          background: 'rgba(245,166,35,0.12)',
+                          border: '1px solid rgba(245,166,35,0.3)',
+                          borderRadius: 4, padding: '2px 5px', whiteSpace: 'nowrap',
+                        }}>⏳</span>
+                      ) : (
+                        <button
+                          onClick={() => openEdit(t)}
+                          title={role === 'admin' ? 'Edit transaction' : 'Request edit'}
+                          data-testid={`edit-btn-${t.id}`}
+                          style={{
+                            background: 'none', border: '1px solid var(--border)',
+                            borderRadius: 4, color: 'var(--muted)', cursor: 'pointer',
+                            ...M, fontSize: 10, padding: '2px 6px',
+                          }}
+                        >✎</button>
+                      )}
                     </div>
                   ))}
                 </div>

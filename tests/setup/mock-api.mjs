@@ -110,6 +110,9 @@ const AUDIT_LOG = [
   },
 ];
 
+// ── Edit requests (mutable) ───────────────────────────────────────────────────
+let EDIT_REQUESTS = [];
+
 const BANKS = [
   { id: 1, name: 'BDO',       code: 'BDO', is_active: true, sort_order: 1 },
   { id: 2, name: 'BPI',       code: 'BPI', is_active: true, sort_order: 2 },
@@ -117,23 +120,26 @@ const BANKS = [
 ];
 
 // ── Special Credits ───────────────────────────────────────────────────────────
-let CREDITS = [
-  {
-    id: 'credit-001',
-    customer_name: 'Sample Customer',
-    currency_code: 'PHP',
-    principal: 50000,
-    interest: 2500,
-    credit_type: 'UPFRONT',
-    status: 'ACTIVE',
-    disbursed_date: new Date().toISOString().split('T')[0],
-    notes: 'Existing test credit',
-    created_by: 'admin',
-    installments: [
-      { id: 'inst-001', installment_no: 1, due_date: '2026-05-15', amount: 50000, paid_at: null, received_by: null },
-    ],
-  },
-];
+function makeInitialCredits() {
+  return [
+    {
+      id: 'credit-001',
+      customer_name: 'Sample Customer',
+      currency_code: 'PHP',
+      principal: 50000,
+      interest: 2500,
+      credit_type: 'UPFRONT',
+      status: 'ACTIVE',
+      disbursed_date: new Date().toISOString().split('T')[0],
+      notes: 'Existing test credit',
+      created_by: 'admin',
+      installments: [
+        { id: 'inst-001', installment_no: 1, due_date: '2026-05-15', amount: 50000, paid_at: null, received_by: null },
+      ],
+    },
+  ];
+}
+let CREDITS = makeInitialCredits();
 
 const ALL_USERS = Object.entries(USERS).map(([username, u]) => ({
   username, full_name: u.full_name, role: u.role, is_active: true, is_demo: u.is_demo,
@@ -156,8 +162,43 @@ function readBody(req) {
 // ── Shift state (mutable, resets on each mock-api process start) ─────────────
 const today = new Date().toISOString().split('T')[0];
 
-// cashier1 starts with an open shift so existing counter tests keep passing
+const TODAY_TRANSACTIONS = [
+  {
+    id: 'OR-TESTAAAA', date: today, time: '09:30 AM',
+    type: 'BUY',  source: 'COUNTER', currency_code: 'USD',
+    foreign_amt: 500, rate: 55.50, php_amt: 27750,
+    daily_avg_cost: 55.50, than: 0,
+    cashier: 'cashier1', customer: 'Juan dela Cruz', payment_mode: 'CASH',
+  },
+  {
+    id: 'OR-TESTBBBB', date: today, time: '10:15 AM',
+    type: 'SELL', source: 'COUNTER', currency_code: 'USD',
+    foreign_amt: 200, rate: 56.00, php_amt: 11200,
+    daily_avg_cost: 55.50, than: 100,
+    cashier: 'cashier1', customer: 'Maria Santos', payment_mode: 'CASH',
+  },
+];
+
+// cashier1 and admin start with open shifts so counter tests work for both roles
 const SHIFTS = new Map([
+  ['admin', {
+    id: 'shift-admin-today',
+    date: today,
+    cashier: 'admin',
+    cashier_name: 'Admin User',
+    status: 'OPEN',
+    opened_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
+    closed_at: null,
+    opening_cash_php: 50000,
+    closing_cash_php: null,
+    expected_cash_php: null,
+    cash_variance: null,
+    txn_count: 2,
+    total_sold_php: 11200,
+    total_bought_php: 27750,
+    total_than: 100,
+    notes: null,
+  }],
   ['cashier1', {
     id: 'shift-cashier1-today',
     date: today,
@@ -321,7 +362,101 @@ const server = createServer(async (req, res) => {
     return json(res, { message: 'Marked as returned' });
   }
 
+  // My pending edit request IDs
+  if (method === 'GET' && url === '/api/v1/transactions/my-pending-edits') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const user    = payload.sub ?? '';
+    const ids = EDIT_REQUESTS
+      .filter(r => r.requested_by === user && r.status === 'PENDING')
+      .map(r => r.txn_id);
+    return json(res, ids);
+  }
+
+  // Submit edit request
+  if (method === 'POST' && /\/transactions\/([^/]+)\/edit-request$/.test(url)) {
+    const txnId = url.split('/').at(-2);
+    const auth  = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const txn = TODAY_TRANSACTIONS.find(t => t.id === txnId);
+    if (!txn) return json(res, { detail: 'Transaction not found' }, 404);
+    const existing = EDIT_REQUESTS.find(r => r.txn_id === txnId && r.status === 'PENDING');
+    if (existing) return json(res, { detail: 'A pending edit request already exists for this transaction' }, 409);
+    const body = JSON.parse(await readBody(req));
+    const { note, ...proposed } = body;
+    const req_obj = {
+      id: `req-${Date.now()}`,
+      txn_id: txnId,
+      txn_date: today,
+      requested_by: payload.sub ?? 'cashier1',
+      current_values: { customer: txn.customer, payment_mode: txn.payment_mode, rate: txn.rate, foreign_amt: txn.foreign_amt, php_amt: txn.php_amt, than: txn.than },
+      proposed,
+      note: note ?? null,
+      status: 'PENDING',
+      reviewed_by: null, reviewed_at: null, rejection_note: null,
+      created_at: new Date().toISOString(),
+    };
+    EDIT_REQUESTS.push(req_obj);
+    return json(res, req_obj, 201);
+  }
+
+  // Admin: list edit requests
+  if (method === 'GET' && url.startsWith('/api/v1/admin/edit-requests') && !url.includes('/approve') && !url.includes('/reject') && !url.includes('/pending-count')) {
+    const qs     = new URLSearchParams((req.url ?? '').split('?')[1] ?? '');
+    const status = qs.get('status');
+    const result = status ? EDIT_REQUESTS.filter(r => r.status === status) : [...EDIT_REQUESTS];
+    return json(res, result.reverse());
+  }
+
+  // Admin: pending count
+  if (method === 'GET' && url === '/api/v1/admin/edit-requests/pending-count') {
+    return json(res, { count: EDIT_REQUESTS.filter(r => r.status === 'PENDING').length });
+  }
+
+  // Admin: approve
+  if (method === 'POST' && /\/admin\/edit-requests\/([^/]+)\/approve$/.test(url)) {
+    const id = url.split('/').at(-2);
+    const r  = EDIT_REQUESTS.find(x => x.id === id);
+    if (!r) return json(res, { detail: 'Not found' }, 404);
+    if (r.status !== 'PENDING') return json(res, { detail: `Already ${r.status}` }, 409);
+    const txn = TODAY_TRANSACTIONS.find(t => t.id === r.txn_id);
+    if (txn) Object.assign(txn, r.proposed);
+    r.status      = 'APPROVED';
+    r.reviewed_by = 'admin';
+    r.reviewed_at = new Date().toISOString();
+    return json(res, { status: 'approved' });
+  }
+
+  // Admin: reject
+  if (method === 'POST' && /\/admin\/edit-requests\/([^/]+)\/reject$/.test(url)) {
+    const id   = url.split('/').at(-2);
+    const r    = EDIT_REQUESTS.find(x => x.id === id);
+    if (!r) return json(res, { detail: 'Not found' }, 404);
+    if (r.status !== 'PENDING') return json(res, { detail: `Already ${r.status}` }, 409);
+    const body = JSON.parse(await readBody(req));
+    r.status         = 'REJECTED';
+    r.reviewed_by    = 'admin';
+    r.reviewed_at    = new Date().toISOString();
+    r.rejection_note = body.rejection_note ?? null;
+    return json(res, { status: 'rejected' });
+  }
+
+  // Admin: direct PATCH transaction
+  if (method === 'PATCH' && /^\/api\/v1\/transactions\/[^/]+$/.test(url)) {
+    const id  = url.split('/').pop();
+    const txn = TODAY_TRANSACTIONS.find(t => t.id === id);
+    if (!txn) return json(res, { detail: 'Not found' }, 404);
+    const body = JSON.parse(await readBody(req));
+    Object.assign(txn, body);
+    if (body.rate || body.foreign_amt) {
+      txn.php_amt = Math.round(txn.foreign_amt * txn.rate * 100) / 100;
+      if (txn.type === 'SELL') txn.than = Math.round((txn.rate - txn.daily_avg_cost) * txn.foreign_amt * 100) / 100;
+    }
+    return json(res, { id: txn.id, time: txn.time, type: txn.type, source: txn.source, currency: txn.currency_code, foreign_amt: txn.foreign_amt, rate: txn.rate, php_amt: txn.php_amt, than: txn.than, cashier: txn.cashier, customer: txn.customer, payment_mode: txn.payment_mode, bank_id: null });
+  }
+
   // Transactions today (counter and rider)
+  if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, payment_mode: t.payment_mode, bank_id: null })));
   if (method === 'GET' && /transactions/.test(url)) return json(res, []);
 
   // Submit counter transaction
@@ -499,6 +634,28 @@ const server = createServer(async (req, res) => {
   // GET /api/v1/shifts/today — admin view
   if (method === 'GET' && url === '/api/v1/shifts/today') {
     return json(res, [...SHIFTS.values()]);
+  }
+
+  // Test reset — clears mutable state between tests
+  if (method === 'POST' && url === '/api/v1/test/reset') {
+    EDIT_REQUESTS.length = 0;
+    CREDITS = makeInitialCredits();
+    // Restore both shifts to OPEN state
+    SHIFTS.set('cashier1', {
+      id: 'shift-cashier1-today', date: today,
+      cashier: 'cashier1', cashier_name: 'Cashier One', status: 'OPEN',
+      opened_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(), closed_at: null,
+      opening_cash_php: 10000, closing_cash_php: null, expected_cash_php: null, cash_variance: null,
+      txn_count: 3, total_sold_php: 29000, total_bought_php: 11500, total_than: 450, notes: null,
+    });
+    SHIFTS.set('admin', {
+      id: 'shift-admin-today', date: today,
+      cashier: 'admin', cashier_name: 'Admin User', status: 'OPEN',
+      opened_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(), closed_at: null,
+      opening_cash_php: 50000, closing_cash_php: null, expected_cash_php: null, cash_variance: null,
+      txn_count: 2, total_sold_php: 11200, total_bought_php: 27750, total_than: 100, notes: null,
+    });
+    return json(res, { ok: true });
   }
 
   // Fallback

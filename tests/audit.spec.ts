@@ -68,13 +68,13 @@ test.describe('Audit Trail — admin', () => {
     // Wait for debounce / re-fetch
     await page.waitForTimeout(600);
     await expect(page.getByText('admin').first()).toBeVisible();
-    await expect(page.getByText('cashier1')).not.toBeVisible();
+    await expect(page.getByText('cashier1', { exact: true })).not.toBeVisible();
   });
 
   test('ALL filter button resets TABLE filter', async ({ page }) => {
     // Select rates filter first
     await page.getByRole('button', { name: 'Rate', exact: true }).click();
-    await expect(page.getByText('cashier1')).not.toBeVisible();
+    await expect(page.getByText('cashier1', { exact: true })).not.toBeVisible();
     // Click ALL in TABLE group (first ALL button)
     await page.getByRole('button', { name: 'ALL', exact: true }).first().click();
     await expect(page.getByText('cashier1').first()).toBeVisible();

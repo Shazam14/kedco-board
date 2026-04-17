@@ -79,6 +79,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     desc:  'Every create, edit, and delete — who changed what and when.',
     color: '#a78bfa',
   },
+  {
+    href:  '/admin/edit-requests',
+    icon:  '✎',
+    title: 'Edit Requests',
+    desc:  'Review and approve cashier transaction edit requests.',
+    color: '#f5a623',
+  },
 ];
 
 export default async function AdminPage() {
