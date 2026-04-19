@@ -120,7 +120,8 @@ function Nav({ active, set, role }: { active:string; set:(s:string)=>void; role:
         <div style={{ width:7, height:7, borderRadius:'50%', background:'#00d4aa', boxShadow:'0 0 8px #00d4aa88' }} />
         <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#00d4aa' }}>LIVE</span>
         {!isMobile && <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)' }}>{dateStr} · {timeStr}</span>}
-        <DashboardTourButton style={{ marginLeft: isMobile ? 0 : 8 }} />
+        <a href="/guide" style={{ marginLeft: isMobile ? 0 : 8, padding:'4px 12px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>GUIDE</a>
+        <DashboardTourButton />
         {['admin','supervisor'].includes(role) && <a data-tour="admin-btn" href="/admin" style={{ padding:'4px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>ADMIN</a>}
         <button onClick={handleLogout} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em' }}>LOGOUT</button>
       </div>
