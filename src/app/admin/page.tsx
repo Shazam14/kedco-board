@@ -1,13 +1,15 @@
 import { redirect } from 'next/navigation';
 import { getTokenRole } from '@/lib/api';
+import { AdminTourButton, AdminTourAutoStart } from './_components/AdminTour';
 
-const tools: { href: string; icon: string; title: string; desc: string; color: string; soon?: boolean }[] = [
+const tools: { href: string; icon: string; title: string; desc: string; color: string; soon?: boolean; tourId?: string }[] = [
   {
     href:  '/counter',
     icon:  '🖥️',
     title: 'Counter',
     desc:  'Enter buy and sell transactions for walk-in customers.',
     color: '#00d4aa',
+    tourId: 'card-counter',
   },
   {
     href:  '/admin/rates',
@@ -15,6 +17,7 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     title: 'Set Today\'s Rates',
     desc:  'Enter buy and sell rates for all 29 currencies.',
     color: '#00d4aa',
+    tourId: 'card-rates',
   },
   {
     href:  '/admin/positions',
@@ -22,6 +25,7 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     title: 'Opening Positions',
     desc:  'Set carry-in stock quantities from previous day.',
     color: '#5b8cff',
+    tourId: 'card-positions',
   },
   {
     href:  '/admin/users',
@@ -36,6 +40,7 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     title: 'End of Day',
     desc:  'Close the day, lock rates, generate summary report.',
     color: '#f5a623',
+    tourId: 'card-eod',
   },
   {
     href:  '/admin/report',
@@ -43,6 +48,7 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     title: 'Daily Report',
     desc:  'Full day breakdown by currency and cashier. Replaces the 6 manual books.',
     color: '#a78bfa',
+    tourId: 'card-report',
   },
   {
     href:  '/admin/riders',
@@ -78,6 +84,7 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     title: 'Audit Trail',
     desc:  'Every create, edit, and delete — who changed what and when.',
     color: '#a78bfa',
+    tourId: 'card-audit',
   },
   {
     href:  '/admin/edit-requests',
@@ -85,6 +92,7 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     title: 'Edit Requests',
     desc:  'Review and approve cashier transaction edit requests.',
     color: '#f5a623',
+    tourId: 'card-edit-requests',
   },
 ];
 
@@ -104,11 +112,12 @@ export default async function AdminPage() {
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
-          <a href="/guide" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none' }}>Guide</a>
+          <AdminTourButton />
           <a href="/dashboard" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none' }}>← Dashboard</a>
         </div>
       </nav>
 
+      <AdminTourAutoStart />
       <div style={{ padding:'28px 32px' }}>
         <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:6 }}>ADMIN PANEL</div>
         <div style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, marginBottom:28, letterSpacing:'-0.02em' }}>What do you need to do?</div>
@@ -118,6 +127,7 @@ export default async function AdminPage() {
             <a
               key={tool.href}
               href={tool.soon ? '#' : tool.href}
+              {...(tool.tourId ? { 'data-tour': tool.tourId } : {})}
               style={{ background:'var(--surface)', border:`1px solid ${tool.soon ? 'var(--border)' : tool.color + '33'}`, borderRadius:14, padding:'24px', textDecoration:'none', display:'block', opacity: tool.soon ? 0.5 : 1, cursor: tool.soon ? 'default' : 'pointer', position:'relative', overflow:'hidden' }}
             >
               {!tool.soon && <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,${tool.color},transparent)` }} />}

@@ -1,26 +1,24 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
-const php = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function fmtAmt(val: string) {
-  const raw = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-  const [i, d] = raw.split('.');
-  const fmt = (i || '').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return d !== undefined ? `${fmt}.${d}` : fmt;
+function fmt(n: number, currency: string) {
+  if (currency === 'PHP') return '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currency;
 }
 
 interface Rider    { username: string; full_name: string; }
+interface CurrItem { currency: string; amount: number; }
 interface Dispatch {
   id: string; rider_username: string; rider_name: string;
   status: string; dispatch_time: string | null; return_time: string | null;
-  cash_php: number; notes: string | null; dispatched_by: string | null;
+  items: CurrItem[]; remit_items: CurrItem[];
+  notes: string | null; dispatched_by: string | null;
 }
-interface Borrow   { id: string; source_type: string; source_name: string; amount_php: number; is_returned: string; notes: string | null; }
-
+interface Borrow { id: string; source_type: string; source_name: string; amount_php: number; is_returned: string; notes: string | null; }
 interface RiderTxn {
   id: string; time: string; type: string; currency: string;
   foreignAmt: number; rate: number; phpAmt: number; than: number;
@@ -28,23 +26,118 @@ interface RiderTxn {
   customer?: string;
 }
 
-export default function RidersAdminShell({ dispatches: initial, riders }: { dispatches: Dispatch[]; riders: Rider[] }) {
+type LineItem = { currency: string; amount: string };
+
+function ItemsEditor({ currencies, items, onChange }: {
+  currencies: string[];
+  items: LineItem[];
+  onChange: (items: LineItem[]) => void;
+}) {
+  function update(i: number, field: keyof LineItem, val: string) {
+    const next = items.map((it, idx) => idx === i ? { ...it, [field]: val } : it);
+    onChange(next);
+  }
+  function add() { onChange([...items, { currency: currencies[0] ?? 'PHP', amount: '' }]); }
+  function remove(i: number) { onChange(items.filter((_, idx) => idx !== i)); }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {items.map((it, i) => (
+        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select value={it.currency} onChange={e => update(i, 'currency', e.target.value)}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', width: 100 }}>
+            {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <input value={it.amount} onChange={e => update(i, 'amount', e.target.value)}
+            placeholder="Amount"
+            style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }} />
+          {items.length > 1 && (
+            <button onClick={() => remove(i)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>✕</button>
+          )}
+        </div>
+      ))}
+      <button onClick={add}
+        style={{ ...M, fontSize: 11, padding: '6px 0', borderRadius: 6, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer' }}>
+        + Add currency
+      </button>
+    </div>
+  );
+}
+
+function itemsValid(items: LineItem[]) {
+  return items.length > 0 && items.every(it => it.currency && parseFloat(it.amount) > 0);
+}
+
+function toApi(items: LineItem[]): CurrItem[] {
+  return items.map(it => ({ currency: it.currency, amount: parseFloat(it.amount) }));
+}
+
+function SummaryBar({ dispatches }: { dispatches: Dispatch[] }) {
+  const totals: Record<string, { out: number; back: number }> = {};
+
+  for (const d of dispatches) {
+    for (const it of d.items) {
+      if (!totals[it.currency]) totals[it.currency] = { out: 0, back: 0 };
+      totals[it.currency].out += it.amount;
+    }
+    for (const it of d.remit_items) {
+      if (!totals[it.currency]) totals[it.currency] = { out: 0, back: 0 };
+      totals[it.currency].back += it.amount;
+    }
+  }
+
+  const entries = Object.entries(totals);
+  if (entries.length === 0) return null;
+
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
+      <div style={{ ...M, fontSize: 10, color: '#a78bfa', letterSpacing: '0.12em', marginBottom: 10 }}>TODAY'S FLOAT SUMMARY</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+        {entries.map(([cur, { out, back }]) => {
+          const still = out - back;
+          return (
+            <div key={cur} style={{ minWidth: 140 }}>
+              <div style={{ ...M, fontSize: 11, color: '#a78bfa', fontWeight: 700, marginBottom: 4 }}>{cur}</div>
+              <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>Out: <span style={{ color: '#f5a623' }}>{fmt(out, cur)}</span></div>
+              <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>Back: <span style={{ color: '#00d4aa' }}>{fmt(back, cur)}</span></div>
+              <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>Still out: <span style={{ color: still > 0 ? '#ff5c5c' : '#00d4aa' }}>{fmt(still, cur)}</span></div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default function RidersAdminShell({
+  dispatches: initial, riders, currencies,
+}: {
+  dispatches: Dispatch[];
+  riders: Rider[];
+  currencies: string[];
+}) {
   const router = useRouter();
-  const [dispatches, setDispatches] = useState<Dispatch[]>(initial);
-  const [selected,   setSelected]   = useState<Dispatch | null>(null);
-  const [borrows,    setBorrows]     = useState<Borrow[]>([]);
-  const [txns,       setTxns]        = useState<RiderTxn[]>([]);
-  const [tab,        setTab]         = useState<'txns' | 'borrows'>('txns');
+  const [dispatches,  setDispatches]  = useState<Dispatch[]>(initial);
+  const [selected,    setSelected]    = useState<Dispatch | null>(null);
+  const [borrows,     setBorrows]     = useState<Borrow[]>([]);
+  const [txns,        setTxns]        = useState<RiderTxn[]>([]);
+  const [tab,         setTab]         = useState<'txns' | 'borrows'>('txns');
 
   // Dispatch form
-  const [selRider,   setSelRider]    = useState('');
-  const [cashAmt,    setCashAmt]     = useState('');
-  const [notes,      setNotes]       = useState('');
+  const [selRider,    setSelRider]    = useState('');
+  const [dispItems,   setDispItems]   = useState<LineItem[]>([{ currency: currencies[0] ?? 'PHP', amount: '' }]);
+  const [notes,       setNotes]       = useState('');
   const [dispatching, setDispatching] = useState(false);
-  const [dispError,  setDispError]   = useState<string | null>(null);
+  const [dispError,   setDispError]   = useState<string | null>(null);
 
-  // Borrow mark-returned
-  const [returning,  setReturning]   = useState<string | null>(null);
+  // Remit inline form
+  const [remitting,   setRemitting]   = useState<string | null>(null); // dispatch id
+  const [remitItems,  setRemitItems]  = useState<LineItem[]>([{ currency: currencies[0] ?? 'PHP', amount: '' }]);
+  const [remitError,  setRemitError]  = useState<string | null>(null);
+  const [submitting,  setSubmitting]  = useState(false);
+
+  const [returning,   setReturning]   = useState<string | null>(null); // borrow id
 
   const undispatched = riders.filter(r =>
     !dispatches.find(d => d.rider_username === r.username && d.status === 'IN_FIELD')
@@ -66,17 +159,17 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
   }, []);
 
   async function handleDispatch() {
-    if (!selRider || !cashAmt) return;
+    if (!selRider || !itemsValid(dispItems)) return;
     setDispatching(true); setDispError(null);
     const res = await fetch('/api/admin/rider/dispatches', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rider_username: selRider, cash_php: +cashAmt.replace(/,/g, ''), notes }),
+      body: JSON.stringify({ rider_username: selRider, items: toApi(dispItems), notes }),
     });
     const data = await res.json();
     if (res.ok) {
       setDispatches(prev => [...prev, data]);
-      setSelRider(''); setCashAmt(''); setNotes('');
+      setSelRider(''); setDispItems([{ currency: currencies[0] ?? 'PHP', amount: '' }]); setNotes('');
       router.refresh();
     } else {
       setDispError(data.detail ?? data.error ?? 'Failed');
@@ -84,14 +177,33 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
     setDispatching(false);
   }
 
-  async function handleReturn(d: Dispatch) {
-    await fetch('/api/admin/rider/dispatch', {
+  function openRemit(d: Dispatch) {
+    setRemitting(d.id);
+    // Pre-fill remit with same currencies as dispatch
+    setRemitItems(d.items.length > 0
+      ? d.items.map(it => ({ currency: it.currency, amount: '' }))
+      : [{ currency: currencies[0] ?? 'PHP', amount: '' }]
+    );
+    setRemitError(null);
+  }
+
+  async function handleRemit(d: Dispatch) {
+    if (!itemsValid(remitItems)) { setRemitError('Enter at least one valid amount'); return; }
+    setSubmitting(true); setRemitError(null);
+    const res = await fetch('/api/admin/rider/dispatch', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dispatch_id: d.id, action: 'return' }),
+      body: JSON.stringify({ dispatch_id: d.id, action: 'return', items: toApi(remitItems) }),
     });
-    setDispatches(prev => prev.map(x => x.id === d.id ? { ...x, status: 'RETURNED', return_time: 'just now' } : x));
-    if (selected?.id === d.id) setSelected(s => s ? { ...s, status: 'RETURNED' } : s);
+    const data = await res.json();
+    if (res.ok) {
+      setDispatches(prev => prev.map(x => x.id === d.id ? data : x));
+      if (selected?.id === d.id) setSelected(data);
+      setRemitting(null);
+    } else {
+      setRemitError(data.detail ?? data.error ?? 'Failed');
+    }
+    setSubmitting(false);
   }
 
   async function handleConfirmPayment(txnId: string) {
@@ -114,8 +226,8 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
     setReturning(null);
   }
 
-  const inField   = dispatches.filter(d => d.status === 'IN_FIELD');
-  const returned  = dispatches.filter(d => d.status === 'RETURNED');
+  const inField  = dispatches.filter(d => d.status === 'IN_FIELD');
+  const returned = dispatches.filter(d => d.status === 'RETURNED');
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
@@ -137,6 +249,8 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
         <div style={{ padding: '24px 28px', borderRight: selected ? '1px solid var(--border)' : 'none' }}>
           <div style={{ ...Y, fontSize: 20, fontWeight: 800, marginBottom: 20 }}>Today&apos;s Riders</div>
 
+          <SummaryBar dispatches={dispatches} />
+
           {/* Dispatch form */}
           {undispatched.length > 0 && (
             <div style={{ background: 'var(--surface)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 14, padding: '18px 20px', marginBottom: 20 }}>
@@ -147,12 +261,12 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
                   <option value="">Select rider…</option>
                   {undispatched.map(r => <option key={r.username} value={r.username}>{r.full_name} ({r.username})</option>)}
                 </select>
-                <input value={cashAmt} onChange={e => setCashAmt(fmtAmt(e.target.value))} placeholder="Starting PHP cash (e.g. 50,000)"
-                  style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }} />
+                <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.08em' }}>CASH TO DISPATCH</div>
+                <ItemsEditor currencies={currencies} items={dispItems} onChange={setDispItems} />
                 <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)"
                   style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }} />
-                <button onClick={handleDispatch} disabled={dispatching || !selRider || !cashAmt}
-                  style={{ padding: '12px', borderRadius: 8, border: 'none', background: (!selRider || !cashAmt) ? 'var(--border)' : 'linear-gradient(135deg,#a78bfa,#7c5cbf)', color: (!selRider || !cashAmt) ? 'var(--muted)' : '#fff', ...Y, fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                <button onClick={handleDispatch} disabled={dispatching || !selRider || !itemsValid(dispItems)}
+                  style={{ padding: '12px', borderRadius: 8, border: 'none', background: (!selRider || !itemsValid(dispItems)) ? 'var(--border)' : 'linear-gradient(135deg,#a78bfa,#7c5cbf)', color: (!selRider || !itemsValid(dispItems)) ? 'var(--muted)' : '#fff', ...Y, fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
                   {dispatching ? 'DISPATCHING…' : '🏍️ DISPATCH'}
                 </button>
                 {dispError && <div style={{ ...M, fontSize: 11, color: '#ff5c5c' }}>{dispError}</div>}
@@ -166,7 +280,7 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
               <div style={{ ...M, fontSize: 10, color: '#a78bfa', letterSpacing: '0.12em', marginBottom: 10 }}>IN FIELD ({inField.length})</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                 {inField.map(d => (
-                  <div key={d.id} onClick={() => loadDetail(d)}
+                  <div key={d.id} onClick={() => { if (remitting !== d.id) loadDetail(d); }}
                     style={{ background: selected?.id === d.id ? 'rgba(167,139,250,0.08)' : 'var(--surface)', border: `1px solid ${selected?.id === d.id ? 'rgba(167,139,250,0.4)' : 'var(--border)'}`, borderRadius: 12, padding: '14px 16px', cursor: 'pointer' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <div>
@@ -175,14 +289,43 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
                       </div>
                       <span style={{ ...M, fontSize: 10, color: '#a78bfa', background: 'rgba(167,139,250,0.1)', padding: '3px 8px', borderRadius: 20, border: '1px solid rgba(167,139,250,0.2)' }}>IN FIELD</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>Dispatched {d.dispatch_time} · {php(d.cash_php)}</span>
-                      <button onClick={e => { e.stopPropagation(); handleReturn(d); }}
-                        style={{ ...M, fontSize: 10, padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.3)', background: 'transparent', color: '#00d4aa', cursor: 'pointer' }}>
-                        Mark Returned
-                      </button>
+
+                    {/* Dispatched items */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                      {d.items.map((it, i) => (
+                        <span key={i} style={{ ...M, fontSize: 11, color: '#f5a623', background: 'rgba(245,166,35,0.08)', padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(245,166,35,0.2)' }}>
+                          OUT {fmt(it.amount, it.currency)}
+                        </span>
+                      ))}
                     </div>
-                    {d.notes && <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{d.notes}</div>}
+
+                    {d.notes && <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginBottom: 8 }}>{d.notes}</div>}
+
+                    {/* Remit inline form */}
+                    {remitting === d.id ? (
+                      <div onClick={e => e.stopPropagation()} style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+                        <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.08em', marginBottom: 8 }}>REMIT AMOUNTS</div>
+                        <ItemsEditor currencies={currencies} items={remitItems} onChange={setRemitItems} />
+                        {remitError && <div style={{ ...M, fontSize: 11, color: '#ff5c5c', marginTop: 6 }}>{remitError}</div>}
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                          <button onClick={() => handleRemit(d)} disabled={submitting || !itemsValid(remitItems)}
+                            style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: !itemsValid(remitItems) ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a882)', color: !itemsValid(remitItems) ? 'var(--muted)' : '#fff', ...Y, fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+                            {submitting ? 'SAVING…' : '✓ CONFIRM REMIT'}
+                          </button>
+                          <button onClick={e => { e.stopPropagation(); setRemitting(null); }}
+                            style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 12, cursor: 'pointer' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button onClick={e => { e.stopPropagation(); openRemit(d); }}
+                          style={{ ...M, fontSize: 10, padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.3)', background: 'transparent', color: '#00d4aa', cursor: 'pointer' }}>
+                          Mark Returned
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -196,12 +339,19 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {returned.map(d => (
                   <div key={d.id} onClick={() => loadDetail(d)}
-                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', opacity: 0.7 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', opacity: 0.8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <span style={{ ...Y, fontSize: 13, fontWeight: 700 }}>{d.rider_name}</span>
                       <span style={{ ...M, fontSize: 10, color: '#00d4aa' }}>✓ RETURNED {d.return_time}</span>
                     </div>
-                    <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{php(d.cash_php)} dispatched</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                      {d.items.map((it, i) => (
+                        <span key={i} style={{ ...M, fontSize: 10, color: '#f5a623' }}>OUT {fmt(it.amount, it.currency)}</span>
+                      ))}
+                      {d.remit_items.map((it, i) => (
+                        <span key={i} style={{ ...M, fontSize: 10, color: '#00d4aa' }}>BACK {fmt(it.amount, it.currency)}</span>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -220,7 +370,15 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
               <div>
                 <div style={{ ...Y, fontSize: 18, fontWeight: 800 }}>{selected.rider_name}</div>
                 <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                  {selected.dispatch_time} → {selected.return_time ?? 'in field'} · {php(selected.cash_php)}
+                  {selected.dispatch_time} → {selected.return_time ?? 'in field'}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                  {selected.items.map((it, i) => (
+                    <span key={i} style={{ ...M, fontSize: 11, color: '#f5a623' }}>OUT {fmt(it.amount, it.currency)}</span>
+                  ))}
+                  {selected.remit_items.map((it, i) => (
+                    <span key={i} style={{ ...M, fontSize: 11, color: '#00d4aa' }}>BACK {fmt(it.amount, it.currency)}</span>
+                  ))}
                 </div>
               </div>
               <button onClick={() => setSelected(null)} style={{ ...M, fontSize: 11, background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', color: 'var(--muted)', cursor: 'pointer' }}>✕</button>
@@ -247,7 +405,7 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
                         <span style={{ ...M, fontSize: 12, fontWeight: 700, color: t.type === 'BUY' ? '#5b8cff' : '#f5a623', marginRight: 8 }}>{t.type}</span>
                         <span style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>{t.foreignAmt.toLocaleString()} {t.currency}</span>
                       </div>
-                      <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
+                      <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>₱{t.phpAmt.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>
@@ -279,7 +437,7 @@ export default function RidersAdminShell({ dispatches: initial, riders }: { disp
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ ...M, fontSize: 12, fontWeight: 700, color: b.is_returned === 'Y' ? 'var(--muted)' : '#f5a623' }}>
-                          {php(b.amount_php)}
+                          ₱{b.amount_php.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
                         </div>
                         <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
                           from {b.source_type === 'BRANCH' ? '🏢' : '🏍️'} {b.source_name}
