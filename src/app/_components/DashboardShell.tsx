@@ -5,6 +5,7 @@ import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import type { DashboardSummary, CurrencyPosition, Transaction } from '@/lib/types';
 import { todayLongPHT, nowTimePHT } from '@/lib/pht';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { DashboardTourButton, DashboardTourAutoStart } from './DashboardTour';
 
 const php = (n: number) => '₱' + Math.round(n).toLocaleString('en-PH');
 const fmt = (rate: number, dp: number) => rate.toFixed(dp);
@@ -68,7 +69,7 @@ function Ticker({ positions }: { positions: CurrencyPosition[] }) {
     `${c.flag} ${c.code}  B:${fmt(c.todayBuyRate, c.decimalPlaces)}  S:${fmt(c.todaySellRate, c.decimalPlaces)}`
   ]);
   return (
-    <div style={S.ticker}>
+    <div data-tour="ticker" style={S.ticker}>
       <div style={{ display:'flex', gap:'48px', whiteSpace:'nowrap', animation:'ticker 30s linear infinite', fontFamily:"'DM Mono',monospace", fontSize:'11px', color:'var(--muted)' }}>
         {[...items,...items].map((it,i) => <span key={i} style={{ flexShrink:0 }}><span style={{ color:'#00d4aa', marginRight:6 }}>◆</span>{it}</span>)}
       </div>
@@ -110,7 +111,7 @@ function Nav({ active, set, role }: { active:string; set:(s:string)=>void; role:
         </div>
       </div>
       {/* Tabs — horizontally scrollable on mobile */}
-      <div style={{ display:'flex', gap:4, overflowX:'auto', flexShrink: isMobile ? 0 : 1, width: isMobile ? '100%' : 'auto', paddingBottom: isMobile ? 4 : 0 }}>
+      <div data-tour="nav-tabs" style={{ display:'flex', gap:4, overflowX:'auto', flexShrink: isMobile ? 0 : 1, width: isMobile ? '100%' : 'auto', paddingBottom: isMobile ? 4 : 0 }}>
         {tabs.map(t => (
           <button key={t} onClick={()=>set(t)} style={{ padding:'6px 12px', borderRadius:6, border:'none', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:"'Syne',sans-serif", letterSpacing:'0.01em', background: active===t ? 'rgba(0,212,170,0.12)' : 'transparent', color: active===t ? '#00d4aa' : 'var(--muted)', transition:'all 0.15s', whiteSpace:'nowrap', flexShrink:0 }}>{t}</button>
         ))}
@@ -119,8 +120,8 @@ function Nav({ active, set, role }: { active:string; set:(s:string)=>void; role:
         <div style={{ width:7, height:7, borderRadius:'50%', background:'#00d4aa', boxShadow:'0 0 8px #00d4aa88' }} />
         <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'#00d4aa' }}>LIVE</span>
         {!isMobile && <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)' }}>{dateStr} · {timeStr}</span>}
-        <a href="/guide" style={{ marginLeft: isMobile ? 0 : 8, padding:'4px 12px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>GUIDE</a>
-        {['admin','supervisor'].includes(role) && <a href="/admin" style={{ padding:'4px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>ADMIN</a>}
+        <DashboardTourButton style={{ marginLeft: isMobile ? 0 : 8 }} />
+        {['admin','supervisor'].includes(role) && <a data-tour="admin-btn" href="/admin" style={{ padding:'4px 12px', borderRadius:6, border:'1px solid rgba(0,212,170,0.25)', background:'rgba(0,212,170,0.06)', color:'#00d4aa', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em', textDecoration:'none' }}>ADMIN</a>}
         <button onClick={handleLogout} style={{ padding:'4px 12px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', fontFamily:"'DM Mono',monospace", fontSize:10, cursor:'pointer', letterSpacing:'0.05em' }}>LOGOUT</button>
       </div>
     </nav>
@@ -152,7 +153,7 @@ function DashboardTab({ data, role }: { data: DashboardSummary; role: string }) 
   return (
     <div style={{ ...S.page, padding: isMobile ? '16px' : '28px 32px' }}>
       {/* HERO */}
-      <div style={{ ...S.card, border:'1px solid rgba(0,212,170,0.28)', padding: isMobile ? '20px 18px' : '30px 32px', position:'relative', overflow:'hidden', animation:'fadeUp 0.4s ease both' }}>
+      <div data-tour="capital-hero" style={{ ...S.card, border:'1px solid rgba(0,212,170,0.28)', padding: isMobile ? '20px 18px' : '30px 32px', position:'relative', overflow:'hidden', animation:'fadeUp 0.4s ease both' }}>
         <div style={{ position:'absolute', top:-60, right:-60, width:200, height:200, borderRadius:'50%', background:'radial-gradient(circle, rgba(0,212,170,0.09) 0%, transparent 70%)', pointerEvents:'none' }} />
         <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap:24, alignItems:'center' }}>
           <div>
@@ -179,7 +180,7 @@ function DashboardTab({ data, role }: { data: DashboardSummary; role: string }) 
       </div>
 
       {/* STATS */}
-      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${isAdmin ? 3 : 2},1fr)`, gap:14 }}>
+      <div data-tour="than-card" style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : `repeat(${isAdmin ? 3 : 2},1fr)`, gap:14 }}>
         {[
           ...(isAdmin ? [{ label:'TODAY THAN (MARGIN)', val:php(than), sub:'Counter + rider combined', color:'#00d4aa', icon:'📈', d:100 }] : []),
           { label:'BOUGHT TODAY',        val:php(data.totalBoughtToday),sub:`${buyCount} transactions`,             color:'#5b8cff', icon:'💱', d:150 },
@@ -242,7 +243,7 @@ function DashboardTab({ data, role }: { data: DashboardSummary; role: string }) 
       </div>
 
       {/* RECENT TXN */}
-      <div style={{ ...S.card, animation:'fadeUp 0.5s ease 0.4s both' }}>
+      <div data-tour="recent-txns" style={{ ...S.card, animation:'fadeUp 0.5s ease 0.4s both' }}>
         <div style={{ padding:'18px 24px', borderBottom:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <div>
             <div style={{ ...S.syne, fontSize:14, fontWeight:700 }}>Recent Transactions</div>
@@ -967,6 +968,7 @@ export default function DashboardShell({ data, role }: { data: DashboardSummary;
   useIdleTimeout(20);
   return (
     <div style={{ minHeight:'100vh', position:'relative', zIndex:1, overflowX:'hidden', maxWidth:'100vw' }}>
+      <DashboardTourAutoStart />
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         @keyframes ticker { from { transform:translateX(0); } to { transform:translateX(-50%); } }
