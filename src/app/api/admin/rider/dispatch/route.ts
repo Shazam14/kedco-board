@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest) {
   const token = (await cookies()).get(AUTH_COOKIE)?.value;
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { dispatch_id, action, txn_id } = await req.json();
+  const { dispatch_id, action, txn_id, items } = await req.json();
 
   let url = '';
   if (action === 'return')          url = `${API_URL}/api/v1/rider/dispatches/${dispatch_id}/return`;
@@ -17,9 +17,12 @@ export async function PATCH(req: NextRequest) {
 
   if (!url) return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
 
+  const body = action === 'return' ? JSON.stringify({ items: items ?? [] }) : undefined;
+
   const res = await fetch(url, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body,
   });
   return NextResponse.json(await res.json(), { status: res.status });
 }

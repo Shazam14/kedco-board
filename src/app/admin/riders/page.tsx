@@ -24,13 +24,18 @@ export default async function RidersPage() {
   const payload = decodeToken(token);
   if (!payload || !['admin', 'supervisor'].includes(payload.role)) redirect('/');
 
-  const [dispatches, users] = await Promise.all([
+  const [dispatches, users, currencies] = await Promise.all([
     fetchJson(`${API_URL}/api/v1/rider/dispatches/today`, token),
     fetchJson(`${API_URL}/api/v1/users`, token),
+    fetchJson(`${API_URL}/api/v1/currencies`, token),
   ]);
 
   const riders = (users as { username: string; full_name: string; role: string }[])
     .filter(u => u.role === 'rider');
 
-  return <RidersAdminShell dispatches={dispatches} riders={riders} />;
+  const activeCurrencies = (currencies as { code: string; name: string; is_active: string }[])
+    .filter(c => c.is_active === 'Y')
+    .map(c => c.code);
+
+  return <RidersAdminShell dispatches={dispatches} riders={riders} currencies={activeCurrencies} />;
 }
