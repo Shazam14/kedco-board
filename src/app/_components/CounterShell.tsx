@@ -316,7 +316,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
   }
 
   // ── Edit request state ───────────────────────────────────────────────────
-  type EditDraft = { customer: string; payment_mode: string; rate: string; foreign_amt: string; note: string; referrer: string };
+  type EditDraft = { customer: string; payment_mode: string; rate: string; foreign_amt: string; official_rate: string; note: string; referrer: string };
   const [editTxn,     setEditTxn]     = useState<Transaction | null>(null);
   const [editDraft,   setEditDraft]   = useState<EditDraft | null>(null);
   const [editBankId,  setEditBankId]  = useState<number | null>(null);
@@ -336,12 +336,13 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
   function openEdit(t: Transaction) {
     setEditTxn(t);
     setEditDraft({
-      customer:     t.customer ?? '',
-      payment_mode: t.paymentMode ?? 'CASH',
-      rate:         String(t.rate),
-      foreign_amt:  String(t.foreignAmt),
-      note:         '',
-      referrer:     t.referrer ?? '',
+      customer:      t.customer ?? '',
+      payment_mode:  t.paymentMode ?? 'CASH',
+      rate:          String(t.rate),
+      foreign_amt:   String(t.foreignAmt),
+      official_rate: t.officialRate != null ? String(t.officialRate) : '',
+      note:          '',
+      referrer:      t.referrer ?? '',
     });
     setEditBankId(t.bankId ?? null);
     setEditError(null);
@@ -354,10 +355,13 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
     if (draft.payment_mode !== (txn.paymentMode ?? 'CASH')) body.payment_mode = draft.payment_mode;
     if (bankId !== (txn.bankId ?? null))                    body.bank_id      = bankId;
     if (draft.referrer     !== (txn.referrer ?? ''))        body.referrer     = draft.referrer || null;
-    const newRate = parseFloat(draft.rate);
-    const newAmt  = parseFloat(draft.foreign_amt);
-    if (!isNaN(newRate) && newRate !== txn.rate)        body.rate        = newRate;
-    if (!isNaN(newAmt)  && newAmt  !== txn.foreignAmt) body.foreign_amt = newAmt;
+    const newRate    = parseFloat(draft.rate);
+    const newAmt     = parseFloat(draft.foreign_amt);
+    const newOffRate = parseFloat(draft.official_rate);
+    if (!isNaN(newRate)    && newRate    !== txn.rate)              body.rate          = newRate;
+    if (!isNaN(newAmt)     && newAmt     !== txn.foreignAmt)        body.foreign_amt   = newAmt;
+    if (draft.official_rate === '' && txn.officialRate != null)     body.official_rate = 0;
+    else if (!isNaN(newOffRate) && newOffRate !== (txn.officialRate ?? null)) body.official_rate = newOffRate;
     return body;
   }
 
@@ -756,6 +760,20 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                   </div>
                 </div>
 
+                <div>
+                  <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
+                    GUIDE RATE <span style={{ opacity: 0.45 }}>(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={editDraft.official_rate}
+                    onChange={e => setEditDraft({ ...editDraft, official_rate: e.target.value })}
+                    placeholder="e.g. 56.50"
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: '#e2e6f0', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
                 {(() => {
                   const r = parseFloat(editDraft.rate);
                   const a = parseFloat(editDraft.foreign_amt);
@@ -770,7 +788,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                 {(() => {
                   const r = parseFloat(editDraft.rate);
                   const a = parseFloat(editDraft.foreign_amt);
-                  const offRate = editTxn.officialRate;
+                  const offRate = parseFloat(editDraft.official_rate);
                   if (!offRate || isNaN(r) || isNaN(a) || r <= 0 || a <= 0) return null;
                   const comm = editTxn.type === 'SELL'
                     ? (r - offRate) * a
@@ -1098,7 +1116,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
           {/* Commission Preview — cashier/admin only */}
           {role !== 'supervisor' && ccy?.rateSet && +rateInput.raw > 0 && +amtInput.raw > 0 && (() => {
             const offRate = type === 'SELL' ? ccy.todaySellRate : ccy.todayBuyRate;
-            if (offRate == null) return null;
+            if (!offRate) return null;
             // SELL: earn when rate > official. BUY: earn when rate < official (Kedco pays less).
             const commission = type === 'SELL'
               ? (+rateInput.raw - offRate) * +amtInput.raw
