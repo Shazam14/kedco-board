@@ -411,7 +411,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
   const totalSold       = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
   const totalThan       = txns.reduce((s, t) => s + t.than, 0);
   const totalCommission = txns.reduce((s, t) => {
-    if (t.officialRate == null) return s;
+    if (!t.officialRate) return s;
     const c = t.type === 'SELL'
       ? (t.rate - t.officialRate) * t.foreignAmt
       : (t.officialRate - t.rate) * t.foreignAmt;
@@ -1355,7 +1355,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                 {/* Column labels */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '100px 48px 56px 64px 90px 80px 100px 80px 72px 48px',
+                  gridTemplateColumns: '100px 48px 56px 64px 80px 100px 100px 120px 120px 48px',
                   padding: '8px 20px', borderBottom: '1px solid var(--border)',
                   ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
                   whiteSpace: 'nowrap',
@@ -1378,7 +1378,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                       key={t.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '100px 48px 56px 64px 90px 80px 100px 80px 72px 48px',
+                        gridTemplateColumns: '100px 48px 56px 64px 80px 100px 100px 120px 120px 48px',
                         padding: '10px 20px',
                         borderBottom: '1px solid var(--border)',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
@@ -1405,7 +1405,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                       }}>{t.rate}</span>
                       <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
                       {role !== 'supervisor' && (() => {
-                        if (t.officialRate == null) return <span />;
+                        if (!t.officialRate) return <span />;
                         const comm = t.type === 'SELL'
                           ? (t.rate - t.officialRate) * t.foreignAmt
                           : (t.officialRate - t.rate) * t.foreignAmt;
