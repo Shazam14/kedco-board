@@ -368,10 +368,11 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
     const newRate    = parseFloat(draft.rate);
     const newAmt     = parseFloat(draft.foreign_amt);
     const newOffRate = parseFloat(draft.official_rate);
-    if (!isNaN(newRate)    && newRate    !== txn.rate)              body.rate          = newRate;
-    if (!isNaN(newAmt)     && newAmt     !== txn.foreignAmt)        body.foreign_amt   = newAmt;
-    if (draft.official_rate === '' && txn.officialRate != null)     body.official_rate = 0;
-    else if (!isNaN(newOffRate) && newOffRate !== (txn.officialRate ?? null)) body.official_rate = newOffRate;
+    if (!isNaN(newRate) && newRate !== txn.rate)       body.rate        = newRate;
+    if (!isNaN(newAmt)  && newAmt  !== txn.foreignAmt) body.foreign_amt = newAmt;
+    const wantsClear = draft.official_rate === '' || (!isNaN(newOffRate) && newOffRate === 0);
+    if (wantsClear && txn.officialRate)                body.official_rate = 0;
+    else if (!wantsClear && !isNaN(newOffRate) && newOffRate !== (txn.officialRate ?? null)) body.official_rate = newOffRate;
     return body;
   }
 
