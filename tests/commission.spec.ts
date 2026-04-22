@@ -39,36 +39,36 @@ test.describe('Commission and referrer — cashier counter', () => {
     await expect(page.getByPlaceholder('Referrer / tour guide (optional)')).toBeVisible();
   });
 
-  test('SELL — commission preview appears when rate exceeds official', async ({ page }) => {
+  test('SELL — commission preview appears when rate exceeds guide rate', async ({ page }) => {
     await pickCurrency(page, 'USD');
-    // USD official sell rate from mock is 57.00 — enter higher rate
+    await page.getByPlaceholder('e.g. 59.00').fill('56.00');
     const rateInput = page.locator('input').nth(2);
     await rateInput.fill('58.00');
     await page.locator('input').nth(1).fill('100');
     await expect(page.getByText('COMMISSION PREVIEW')).toBeVisible();
-    // Total line shows positive commission amount
     await expect(page.getByText(/Total:/).first()).toBeVisible();
   });
 
-  test('BUY — commission preview appears when rate is below official', async ({ page }) => {
+  test('BUY — commission preview appears when rate is below guide rate', async ({ page }) => {
     await page.getByText('↓ BUY').click();
     await pickCurrency(page, 'USD');
-    // USD official buy rate from mock is 56.00 — enter lower rate
+    await page.getByPlaceholder('e.g. 59.00').fill('56.00');
     const rateInput = page.locator('input').nth(2);
     await rateInput.fill('55.00');
     await page.locator('input').nth(1).fill('100');
     await expect(page.getByText('COMMISSION PREVIEW')).toBeVisible();
   });
 
-  test('no commission preview when rate equals official', async ({ page }) => {
+  test('no commission preview when guide rate is empty', async ({ page }) => {
     await pickCurrency(page, 'USD');
-    // Rate auto-fills to official — no change, no preview
+    // No guide rate entered — preview should not appear
     await page.locator('input').nth(1).fill('100');
     await expect(page.getByText('COMMISSION PREVIEW')).not.toBeVisible();
   });
 
   test('referrer name shows split in commission preview', async ({ page }) => {
     await pickCurrency(page, 'USD');
+    await page.getByPlaceholder('e.g. 59.00').fill('56.00');
     const rateInput = page.locator('input').nth(2);
     await rateInput.fill('58.00');
     await page.locator('input').nth(1).fill('100');
