@@ -656,8 +656,9 @@ const server = createServer(async (req, res) => {
   }
 
   // Test reset — clears mutable state between tests
+  // NOTE: mockTestDate is intentionally NOT reset here — only date-override tests
+  // set it, and they manage cleanup via afterEach DELETE to avoid cross-worker races.
   if (method === 'POST' && url === '/api/v1/test/reset') {
-    mockTestDate = null;
     EDIT_REQUESTS.length = 0;
     CREDITS = makeInitialCredits();
     // Restore both shifts to OPEN state

@@ -16,6 +16,11 @@ const TODAY = new Date().toISOString().split('T')[0];
 
 test.beforeEach(async ({ request }) => {
   await request.post('http://localhost:9999/api/v1/test/reset');
+  await request.delete('http://localhost:9999/api/v1/config/test-date');
+});
+
+test.afterEach(async ({ request }) => {
+  await request.delete('http://localhost:9999/api/v1/config/test-date');
 });
 
 async function fillDate(page: Parameters<typeof test>[1] extends { page: infer P } ? P : never, date: string) {
