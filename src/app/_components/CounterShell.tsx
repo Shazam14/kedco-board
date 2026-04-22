@@ -5,7 +5,6 @@ import type { CurrencyMeta, Transaction } from '@/lib/types';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { useNumberInput } from '@/hooks/useNumberInput';
 import IDScanner, { type ScannedID } from '@/app/_components/IDScanner';
-import ExpensePanel from '@/app/_components/ExpensePanel';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -118,16 +117,13 @@ export default function CounterShell({
   const [ccy,      setCcy]      = useState<CurrencyMeta | null>(null);
   const [ccyQuery, setCcyQuery] = useState('');
   const [ccyOpen,  setCcyOpen]  = useState(false);
-  const amtInput       = useNumberInput('', 8);
-  const rateInput      = useNumberInput('', 8);
-  const guideRateInput = useNumberInput('', 8);
+  const amtInput  = useNumberInput('', 8);
+  const rateInput = useNumberInput('', 8);
   const [cust,     setCust]     = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [scanning, setScanning] = useState(false);
-  const [referrer,       setReferrer]       = useState('');
-  const [paymentTag,     setPaymentTag]     = useState<'ADVANCE' | 'LATE' | ''>('');
-  const [referenceDate,  setReferenceDate]  = useState('');
-  const [payMode,        setPayMode]        = useState<PayMode>('CASH');
+  const [referrer, setReferrer] = useState('');
+  const [payMode,  setPayMode]  = useState<PayMode>('CASH');
   const [bankId,   setBankId]   = useState<number | null>(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
@@ -136,9 +132,11 @@ export default function CounterShell({
   const [today,    setToday]    = useState('');
 
   useEffect(() => {
-    const now = new Date();
-    setToday(now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
-    setReferenceDate(now.toISOString().split('T')[0]);
+    setToday(
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      })
+    );
     fetchTxns();
   }, []);
 
@@ -189,10 +187,7 @@ export default function CounterShell({
           id_number: idNumber || undefined,
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
-          official_rate: +guideRateInput.raw > 0 ? +guideRateInput.raw : undefined,
           referrer: referrer || undefined,
-          payment_tag: paymentTag || undefined,
-          reference_date: (role === 'supervisor' && referenceDate) ? referenceDate : undefined,
         }),
       });
       const data = await res.json();
@@ -208,17 +203,12 @@ export default function CounterShell({
           paymentMode: data.payment_mode ?? payMode,
           officialRate: data.official_rate ?? undefined,
           referrer: data.referrer ?? undefined,
-          paymentTag: data.payment_tag ?? undefined,
-          referenceDate: data.reference_date ?? undefined,
         };
         setFlash(txn);
         amtInput.setValue('');
         setCust('');
         setIdNumber('');
         setReferrer('');
-        guideRateInput.setValue('');
-        setPaymentTag('');
-        setReferenceDate(new Date().toISOString().split('T')[0]);
         await fetchTxns();
         setTimeout(() => setFlash(null), 5000);
       }
@@ -421,7 +411,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
   const totalSold       = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
   const totalThan       = txns.reduce((s, t) => s + t.than, 0);
   const totalCommission = txns.reduce((s, t) => {
-    if (t.officialRate == null) return s;
+    if (!t.officialRate) return s;
     const c = t.type === 'SELL'
       ? (t.rate - t.officialRate) * t.foreignAmt
       : (t.officialRate - t.rate) * t.foreignAmt;
@@ -1091,29 +1081,6 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             />
           </div>
 
-          {/* Guide Rate — cashier/admin only */}
-          {role !== 'supervisor' && (
-            <div>
-              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
-                GUIDE RATE <span style={{ opacity: 0.45 }}>(your base — for commission)</span>
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                ref={guideRateInput.ref}
-                value={guideRateInput.value}
-                onChange={guideRateInput.onChange}
-                onFocus={guideRateInput.onFocus}
-                placeholder="e.g. 59.00"
-                style={{
-                  width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 8, padding: '10px 14px', color: 'var(--muted)',
-                  ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box',
-                }}
-              />
-            </div>
-          )}
-
           {/* PHP Total */}
           <div style={{
             background: 'var(--surface)',
@@ -1128,10 +1095,11 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             </div>
           </div>
 
-          {/* Commission Preview — cashier/admin only, requires guide rate */}
-          {role !== 'supervisor' && +rateInput.raw > 0 && +amtInput.raw > 0 && +guideRateInput.raw > 0 && (() => {
-            const offRate = +guideRateInput.raw;
-            // SELL: earn when rate > guide. BUY: earn when rate < guide.
+          {/* Commission Preview — cashier/admin only */}
+          {role !== 'supervisor' && ccy?.rateSet && +rateInput.raw > 0 && +amtInput.raw > 0 && (() => {
+            const offRate = type === 'SELL' ? ccy.todaySellRate : ccy.todayBuyRate;
+            if (offRate == null) return null;
+            // SELL: earn when rate > official. BUY: earn when rate < official (Kedco pays less).
             const commission = type === 'SELL'
               ? (+rateInput.raw - offRate) * +amtInput.raw
               : (offRate - +rateInput.raw) * +amtInput.raw;
@@ -1214,43 +1182,6 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
               />
             )}
           </div>
-
-          {/* Supervisor: reference date + advance/late tag */}
-          {role === 'supervisor' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em' }}>
-                PAYMENT DATE <span style={{ opacity: 0.45 }}>(reference)</span>
-              </label>
-              <input
-                type="date"
-                value={referenceDate}
-                onChange={e => setReferenceDate(e.target.value)}
-                style={{
-                  width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
-                  ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
-                }}
-              />
-              <div style={{ display: 'flex', gap: 6 }}>
-                {(['', 'ADVANCE', 'LATE'] as const).map(tag => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => setPaymentTag(tag)}
-                    style={{
-                      padding: '6px 14px', borderRadius: 6, cursor: 'pointer', ...M, fontSize: 10,
-                      border: `1px solid ${paymentTag === tag ? 'rgba(0,212,170,0.5)' : 'var(--border)'}`,
-                      background: paymentTag === tag ? 'rgba(0,212,170,0.1)' : 'transparent',
-                      color: paymentTag === tag ? '#00d4aa' : 'var(--muted)',
-                      letterSpacing: '0.05em',
-                    }}
-                  >
-                    {tag === '' ? 'REGULAR' : tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Payment Mode */}
           <div>
@@ -1424,7 +1355,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                 {/* Column labels */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '100px 48px 56px 64px 90px 80px 100px 80px 72px 48px',
+                  gridTemplateColumns: '100px 48px 56px 64px 80px 100px 100px 120px 120px 48px',
                   padding: '8px 20px', borderBottom: '1px solid var(--border)',
                   ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
                   whiteSpace: 'nowrap',
@@ -1437,7 +1368,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                   <span>FOREIGN</span>
                   <span>RATE</span>
                   <span>PHP AMT</span>
-                  {role === 'supervisor' ? <span>TAG</span> : <span>COMM</span>}
+                  {role !== 'supervisor' && <span>COMM</span>}
                   <span />
                 </div>
 
@@ -1447,7 +1378,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                       key={t.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '100px 48px 56px 64px 90px 80px 100px 80px 72px 48px',
+                        gridTemplateColumns: '100px 48px 56px 64px 80px 100px 100px 120px 120px 48px',
                         padding: '10px 20px',
                         borderBottom: '1px solid var(--border)',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
@@ -1473,18 +1404,8 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                         color: t.type === 'BUY' ? '#5b8cff' : '#f5a623',
                       }}>{t.rate}</span>
                       <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
-                      {role === 'supervisor' ? (
-                        t.paymentTag ? (
-                          <span style={{
-                            ...M, fontSize: 8, fontWeight: 700, letterSpacing: '0.06em',
-                            padding: '2px 5px', borderRadius: 4,
-                            color: t.paymentTag === 'ADVANCE' ? '#00d4aa' : '#f5a623',
-                            background: t.paymentTag === 'ADVANCE' ? 'rgba(0,212,170,0.12)' : 'rgba(245,166,35,0.12)',
-                            border: `1px solid ${t.paymentTag === 'ADVANCE' ? 'rgba(0,212,170,0.3)' : 'rgba(245,166,35,0.3)'}`,
-                          }}>{t.paymentTag}</span>
-                        ) : <span />
-                      ) : (() => {
-                        if (t.officialRate == null) return <span />;
+                      {role !== 'supervisor' && (() => {
+                        if (!t.officialRate) return <span />;
                         const comm = t.type === 'SELL'
                           ? (t.rate - t.officialRate) * t.foreignAmt
                           : (t.officialRate - t.rate) * t.foreignAmt;
@@ -1520,11 +1441,6 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
               </div>
             )}
           </div>
-
-          {/* Expenses — cashier and supervisor only */}
-          {(role === 'cashier' || role === 'supervisor') && (
-            <ExpensePanel username={username} />
-          )}
         </div>
       </div>
     </div>
