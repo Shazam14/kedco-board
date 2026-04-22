@@ -4,6 +4,11 @@ import { cookies } from 'next/headers';
 const API_URL = process.env.API_URL!;
 const AUTH_COOKIE = process.env.AUTH_COOKIE ?? 'kedco_token';
 
+function decodeToken(token: string) {
+  try { return JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString()); }
+  catch { return null; }
+}
+
 async function getToken() {
   const cookieStore = await cookies();
   return cookieStore.get(AUTH_COOKIE)?.value ?? null;
@@ -11,7 +16,10 @@ async function getToken() {
 
 export async function GET() {
   const token = await getToken();
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!token) return NextResponse.json({ test_date: null });
+
+  const payload = decodeToken(token);
+  if (!payload || payload.role !== 'admin') return NextResponse.json({ test_date: null });
 
   const res = await fetch(`${API_URL}/api/v1/config/test-date`, {
     headers: { Authorization: `Bearer ${token}` },
