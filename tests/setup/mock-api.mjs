@@ -136,6 +136,7 @@ function makeInitialCredits() {
       installments: [
         { id: 'inst-001', installment_no: 1, due_date: '2026-05-15', amount: 50000, paid_at: null, received_by: null },
       ],
+      draws: [],
     },
   ];
 }
@@ -289,6 +290,7 @@ const server = createServer(async (req, res) => {
         paid_at:        null,
         received_by:    null,
       })),
+      draws: [],
     };
     CREDITS.unshift(credit);
     return json(res, credit, 201);
