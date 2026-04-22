@@ -19,10 +19,12 @@ test.beforeEach(async ({ request }) => {
 });
 
 async function fillDate(page: Parameters<typeof test>[1] extends { page: infer P } ? P : never, date: string) {
+  // Wait for the panel's mount fetch to finish before filling — the status text
+  // only appears after the fetch resolves, preventing a race where setInput('')
+  // (from the fetch response) overwrites the user's typed value.
+  await expect(page.getByText(/System is using the real date/i)).toBeVisible({ timeout: 10_000 });
   const input = page.locator('input[type="date"]');
-  await expect(input).toBeVisible({ timeout: 10_000 });
   await input.fill(date);
-  // Wait for React hydration — button stays disabled until onChange fires
   await expect(page.getByRole('button', { name: 'Set Date' })).toBeEnabled({ timeout: 5_000 });
 }
 
