@@ -115,7 +115,7 @@ test.describe('Commission and referrer — cashier counter', () => {
     );
     await page.reload();
     // commission = (58 - 57) * 100 = ₱100.00
-    await expect(page.getByText('+₱100.00')).toBeVisible();
+    await expect(page.getByText('+₱100.00').first()).toBeVisible();
   });
 
   test('COMM column shows positive value for BUY below official rate', async ({ page }) => {
@@ -132,7 +132,7 @@ test.describe('Commission and referrer — cashier counter', () => {
     );
     await page.reload();
     // commission = (56 - 55) * 100 = ₱100.00
-    await expect(page.getByText('+₱100.00')).toBeVisible();
+    await expect(page.getByText('+₱100.00').first()).toBeVisible();
   });
 
   test('no COMM shown when officialRate is null', async ({ page }) => {
