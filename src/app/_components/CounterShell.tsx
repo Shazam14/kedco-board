@@ -407,9 +407,16 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
   }
 
   // Running totals
-  const totalBought = txns.filter(t => t.type === 'BUY').reduce((s, t) => s + t.phpAmt, 0);
-  const totalSold   = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
-  const totalThan   = txns.reduce((s, t) => s + t.than, 0);
+  const totalBought     = txns.filter(t => t.type === 'BUY').reduce((s, t) => s + t.phpAmt, 0);
+  const totalSold       = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
+  const totalThan       = txns.reduce((s, t) => s + t.than, 0);
+  const totalCommission = txns.reduce((s, t) => {
+    if (t.officialRate == null) return s;
+    const c = t.type === 'SELL'
+      ? (t.rate - t.officialRate) * t.foreignAmt
+      : (t.officialRate - t.rate) * t.foreignAmt;
+    return s + c;
+  }, 0);
 
   const typeColor = type === 'BUY' ? '#5b8cff' : '#f5a623';
   const noRatesAtAll = currencies.every(c => !c.rateSet);
@@ -1061,7 +1068,10 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
           {role !== 'supervisor' && ccy?.rateSet && +rateInput.raw > 0 && +amtInput.raw > 0 && (() => {
             const offRate = type === 'SELL' ? ccy.todaySellRate : ccy.todayBuyRate;
             if (offRate == null) return null;
-            const commission = (+rateInput.raw - offRate) * +amtInput.raw;
+            // SELL: earn when rate > official. BUY: earn when rate < official (Kedco pays less).
+            const commission = type === 'SELL'
+              ? (+rateInput.raw - offRate) * +amtInput.raw
+              : (offRate - +rateInput.raw) * +amtInput.raw;
             if (commission === 0) return null;
             const cashierCut = referrer ? commission / 2 : commission;
             const refCut = referrer ? commission / 2 : 0;
@@ -1075,7 +1085,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                   COMMISSION PREVIEW
                 </div>
                 <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>
-                  Spread: <span style={{ color: '#e2e6f0' }}>{commission > 0 ? '+' : ''}{(+rateInput.raw - offRate).toFixed(4)}</span> per unit
+                  Spread: <span style={{ color: '#e2e6f0' }}>{commission > 0 ? '+' : '-'}{php(Math.abs(commission / +amtInput.raw))}</span> per unit
                 </div>
                 <div style={{ ...M, fontSize: 12, color: commission > 0 ? '#00d4aa' : '#ff5c5c' }}>
                   Total: {php(Math.abs(commission))}
@@ -1365,11 +1375,13 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                       <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
                       {role !== 'supervisor' && (() => {
                         if (t.officialRate == null) return <span />;
-                        const comm = (t.rate - t.officialRate) * t.foreignAmt;
+                        const comm = t.type === 'SELL'
+                          ? (t.rate - t.officialRate) * t.foreignAmt
+                          : (t.officialRate - t.rate) * t.foreignAmt;
                         if (comm === 0) return <span />;
                         return (
                           <span style={{ ...M, fontSize: 10, color: comm > 0 ? '#00d4aa' : '#ff5c5c' }}>
-                            {comm > 0 ? '+' : ''}{php(Math.abs(comm))}
+                            {comm > 0 ? '+' : '-'}{php(Math.abs(comm))}
                           </span>
                         );
                       })()}
