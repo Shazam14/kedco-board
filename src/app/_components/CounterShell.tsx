@@ -1430,12 +1430,20 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                   {s.value}
                 </div>
                 {s.label === 'TOTAL BOUGHT' && totalCommission !== 0 && (
-                  <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em' }}>COMM</span>
-                    <span style={{ ...M, fontSize: 11, fontWeight: 700, color: totalCommission > 0 ? '#00d4aa' : '#ff5c5c' }}>
-                      {totalCommission > 0 ? '+' : ''}{php(totalCommission)}
-                    </span>
-                  </div>
+                  <>
+                    <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em' }}>COMM</span>
+                      <span style={{ ...M, fontSize: 11, fontWeight: 700, color: totalCommission > 0 ? '#00d4aa' : '#ff5c5c' }}>
+                        {totalCommission > 0 ? '+' : ''}{php(totalCommission)}
+                      </span>
+                    </div>
+                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em' }}>TOTAL</span>
+                      <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#e2e6f0' }}>
+                        {php(totalBought + totalCommission)}
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
             ))}
