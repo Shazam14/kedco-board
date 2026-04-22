@@ -122,6 +122,7 @@ export default function CounterShell({
   const [cust,     setCust]     = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [referrer, setReferrer] = useState('');
   const [payMode,  setPayMode]  = useState<PayMode>('CASH');
   const [bankId,   setBankId]   = useState<number | null>(null);
   const [loading,  setLoading]  = useState(false);
@@ -186,6 +187,7 @@ export default function CounterShell({
           id_number: idNumber || undefined,
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
+          referrer: referrer || undefined,
         }),
       });
       const data = await res.json();
@@ -199,11 +201,14 @@ export default function CounterShell({
           cashier: data.cashier, customer: data.customer ?? undefined,
           idNumber: (data.id_number ?? idNumber) || undefined,
           paymentMode: data.payment_mode ?? payMode,
+          officialRate: data.official_rate ?? undefined,
+          referrer: data.referrer ?? undefined,
         };
         setFlash(txn);
         amtInput.setValue('');
         setCust('');
         setIdNumber('');
+        setReferrer('');
         await fetchTxns();
         setTimeout(() => setFlash(null), 5000);
       }
@@ -298,6 +303,7 @@ export default function CounterShell({
 <div class="field">ID NO &nbsp;&nbsp;&nbsp;&nbsp;: ${txn.idNumber ?? ''}</div>
 <div class="field">BUSINESS STY :</div>
 <div class="field">SIGNATURE &nbsp;:</div>
+${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div>` : ''}
 
 <div class="dot"></div>
 
@@ -310,7 +316,7 @@ export default function CounterShell({
   }
 
   // ── Edit request state ───────────────────────────────────────────────────
-  type EditDraft = { customer: string; payment_mode: string; rate: string; foreign_amt: string; note: string };
+  type EditDraft = { customer: string; payment_mode: string; rate: string; foreign_amt: string; note: string; referrer: string };
   const [editTxn,     setEditTxn]     = useState<Transaction | null>(null);
   const [editDraft,   setEditDraft]   = useState<EditDraft | null>(null);
   const [editBankId,  setEditBankId]  = useState<number | null>(null);
@@ -335,6 +341,7 @@ export default function CounterShell({
       rate:         String(t.rate),
       foreign_amt:  String(t.foreignAmt),
       note:         '',
+      referrer:     t.referrer ?? '',
     });
     setEditBankId(t.bankId ?? null);
     setEditError(null);
@@ -346,6 +353,7 @@ export default function CounterShell({
     if (draft.customer     !== (txn.customer ?? ''))        body.customer     = draft.customer || null;
     if (draft.payment_mode !== (txn.paymentMode ?? 'CASH')) body.payment_mode = draft.payment_mode;
     if (bankId !== (txn.bankId ?? null))                    body.bank_id      = bankId;
+    if (draft.referrer     !== (txn.referrer ?? ''))        body.referrer     = draft.referrer || null;
     const newRate = parseFloat(draft.rate);
     const newAmt  = parseFloat(draft.foreign_amt);
     if (!isNaN(newRate) && newRate !== txn.rate)        body.rate        = newRate;
@@ -677,6 +685,17 @@ export default function CounterShell({
                 </div>
 
                 <div>
+                  <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>REFERRER <span style={{ opacity: 0.45 }}>(optional)</span></label>
+                  <input
+                    type="text"
+                    value={editDraft.referrer}
+                    onChange={e => setEditDraft({ ...editDraft, referrer: e.target.value })}
+                    placeholder="Tour guide or referral source"
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
                   <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>PAYMENT MODE</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {PAY_MODES.map(m => (
@@ -838,7 +857,7 @@ export default function CounterShell({
               END SHIFT
             </button>
           )}
-          {(role === 'admin' || role === 'supervisor') && (<>
+          {role === 'admin' && (<>
             <a href="/" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
               DASHBOARD
             </a>
@@ -1038,6 +1057,34 @@ export default function CounterShell({
             </div>
           </div>
 
+          {/* Commission Preview */}
+          {ccy?.rateSet && +rateInput.raw > 0 && +amtInput.raw > 0 && (() => {
+            const offRate = type === 'SELL' ? ccy.todaySellRate : ccy.todayBuyRate;
+            if (offRate == null) return null;
+            const commission = (+rateInput.raw - offRate) * +amtInput.raw;
+            if (commission === 0) return null;
+            const cashierCut = referrer ? commission / 2 : commission;
+            const refCut = referrer ? commission / 2 : 0;
+            return (
+              <div style={{
+                background: commission > 0 ? 'rgba(0,212,170,0.05)' : 'rgba(255,92,92,0.05)',
+                border: `1px solid ${commission > 0 ? 'rgba(0,212,170,0.2)' : 'rgba(255,92,92,0.2)'}`,
+                borderRadius: 10, padding: '10px 14px',
+              }}>
+                <div style={{ ...M, fontSize: 9, color: commission > 0 ? '#00d4aa' : '#ff5c5c', letterSpacing: '0.12em', marginBottom: 6 }}>
+                  COMMISSION PREVIEW
+                </div>
+                <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>
+                  Spread: <span style={{ color: '#e2e6f0' }}>{commission > 0 ? '+' : ''}{(+rateInput.raw - offRate).toFixed(4)}</span> per unit
+                </div>
+                <div style={{ ...M, fontSize: 12, color: commission > 0 ? '#00d4aa' : '#ff5c5c' }}>
+                  Total: {php(Math.abs(commission))}
+                  {referrer && <> · You: {php(Math.abs(cashierCut))} · {referrer}: {php(Math.abs(refCut))}</>}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Customer / AMLA */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1074,6 +1121,17 @@ export default function CounterShell({
               value={idNumber}
               onChange={e => setIdNumber(e.target.value)}
               placeholder="ID number (PhilSys / DL / Passport)"
+              style={{
+                width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
+                ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+            <input
+              type="text"
+              value={referrer}
+              onChange={e => setReferrer(e.target.value)}
+              placeholder="Referrer / tour guide (optional)"
               style={{
                 width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
                 borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',

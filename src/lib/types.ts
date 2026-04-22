@@ -30,6 +30,8 @@ export interface Transaction {
   idNumber?: string;
   paymentMode?: string;
   bankId?: number;
+  officialRate?: number;
+  referrer?: string;
 }
 
 export interface CurrencyMeta {

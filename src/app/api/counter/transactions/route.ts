@@ -31,8 +31,10 @@ export async function GET() {
     than:       t.than,
     cashier:     t.cashier,
     customer:    t.customer ?? undefined,
-    paymentMode: t.payment_mode ?? undefined,
-    bankId:      t.bank_id != null ? Number(t.bank_id) : undefined,
+    paymentMode:  t.payment_mode ?? undefined,
+    bankId:       t.bank_id != null ? Number(t.bank_id) : undefined,
+    officialRate: t.official_rate != null ? Number(t.official_rate) : undefined,
+    referrer:     t.referrer ?? undefined,
   }));
 
   return NextResponse.json(mapped);
