@@ -32,8 +32,8 @@ export interface Transaction {
   bankId?: number;
   officialRate?: number;
   referrer?: string;
-  paymentTag?: string;      // ADVANCE | LATE
-  referenceDate?: string;   // ISO date string
+  paymentTag?: 'ADVANCE' | 'LATE';
+  referenceDate?: string;
 }
 
 export interface CurrencyMeta {

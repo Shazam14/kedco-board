@@ -41,9 +41,10 @@ test.describe('Commission and referrer — cashier counter', () => {
 
   test('SELL — commission preview appears when rate exceeds guide rate', async ({ page }) => {
     await pickCurrency(page, 'USD');
-    await page.locator('input').nth(1).fill('100');  // amount
-    await page.locator('input').nth(2).fill('58.00'); // transaction rate
-    await page.locator('input').nth(3).fill('57.00'); // guide rate (base)
+    await page.getByPlaceholder('e.g. 59.00').fill('56.00');
+    const rateInput = page.locator('input').nth(2);
+    await rateInput.fill('58.00');
+    await page.locator('input').nth(1).fill('100');
     await expect(page.getByText('COMMISSION PREVIEW')).toBeVisible();
     await expect(page.getByText(/Total:/).first()).toBeVisible();
   });
@@ -51,25 +52,26 @@ test.describe('Commission and referrer — cashier counter', () => {
   test('BUY — commission preview appears when rate is below guide rate', async ({ page }) => {
     await page.getByText('↓ BUY').click();
     await pickCurrency(page, 'USD');
-    await page.locator('input').nth(1).fill('100');  // amount
-    await page.locator('input').nth(2).fill('55.00'); // transaction rate
-    await page.locator('input').nth(3).fill('56.00'); // guide rate (base)
+    await page.getByPlaceholder('e.g. 59.00').fill('56.00');
+    const rateInput = page.locator('input').nth(2);
+    await rateInput.fill('55.00');
+    await page.locator('input').nth(1).fill('100');
     await expect(page.getByText('COMMISSION PREVIEW')).toBeVisible();
   });
 
   test('no commission preview when guide rate is empty', async ({ page }) => {
     await pickCurrency(page, 'USD');
+    // No guide rate entered — preview should not appear
     await page.locator('input').nth(1).fill('100');
-    await page.locator('input').nth(2).fill('58.00');
-    // guide rate left empty — no preview
     await expect(page.getByText('COMMISSION PREVIEW')).not.toBeVisible();
   });
 
   test('referrer name shows split in commission preview', async ({ page }) => {
     await pickCurrency(page, 'USD');
+    await page.getByPlaceholder('e.g. 59.00').fill('56.00');
+    const rateInput = page.locator('input').nth(2);
+    await rateInput.fill('58.00');
     await page.locator('input').nth(1).fill('100');
-    await page.locator('input').nth(2).fill('58.00');
-    await page.locator('input').nth(3).fill('57.00'); // guide rate
     await page.getByPlaceholder('Referrer / tour guide (optional)').fill('Juan dela Cruz');
     await expect(page.getByText('Juan dela Cruz')).toBeVisible();
     await expect(page.getByText(/You:/)).toBeVisible();
