@@ -39,39 +39,37 @@ test.describe('Commission and referrer — cashier counter', () => {
     await expect(page.getByPlaceholder('Referrer / tour guide (optional)')).toBeVisible();
   });
 
-  test('SELL — commission preview appears when rate exceeds official', async ({ page }) => {
+  test('SELL — commission preview appears when rate exceeds guide rate', async ({ page }) => {
     await pickCurrency(page, 'USD');
-    // USD official sell rate from mock is 57.00 — enter higher rate
-    const rateInput = page.locator('input').nth(2);
-    await rateInput.fill('58.00');
-    await page.locator('input').nth(1).fill('100');
+    await page.locator('input').nth(1).fill('100');  // amount
+    await page.locator('input').nth(2).fill('58.00'); // transaction rate
+    await page.locator('input').nth(3).fill('57.00'); // guide rate (base)
     await expect(page.getByText('COMMISSION PREVIEW')).toBeVisible();
-    // Total line shows positive commission amount
     await expect(page.getByText(/Total:/).first()).toBeVisible();
   });
 
-  test('BUY — commission preview appears when rate is below official', async ({ page }) => {
+  test('BUY — commission preview appears when rate is below guide rate', async ({ page }) => {
     await page.getByText('↓ BUY').click();
     await pickCurrency(page, 'USD');
-    // USD official buy rate from mock is 56.00 — enter lower rate
-    const rateInput = page.locator('input').nth(2);
-    await rateInput.fill('55.00');
-    await page.locator('input').nth(1).fill('100');
+    await page.locator('input').nth(1).fill('100');  // amount
+    await page.locator('input').nth(2).fill('55.00'); // transaction rate
+    await page.locator('input').nth(3).fill('56.00'); // guide rate (base)
     await expect(page.getByText('COMMISSION PREVIEW')).toBeVisible();
   });
 
-  test('no commission preview when rate equals official', async ({ page }) => {
+  test('no commission preview when guide rate is empty', async ({ page }) => {
     await pickCurrency(page, 'USD');
-    // Rate auto-fills to official — no change, no preview
     await page.locator('input').nth(1).fill('100');
+    await page.locator('input').nth(2).fill('58.00');
+    // guide rate left empty — no preview
     await expect(page.getByText('COMMISSION PREVIEW')).not.toBeVisible();
   });
 
   test('referrer name shows split in commission preview', async ({ page }) => {
     await pickCurrency(page, 'USD');
-    const rateInput = page.locator('input').nth(2);
-    await rateInput.fill('58.00');
     await page.locator('input').nth(1).fill('100');
+    await page.locator('input').nth(2).fill('58.00');
+    await page.locator('input').nth(3).fill('57.00'); // guide rate
     await page.getByPlaceholder('Referrer / tour guide (optional)').fill('Juan dela Cruz');
     await expect(page.getByText('Juan dela Cruz')).toBeVisible();
     await expect(page.getByText(/You:/)).toBeVisible();

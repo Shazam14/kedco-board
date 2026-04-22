@@ -118,8 +118,9 @@ export default function CounterShell({
   const [ccy,      setCcy]      = useState<CurrencyMeta | null>(null);
   const [ccyQuery, setCcyQuery] = useState('');
   const [ccyOpen,  setCcyOpen]  = useState(false);
-  const amtInput  = useNumberInput('', 8);
-  const rateInput = useNumberInput('', 8);
+  const amtInput       = useNumberInput('', 8);
+  const rateInput      = useNumberInput('', 8);
+  const guideRateInput = useNumberInput('', 8);
   const [cust,     setCust]     = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -188,6 +189,7 @@ export default function CounterShell({
           id_number: idNumber || undefined,
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
+          official_rate: +guideRateInput.raw > 0 ? +guideRateInput.raw : undefined,
           referrer: referrer || undefined,
           payment_tag: paymentTag || undefined,
           reference_date: (role === 'supervisor' && referenceDate) ? referenceDate : undefined,
@@ -214,6 +216,7 @@ export default function CounterShell({
         setCust('');
         setIdNumber('');
         setReferrer('');
+        guideRateInput.setValue('');
         setPaymentTag('');
         setReferenceDate(new Date().toISOString().split('T')[0]);
         await fetchTxns();
@@ -1057,6 +1060,29 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             />
           </div>
 
+          {/* Guide Rate — cashier/admin only */}
+          {role !== 'supervisor' && (
+            <div>
+              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+                GUIDE RATE <span style={{ opacity: 0.45 }}>(your base — for commission)</span>
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                ref={guideRateInput.ref}
+                value={guideRateInput.value}
+                onChange={guideRateInput.onChange}
+                onFocus={guideRateInput.onFocus}
+                placeholder="e.g. 59.00"
+                style={{
+                  width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 14px', color: 'var(--muted)',
+                  ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          )}
+
           {/* PHP Total */}
           <div style={{
             background: 'var(--surface)',
@@ -1071,11 +1097,10 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             </div>
           </div>
 
-          {/* Commission Preview — cashier/admin only */}
-          {role !== 'supervisor' && ccy?.rateSet && +rateInput.raw > 0 && +amtInput.raw > 0 && (() => {
-            const offRate = type === 'SELL' ? ccy.todaySellRate : ccy.todayBuyRate;
-            if (offRate == null) return null;
-            // SELL: earn when rate > official. BUY: earn when rate < official (Kedco pays less).
+          {/* Commission Preview — cashier/admin only, requires guide rate */}
+          {role !== 'supervisor' && +rateInput.raw > 0 && +amtInput.raw > 0 && +guideRateInput.raw > 0 && (() => {
+            const offRate = +guideRateInput.raw;
+            // SELL: earn when rate > guide. BUY: earn when rate < guide.
             const commission = type === 'SELL'
               ? (+rateInput.raw - offRate) * +amtInput.raw
               : (offRate - +rateInput.raw) * +amtInput.raw;
