@@ -22,6 +22,8 @@ async function fillDate(page: Parameters<typeof test>[1] extends { page: infer P
   const input = page.locator('input[type="date"]');
   await expect(input).toBeVisible({ timeout: 10_000 });
   await input.fill(date);
+  // Wait for React hydration — button stays disabled until onChange fires
+  await expect(page.getByRole('button', { name: 'Set Date' })).toBeEnabled({ timeout: 5_000 });
 }
 
 test.describe('Date Override Panel — admin page', () => {
