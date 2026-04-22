@@ -1,11 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function DateOverrideBanner() {
+  const pathname = usePathname();
   const [activeDate, setActiveDate] = useState<string | null>(null);
 
   useEffect(() => {
+    if (pathname === '/login') return;
+
     const check = () =>
       fetch('/api/admin/test-date')
         .then(r => r.json())
@@ -19,7 +23,7 @@ export default function DateOverrideBanner() {
     check();
     const interval = setInterval(check, 30_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [pathname]);
 
   if (!activeDate) return null;
 
