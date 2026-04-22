@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { action, ...rest } = body;
 
-  if (!['open', 'close'].includes(action)) {
+  if (!['open', 'close', 'replenish'].includes(action)) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 

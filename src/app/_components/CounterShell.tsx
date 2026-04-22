@@ -60,20 +60,27 @@ export default function CounterShell({
   const NEEDS_BANK: readonly PayMode[] = ['BANK_TRANSFER', 'CHEQUE'];
 
   // ── Shift state ──────────────────────────────────────────────────────────
+  type Replenishment = { id: string; amount_php: number; note?: string; added_at: string };
   type Shift = {
     id: string; cashier: string; cashier_name: string; status: string;
     opened_at: string; opening_cash_php: number;
     closing_cash_php?: number; expected_cash_php?: number; cash_variance?: number;
     txn_count?: number; total_sold_php?: number; total_bought_php?: number; total_than?: number;
-    total_commission?: number;
+    total_commission?: number; total_replenishment_php?: number;
+    replenishments?: Replenishment[];
   };
   const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
   const openingCashInput = useNumberInput('', 2);
   const closingCashInput = useNumberInput('', 2);
-  const [shiftLoading,  setShiftLoading]  = useState(false);
-  const [shiftError,    setShiftError]    = useState<string | null>(null);
-  const [showEndModal,  setShowEndModal]  = useState(false);
-  const [shiftClosed,   setShiftClosed]   = useState<Shift | null>(null);
+  const [shiftLoading,       setShiftLoading]       = useState(false);
+  const [shiftError,         setShiftError]         = useState<string | null>(null);
+  const [showEndModal,       setShowEndModal]       = useState(false);
+  const [showReplenishModal, setShowReplenishModal] = useState(false);
+  const [shiftClosed,        setShiftClosed]        = useState<Shift | null>(null);
+  const replenishInput = useNumberInput('', 2);
+  const [replenishNote,      setReplenishNote]      = useState('');
+  const [replenishLoading,   setReplenishLoading]   = useState(false);
+  const [replenishError,     setReplenishError]     = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/counter/shift', { cache: 'no-store' })
@@ -112,6 +119,22 @@ export default function CounterShell({
       if (!res.ok) { setShiftError(data.detail ?? 'Failed to close shift.'); }
       else { setShiftClosed(data); setShift(null); setShowEndModal(false); closingCashInput.setValue(''); }
     } finally { setShiftLoading(false); }
+  }
+
+  async function handleReplenish() {
+    const amount = parseFloat(replenishInput.raw);
+    if (isNaN(amount) || amount <= 0) { setReplenishError('Enter a valid amount.'); return; }
+    setReplenishLoading(true); setReplenishError(null);
+    try {
+      const res = await fetch('/api/counter/shift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'replenish', amount_php: amount, note: replenishNote || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setReplenishError(data.detail ?? 'Failed to record replenishment.'); }
+      else { setShift(data); setShowReplenishModal(false); replenishInput.setValue(''); setReplenishNote(''); }
+    } finally { setReplenishLoading(false); }
   }
 
   // ── Transaction state ─────────────────────────────────────────────────────
@@ -440,6 +463,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
     const phpFmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const dateLabel = new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
     const comm = s.total_commission ?? 0;
+    const repl = s.total_replenishment_php ?? 0;
     const variance = s.cash_variance ?? 0;
 
     // Per-currency breakdown from local txns
@@ -499,6 +523,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
       <div class="row"><span class="label">Total Bought (PHP)</span><span class="val" style="color:#2255cc">${phpFmt(s.total_bought_php ?? 0)}</span></div>
       <div class="row"><span class="label">Total THAN</span><span class="val" style="color:#007a55">${phpFmt(s.total_than ?? 0)}</span></div>
       ${comm !== 0 ? `<div class="row"><span class="label">Commission</span><span class="val" style="color:#cc0000">${comm > 0 ? '-' : '+'}${phpFmt(Math.abs(comm))}</span></div>` : ''}
+      ${repl !== 0 ? `<div class="row"><span class="label">Replenishment</span><span class="val" style="color:#007a55">+${phpFmt(repl)}</span></div>` : ''}
       <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
       <div class="highlight">
         <span style="font-size:11px;font-weight:700;letter-spacing:0.1em">EXPECTED CASH</span>
@@ -602,6 +627,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             </div>
             {(() => {
               const comm = shiftClosed.total_commission ?? 0;
+              const repl = shiftClosed.total_replenishment_php ?? 0;
               const variance = shiftClosed.cash_variance ?? 0;
               const rows: [string, string, string?, number?][] = [
                 ['Transactions',      String(shiftClosed.txn_count ?? 0)],
@@ -609,6 +635,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                 ['Total Bought (PHP)', php(shiftClosed.total_bought_php ?? 0), '#5b8cff'],
                 ['Total THAN',         php(shiftClosed.total_than ?? 0),       '#00d4aa'],
                 ...(comm !== 0 ? [['Commission', (comm > 0 ? '-' : '+') + php(Math.abs(comm)), '#ff5c5c'] as [string, string, string]] : []),
+                ...(repl !== 0 ? [['Replenishment', '+' + php(repl), '#00d4aa'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shiftClosed.opening_cash_php)],
                 ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), '#f5a623'],
                 ['Actual Cash',        php(shiftClosed.closing_cash_php ?? 0)],
@@ -650,6 +677,86 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
         </div>
       )}
 
+      {/* ── REPLENISH MODAL ── */}
+      {showReplenishModal && shift && (
+        <div style={overlayStyle}>
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.2em', marginBottom: 4 }}>CASH REPLENISHMENT</div>
+                <div style={{ ...Y, fontSize: 20, fontWeight: 800 }}>Add Cash to Drawer</div>
+              </div>
+              <button onClick={() => setShowReplenishModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+            </div>
+
+            {/* Running total so far */}
+            {(shift.replenishments?.length ?? 0) > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                {shift.replenishments!.map(r => (
+                  <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{r.note || 'Replenishment'}</span>
+                    <span style={{ ...M, fontSize: 12, color: '#00d4aa' }}>+{php(r.amount_php)}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', marginTop: 2 }}>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>TOTAL REPLENISHED</span>
+                  <span style={{ ...M, fontSize: 12, color: '#00d4aa', fontWeight: 700 }}>+{php(shift.total_replenishment_php ?? 0)}</span>
+                </div>
+              </div>
+            )}
+
+            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              AMOUNT (PHP)
+            </label>
+            <input
+              type="text" inputMode="decimal"
+              ref={replenishInput.ref}
+              value={replenishInput.value}
+              onChange={replenishInput.onChange}
+              onFocus={replenishInput.onFocus}
+              placeholder="0.00" autoFocus
+              style={{
+                width: '100%', background: 'var(--bg)', border: '1px solid rgba(0,212,170,0.4)',
+                borderRadius: 8, padding: '14px 16px', color: '#00d4aa',
+                ...M, fontSize: 22, outline: 'none', boxSizing: 'border-box', marginBottom: 12,
+              }}
+            />
+            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              NOTE (optional)
+            </label>
+            <input
+              type="text"
+              value={replenishNote}
+              onChange={e => setReplenishNote(e.target.value)}
+              placeholder="e.g. from safe, branch replenishment..."
+              style={{
+                width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
+                ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+
+            {replenishError && (
+              <div style={{ ...M, fontSize: 11, color: '#ff5c5c', marginTop: 12 }}>✗ {replenishError}</div>
+            )}
+
+            <button
+              onClick={handleReplenish}
+              disabled={replenishLoading || !replenishInput.value}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 10, border: 'none', marginTop: 20,
+                background: replenishLoading || !replenishInput.value ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)',
+                color: replenishLoading || !replenishInput.value ? 'var(--muted)' : '#000',
+                ...Y, fontSize: 14, fontWeight: 800, cursor: replenishLoading || !replenishInput.value ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {replenishLoading ? 'SAVING...' : 'ADD CASH'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── END SHIFT MODAL ── */}
       {showEndModal && shift && (
         <div style={overlayStyle}>
@@ -675,6 +782,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                 ['Total Sold (PHP)',   php(shift.total_sold_php ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
                 ['Total Bought (PHP)', php(shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0))],
                 ...(comm !== 0 ? [['Commission', (comm > 0 ? '-' : '+') + php(Math.abs(comm)), '#ff5c5c'] as [string, string, string]] : []),
+                ...((shift.total_replenishment_php ?? 0) !== 0 ? [['Replenishment', '+' + php(shift.total_replenishment_php ?? 0), '#00d4aa'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shift.opening_cash_php)],
               ];
               return rows.map(([k, v, color]) => (
@@ -723,9 +831,10 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             {/* Expected closing cash — cashier compares this against their physical count */}
             {(() => {
               const comm      = shift.total_commission ?? totalCommission;
+              const repl      = shift.total_replenishment_php ?? 0;
               const soldAmt   = shift.total_sold_php   ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0);
               const boughtAmt = shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
-              const expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt - comm;
+              const expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt - comm + repl;
               return (
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1065,7 +1174,18 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
           <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>
             <span style={{ color: '#e2e6f0' }}>{username}</span>
           </div>
-          {shift && (
+          {shift && (<>
+            <button
+              onClick={() => { setReplenishError(null); replenishInput.setValue(''); setReplenishNote(''); setShowReplenishModal(true); }}
+              style={{
+                padding: '5px 14px', borderRadius: 6,
+                border: '1px solid rgba(0,212,170,0.35)',
+                background: 'rgba(0,212,170,0.07)',
+                color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
+              }}
+            >
+              REPLENISH
+            </button>
             <button
               onClick={() => { setShiftError(null); setShowEndModal(true); }}
               style={{
@@ -1077,7 +1197,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             >
               END SHIFT
             </button>
-          )}
+          </>)}
           {role === 'admin' && (<>
             <a href="/" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
               DASHBOARD
