@@ -326,7 +326,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
   }
 
   // ── Edit request state ───────────────────────────────────────────────────
-  type EditDraft = { customer: string; payment_mode: string; rate: string; foreign_amt: string; official_rate: string; note: string; referrer: string };
+  type EditDraft = { type: 'BUY' | 'SELL'; customer: string; payment_mode: string; rate: string; foreign_amt: string; official_rate: string; note: string; referrer: string };
   const [editTxn,     setEditTxn]     = useState<Transaction | null>(null);
   const [editDraft,   setEditDraft]   = useState<EditDraft | null>(null);
   const [editBankId,  setEditBankId]  = useState<number | null>(null);
@@ -346,6 +346,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
   function openEdit(t: Transaction) {
     setEditTxn(t);
     setEditDraft({
+      type:          t.type as 'BUY' | 'SELL',
       customer:      t.customer ?? '',
       payment_mode:  t.paymentMode ?? 'CASH',
       rate:          String(t.rate),
@@ -361,6 +362,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
 
   function buildEditBody(draft: EditDraft, txn: Transaction, bankId: number | null): Record<string, unknown> {
     const body: Record<string, unknown> = {};
+    if (draft.type         !== txn.type)                    body.type         = draft.type;
     if (draft.customer     !== (txn.customer ?? ''))        body.customer     = draft.customer || null;
     if (draft.payment_mode !== (txn.paymentMode ?? 'CASH')) body.payment_mode = draft.payment_mode;
     if (bankId !== (txn.bankId ?? null))                    body.bank_id      = bankId;
@@ -748,6 +750,24 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                   )}
                 </div>
 
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0,
+                  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 4,
+                }}>
+                  {(['BUY', 'SELL'] as const).map(t => (
+                    <button key={t} type="button" onClick={() => setEditDraft({ ...editDraft, type: t })} style={{
+                      padding: '10px', border: '1px solid',
+                      borderColor: editDraft.type === t ? (t === 'BUY' ? 'rgba(91,140,255,0.45)' : 'rgba(245,166,35,0.45)') : 'transparent',
+                      borderRadius: 9, cursor: 'pointer',
+                      background: editDraft.type === t ? (t === 'BUY' ? 'rgba(91,140,255,0.14)' : 'rgba(245,166,35,0.14)') : 'transparent',
+                      color: editDraft.type === t ? (t === 'BUY' ? '#5b8cff' : '#f5a623') : 'var(--muted)',
+                      ...M, fontSize: 13, fontWeight: 800, letterSpacing: '0.05em', transition: 'all 0.15s',
+                    }}>
+                      {t === 'BUY' ? '↓ BUY' : '↑ SELL'}
+                    </button>
+                  ))}
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>FOREIGN AMOUNT</label>
@@ -766,7 +786,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                       inputMode="decimal"
                       value={editDraft.rate}
                       onChange={e => setEditDraft({ ...editDraft, rate: e.target.value })}
-                      style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${editTxn.type === 'BUY' ? 'rgba(91,140,255,0.4)' : 'rgba(245,166,35,0.4)'}`, borderRadius: 8, padding: '10px 14px', color: editTxn.type === 'BUY' ? '#5b8cff' : '#f5a623', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                      style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${editDraft.type === 'BUY' ? 'rgba(91,140,255,0.4)' : 'rgba(245,166,35,0.4)'}`, borderRadius: 8, padding: '10px 14px', color: editDraft.type === 'BUY' ? '#5b8cff' : '#f5a623', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
@@ -801,7 +821,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                   const a = parseFloat(editDraft.foreign_amt);
                   const offRate = parseFloat(editDraft.official_rate);
                   if (!offRate || isNaN(r) || isNaN(a) || r <= 0 || a <= 0) return null;
-                  const comm = editTxn.type === 'SELL'
+                  const comm = editDraft.type === 'SELL'
                     ? (r - offRate) * a
                     : (offRate - r) * a;
                   if (comm === 0) return null;
