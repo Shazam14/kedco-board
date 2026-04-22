@@ -1490,9 +1490,9 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             )}
           </div>
 
-          {/* Expenses — admin and supervisor only */}
-          {(role === 'admin' || role === 'supervisor') && (
-            <ExpensePanel role={role} />
+          {/* Expenses — cashier and supervisor only */}
+          {(role === 'cashier' || role === 'supervisor') && (
+            <ExpensePanel username={username} />
           )}
         </div>
       </div>
