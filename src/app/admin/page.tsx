@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getTokenRole } from '@/lib/api';
 import { AdminTourButton, AdminTourAutoStart } from './_components/AdminTour';
+import DateOverridePanel from './_components/DateOverridePanel';
 
 const tools: { href: string; icon: string; title: string; desc: string; color: string; soon?: boolean; tourId?: string }[] = [
   {
@@ -139,6 +140,13 @@ export default async function AdminPage() {
               <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)', lineHeight:1.6 }}>{tool.desc}</div>
             </a>
           ))}
+        </div>
+
+        <div style={{ marginTop:32 }}>
+          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:12 }}>SYSTEM</div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:16 }}>
+            <DateOverridePanel />
+          </div>
         </div>
       </div>
     </div>

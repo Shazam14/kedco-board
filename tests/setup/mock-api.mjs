@@ -159,6 +159,9 @@ function readBody(req) {
   });
 }
 
+// ── Date override state (mutable) ────────────────────────────────────────────
+let mockTestDate = null;
+
 // ── Shift state (mutable, resets on each mock-api process start) ─────────────
 const today = new Date().toISOString().split('T')[0];
 
@@ -636,8 +639,23 @@ const server = createServer(async (req, res) => {
     return json(res, [...SHIFTS.values()]);
   }
 
+  // ── Date override (test mode) ────────────────────────────────────────────
+  if (method === 'GET' && url === '/api/v1/config/test-date') {
+    return json(res, { test_date: mockTestDate });
+  }
+  if (method === 'POST' && url === '/api/v1/config/test-date') {
+    const body = JSON.parse(await readBody(req));
+    mockTestDate = body.date ?? null;
+    return json(res, { test_date: mockTestDate, message: `Test date set to ${mockTestDate}` });
+  }
+  if (method === 'DELETE' && url === '/api/v1/config/test-date') {
+    mockTestDate = null;
+    return json(res, { message: 'Test date cleared' });
+  }
+
   // Test reset — clears mutable state between tests
   if (method === 'POST' && url === '/api/v1/test/reset') {
+    mockTestDate = null;
     EDIT_REQUESTS.length = 0;
     CREDITS = makeInitialCredits();
     // Restore both shifts to OPEN state

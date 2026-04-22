@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import DateOverrideBanner from './_components/DateOverrideBanner';
 
 export const metadata: Metadata = {
   title: "Kedco FX — Capital Dashboard",
@@ -9,7 +10,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <DateOverrideBanner />
+      </body>
     </html>
   );
 }
