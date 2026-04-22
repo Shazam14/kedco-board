@@ -5,6 +5,7 @@ import type { CurrencyMeta, Transaction } from '@/lib/types';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { useNumberInput } from '@/hooks/useNumberInput';
 import IDScanner, { type ScannedID } from '@/app/_components/IDScanner';
+import ExpensePanel from '@/app/_components/ExpensePanel';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -1463,6 +1464,11 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
               </div>
             )}
           </div>
+
+          {/* Expenses — admin and supervisor only */}
+          {(role === 'admin' || role === 'supervisor') && (
+            <ExpensePanel role={role} />
+          )}
         </div>
       </div>
     </div>
