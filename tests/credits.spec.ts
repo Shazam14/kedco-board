@@ -140,8 +140,32 @@ test.describe('Credit actions', () => {
     await expect(page.getByText(/Paid .+ by admin/)).toBeVisible();
   });
 
-  test('cancel a credit shows confirmation and updates status', async ({ page, request }) => {
-    await resetMockState(request);
+  test('cancel a credit shows confirmation and updates status', async ({ page }) => {
+    // Use page.route() to isolate this test from the shared mock server.
+    // Other parallel workers calling resetMockState would wipe state created mid-test.
+    const CANCEL_CREDIT = {
+      id: 'credit-cancel-test',
+      customer_name: 'Customer To Cancel',
+      currency_code: 'PHP', principal: 10000, interest: 500,
+      credit_type: 'UPFRONT', status: 'ACTIVE',
+      disbursed_date: '2026-04-16', notes: '', created_by: 'admin',
+      installments: [
+        { id: 'inst-cancel-01', installment_no: 1, due_date: '2026-05-01', amount: 10000, paid_at: null, received_by: null },
+      ],
+      draws: [],
+    };
+
+    await page.route('**/api/admin/credits', async route => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CANCEL_CREDIT) });
+      } else {
+        await route.continue();
+      }
+    });
+    await page.route('**/api/admin/credits/*/cancel', async route => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...CANCEL_CREDIT, status: 'CANCELLED' }) });
+    });
+
     await page.goto('/admin/credits');
 
     // Create a fresh credit to cancel
