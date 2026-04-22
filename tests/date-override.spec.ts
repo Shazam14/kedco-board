@@ -22,6 +22,8 @@ async function fillDate(page: Parameters<typeof test>[1] extends { page: infer P
   const input = page.locator('input[type="date"]');
   await expect(input).toBeVisible({ timeout: 10_000 });
   await input.fill(date);
+  // Wait for React hydration — button stays disabled until onChange fires
+  await expect(page.getByRole('button', { name: 'Set Date' })).toBeEnabled({ timeout: 5_000 });
 }
 
 test.describe('Date Override Panel — admin page', () => {
@@ -32,7 +34,7 @@ test.describe('Date Override Panel — admin page', () => {
 
   test('no ACTIVE badge when no override is set', async ({ page }) => {
     await page.goto('/admin');
-    await expect(page.getByText('ACTIVE')).not.toBeVisible();
+    await expect(page.getByText('ACTIVE', { exact: true })).not.toBeVisible();
   });
 
   test('shows correct label when no override', async ({ page }) => {
@@ -44,7 +46,7 @@ test.describe('Date Override Panel — admin page', () => {
     await page.goto('/admin');
     await fillDate(page, PAST_DATE);
     await page.getByRole('button', { name: 'Set Date' }).click();
-    await expect(page.getByText('ACTIVE')).toBeVisible();
+    await expect(page.getByText('ACTIVE', { exact: true })).toBeVisible();
     await expect(page.getByText(/Date override active/i)).toBeVisible();
   });
 
@@ -66,10 +68,10 @@ test.describe('Date Override Panel — admin page', () => {
     await page.goto('/admin');
     await fillDate(page, PAST_DATE);
     await page.getByRole('button', { name: 'Set Date' }).click();
-    await expect(page.getByText('ACTIVE')).toBeVisible();
+    await expect(page.getByText('ACTIVE', { exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: /Clear/i }).click();
-    await expect(page.getByText('ACTIVE')).not.toBeVisible();
+    await expect(page.getByText('ACTIVE', { exact: true })).not.toBeVisible();
     await expect(page.getByText(/System is using the real date/i)).toBeVisible();
   });
 
@@ -78,7 +80,7 @@ test.describe('Date Override Panel — admin page', () => {
     await fillDate(page, TODAY);
     await page.getByRole('button', { name: 'Set Date' }).click();
     // isOverrideActive is false when date === today
-    await expect(page.getByText('ACTIVE')).not.toBeVisible();
+    await expect(page.getByText('ACTIVE', { exact: true })).not.toBeVisible();
   });
 });
 

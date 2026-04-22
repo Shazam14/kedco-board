@@ -70,8 +70,8 @@ test.describe('Create UPFRONT credit (Option A)', () => {
     // Fill in details
     await page.getByPlaceholder('e.g. Juan Dela Cruz').fill('Difficult Customer A');
     // Currency defaults to PHP, leave it
-    await page.locator('input[placeholder="100000"]').fill('100000');
-    await page.locator('input[placeholder="5000"]').fill('5000');
+    await page.locator('input[placeholder="100,000"]').fill('100000');
+    await page.locator('input[placeholder="5"]').fill('5');
     // Disbursed date
     await page.locator('input[type="date"]').first().fill('2026-04-16');
 
@@ -97,8 +97,8 @@ test.describe('Create INSTALLMENT credit (Option B)', () => {
     await page.getByRole('button', { name: '+ New Credit' }).click();
 
     await page.getByPlaceholder('e.g. Juan Dela Cruz').fill('Difficult Customer B');
-    await page.locator('input[placeholder="100000"]').fill('100000');
-    await page.locator('input[placeholder="5000"]').fill('5000');
+    await page.locator('input[placeholder="100,000"]').fill('100000');
+    await page.locator('input[placeholder="5"]').fill('5');
     await page.locator('input[type="date"]').first().fill('2026-04-16');
 
     // Switch to INSTALLMENT
@@ -147,8 +147,8 @@ test.describe('Credit actions', () => {
     // Create a fresh credit to cancel
     await page.getByRole('button', { name: '+ New Credit' }).click();
     await page.getByPlaceholder('e.g. Juan Dela Cruz').fill('Customer To Cancel');
-    await page.locator('input[placeholder="100000"]').fill('10000');
-    await page.locator('input[placeholder="5000"]').fill('500');
+    await page.locator('input[placeholder="100,000"]').fill('10000');
+    await page.locator('input[placeholder="5"]').fill('500');
     await page.locator('input[type="date"]').first().fill('2026-04-16');
     await page.locator('input[type="date"]').last().fill('2026-05-01');
     await page.getByRole('button', { name: 'Save Credit' }).click();
