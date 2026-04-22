@@ -498,7 +498,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
       <div class="row"><span class="label">Total Sold (PHP)</span><span class="val" style="color:#c47000">${phpFmt(s.total_sold_php ?? 0)}</span></div>
       <div class="row"><span class="label">Total Bought (PHP)</span><span class="val" style="color:#2255cc">${phpFmt(s.total_bought_php ?? 0)}</span></div>
       <div class="row"><span class="label">Total THAN</span><span class="val" style="color:#007a55">${phpFmt(s.total_than ?? 0)}</span></div>
-      ${comm !== 0 ? `<div class="row"><span class="label">Commission</span><span class="val" style="color:#007a55">${comm > 0 ? '+' : ''}${phpFmt(comm)}</span></div>` : ''}
+      ${comm !== 0 ? `<div class="row"><span class="label">Commission</span><span class="val" style="color:#cc0000">${comm > 0 ? '-' : '+'}${phpFmt(Math.abs(comm))}</span></div>` : ''}
       <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
       <div class="highlight">
         <span style="font-size:11px;font-weight:700;letter-spacing:0.1em">EXPECTED CASH</span>
@@ -608,7 +608,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                 ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),   '#f5a623'],
                 ['Total Bought (PHP)', php(shiftClosed.total_bought_php ?? 0), '#5b8cff'],
                 ['Total THAN',         php(shiftClosed.total_than ?? 0),       '#00d4aa'],
-                ...(comm !== 0 ? [['Commission', (comm > 0 ? '+' : '') + php(comm), '#00d4aa'] as [string, string, string]] : []),
+                ...(comm !== 0 ? [['Commission', (comm > 0 ? '-' : '+') + php(Math.abs(comm)), '#ff5c5c'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shiftClosed.opening_cash_php)],
                 ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), '#f5a623'],
                 ['Actual Cash',        php(shiftClosed.closing_cash_php ?? 0)],
@@ -674,7 +674,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                 ['Transactions',       String(shift.txn_count ?? txns.length)],
                 ['Total Sold (PHP)',   php(shift.total_sold_php ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
                 ['Total Bought (PHP)', php(shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0))],
-                ...(comm !== 0 ? [['Commission', (comm > 0 ? '+' : '') + php(comm), '#00d4aa'] as [string, string, string]] : []),
+                ...(comm !== 0 ? [['Commission', (comm > 0 ? '-' : '+') + php(Math.abs(comm)), '#ff5c5c'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shift.opening_cash_php)],
               ];
               return rows.map(([k, v, color]) => (
