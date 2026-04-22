@@ -13,7 +13,7 @@ export default function DateOverridePanel() {
       .then(r => r.json())
       .then(d => {
         setActiveDate(d.test_date ?? null);
-        setInput(d.test_date ?? '');
+        if (d.test_date) setInput(d.test_date);
       })
       .catch(() => {});
   }, []);
