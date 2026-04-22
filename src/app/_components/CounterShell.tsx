@@ -313,6 +313,7 @@ export default function CounterShell({
   type EditDraft = { customer: string; payment_mode: string; rate: string; foreign_amt: string; note: string };
   const [editTxn,     setEditTxn]     = useState<Transaction | null>(null);
   const [editDraft,   setEditDraft]   = useState<EditDraft | null>(null);
+  const [editBankId,  setEditBankId]  = useState<number | null>(null);
   const [editLoading, setEditLoading] = useState(false);
   const [editError,   setEditError]   = useState<string | null>(null);
   const [editSent,    setEditSent]    = useState(false);
@@ -335,14 +336,16 @@ export default function CounterShell({
       foreign_amt:  String(t.foreignAmt),
       note:         '',
     });
+    setEditBankId(t.bankId ?? null);
     setEditError(null);
     setEditSent(false);
   }
 
-  function buildEditBody(draft: EditDraft, txn: Transaction): Record<string, unknown> {
+  function buildEditBody(draft: EditDraft, txn: Transaction, bankId: number | null): Record<string, unknown> {
     const body: Record<string, unknown> = {};
     if (draft.customer     !== (txn.customer ?? ''))        body.customer     = draft.customer || null;
     if (draft.payment_mode !== (txn.paymentMode ?? 'CASH')) body.payment_mode = draft.payment_mode;
+    if (bankId !== (txn.bankId ?? null))                    body.bank_id      = bankId;
     const newRate = parseFloat(draft.rate);
     const newAmt  = parseFloat(draft.foreign_amt);
     if (!isNaN(newRate) && newRate !== txn.rate)        body.rate        = newRate;
@@ -352,7 +355,7 @@ export default function CounterShell({
 
   async function handleEditRequest() {
     if (!editTxn || !editDraft) return;
-    const body = buildEditBody(editDraft, editTxn);
+    const body = buildEditBody(editDraft, editTxn, editBankId);
     if (editDraft.note.trim()) body.note = editDraft.note.trim();
     if (Object.keys(body).filter(k => k !== 'note').length === 0) {
       setEditError('No changes detected.'); return;
@@ -375,7 +378,7 @@ export default function CounterShell({
 
   async function handleAdminEdit() {
     if (!editTxn || !editDraft) return;
-    const body = buildEditBody(editDraft, editTxn);
+    const body = buildEditBody(editDraft, editTxn, editBankId);
     if (Object.keys(body).length === 0) {
       setEditError('No changes detected.'); return;
     }
@@ -677,15 +680,31 @@ export default function CounterShell({
                   <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>PAYMENT MODE</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {PAY_MODES.map(m => (
-                      <button key={m} type="button" onClick={() => setEditDraft({ ...editDraft, payment_mode: m })} style={{
+                      <button key={m} type="button" onClick={() => { setEditDraft({ ...editDraft, payment_mode: m }); if (!NEEDS_BANK.includes(m as PayMode)) setEditBankId(null); }} style={{
                         padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
                         border: `1px solid ${editDraft.payment_mode === m ? 'rgba(0,212,170,0.5)' : 'var(--border)'}`,
                         background: editDraft.payment_mode === m ? 'rgba(0,212,170,0.1)' : 'transparent',
                         color: editDraft.payment_mode === m ? '#00d4aa' : 'var(--muted)',
                         ...M, fontSize: 10,
-                      }}>{m}</button>
+                      }}>{m.replace('_', ' ')}</button>
                     ))}
                   </div>
+                  {NEEDS_BANK.includes(editDraft.payment_mode as PayMode) && (
+                    <div style={{ marginTop: 8 }}>
+                      <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>BANK</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {banks.map(b => (
+                          <button key={b.id} type="button" onClick={() => setEditBankId(b.id)} style={{
+                            padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
+                            border: `1px solid ${editBankId === b.id ? 'rgba(91,140,255,0.5)' : 'var(--border)'}`,
+                            background: editBankId === b.id ? 'rgba(91,140,255,0.1)' : 'transparent',
+                            color: editBankId === b.id ? '#5b8cff' : 'var(--muted)',
+                            ...M, fontSize: 10,
+                          }}>{b.code}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -1235,7 +1254,7 @@ export default function CounterShell({
                 {/* Column labels */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px 48px',
+                  gridTemplateColumns: '100px 48px 56px 64px 90px 80px 100px 80px 48px',
                   padding: '8px 20px', borderBottom: '1px solid var(--border)',
                   ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
                   whiteSpace: 'nowrap',
@@ -1243,6 +1262,7 @@ export default function CounterShell({
                   <span>RECEIPT</span>
                   <span>TIME</span>
                   <span>TYPE</span>
+                  <span>MODE</span>
                   <span>CCY</span>
                   <span>FOREIGN</span>
                   <span>RATE</span>
@@ -1256,7 +1276,7 @@ export default function CounterShell({
                       key={t.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '100px 48px 56px 90px 80px 100px 80px 48px',
+                        gridTemplateColumns: '100px 48px 56px 64px 90px 80px 100px 80px 48px',
                         padding: '10px 20px',
                         borderBottom: '1px solid var(--border)',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
@@ -1270,6 +1290,9 @@ export default function CounterShell({
                         ...M, fontSize: 11, fontWeight: 700,
                         color: t.type === 'BUY' ? '#5b8cff' : '#f5a623',
                       }}>{t.type}</span>
+                      <span style={{ ...M, fontSize: 9, color: 'var(--muted)' }}>
+                        {(t.paymentMode ?? 'CASH') === 'BANK_TRANSFER' ? 'BANK' : (t.paymentMode ?? 'CASH') === 'SHOPEEPAY' ? 'SHPAY' : (t.paymentMode ?? 'CASH')}
+                      </span>
                       <span style={{ ...M, fontSize: 13, color: '#e2e6f0' }}>{t.currency}</span>
                       <span style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>
                         {fmtFx(t.foreignAmt, t.currency, currencies)}

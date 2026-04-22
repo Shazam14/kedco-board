@@ -29,8 +29,10 @@ export async function GET() {
     rate:       t.rate,
     phpAmt:     t.php_amt,
     than:       t.than,
-    cashier:    t.cashier,
-    customer:   t.customer ?? undefined,
+    cashier:     t.cashier,
+    customer:    t.customer ?? undefined,
+    paymentMode: t.payment_mode ?? undefined,
+    bankId:      t.bank_id != null ? Number(t.bank_id) : undefined,
   }));
 
   return NextResponse.json(mapped);

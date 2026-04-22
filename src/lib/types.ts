@@ -29,6 +29,7 @@ export interface Transaction {
   customer?: string;
   idNumber?: string;
   paymentMode?: string;
+  bankId?: number;
 }
 
 export interface CurrencyMeta {
