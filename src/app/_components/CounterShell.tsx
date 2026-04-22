@@ -777,6 +777,37 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                   ) : null;
                 })()}
 
+                {(() => {
+                  const r = parseFloat(editDraft.rate);
+                  const a = parseFloat(editDraft.foreign_amt);
+                  const offRate = editTxn.officialRate;
+                  if (!offRate || isNaN(r) || isNaN(a) || r <= 0 || a <= 0) return null;
+                  const comm = editTxn.type === 'SELL'
+                    ? (r - offRate) * a
+                    : (offRate - r) * a;
+                  if (comm === 0) return null;
+                  const cashierCut = editDraft.referrer ? comm / 2 : comm;
+                  const refCut     = editDraft.referrer ? comm / 2 : 0;
+                  return (
+                    <div style={{
+                      background: comm > 0 ? 'rgba(0,212,170,0.05)' : 'rgba(255,92,92,0.05)',
+                      border: `1px solid ${comm > 0 ? 'rgba(0,212,170,0.2)' : 'rgba(255,92,92,0.2)'}`,
+                      borderRadius: 10, padding: '10px 14px',
+                    }}>
+                      <div style={{ ...M, fontSize: 9, color: comm > 0 ? '#00d4aa' : '#ff5c5c', letterSpacing: '0.12em', marginBottom: 6 }}>
+                        COMMISSION PREVIEW
+                      </div>
+                      <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>
+                        Guide rate: <span style={{ color: '#e2e6f0' }}>{offRate}</span>
+                      </div>
+                      <div style={{ ...M, fontSize: 12, color: comm > 0 ? '#00d4aa' : '#ff5c5c' }}>
+                        Total: {php(Math.abs(comm))}
+                        {editDraft.referrer && <> · You: {php(Math.abs(cashierCut))} · {editDraft.referrer}: {php(Math.abs(refCut))}</>}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div>
                   <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
                     REASON <span style={{ opacity: 0.45 }}>(optional)</span>
