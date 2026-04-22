@@ -1429,6 +1429,14 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                 <div style={{ ...Y, fontSize: 20, fontWeight: 800, color: s.color }}>
                   {s.value}
                 </div>
+                {s.label === 'TOTAL BOUGHT' && totalCommission !== 0 && (
+                  <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em' }}>COMM</span>
+                    <span style={{ ...M, fontSize: 11, fontWeight: 700, color: totalCommission > 0 ? '#00d4aa' : '#ff5c5c' }}>
+                      {totalCommission > 0 ? '+' : ''}{php(totalCommission)}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
