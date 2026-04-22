@@ -126,6 +126,32 @@ test.describe('Cashier — edit request flow', () => {
     await page.getByTestId('edit-submit-btn').click();
     await expect(page.getByText('No changes detected')).toBeVisible();
   });
+
+  test('typing 0 in guide rate detects change and submits edit request', async ({ page }) => {
+    await page.route('/api/counter/transactions', route =>
+      route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([{
+          id: 'OR-GUIDE001', time: '12:07 PM', type: 'BUY', source: 'COUNTER',
+          currency: 'USD', foreignAmt: 100, rate: 60, phpAmt: 6000, than: 0,
+          cashier: 'cashier1', paymentMode: 'CASH',
+          officialRate: 60.8,
+        }]),
+      })
+    );
+    await page.route('/api/counter/transactions/OR-GUIDE001/edit-request', route =>
+      route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({
+        id: 'req-guide-001', txn_id: 'OR-GUIDE001', status: 'PENDING',
+      }) })
+    );
+    await page.goto('/counter');
+    await page.locator('[data-testid^="edit-btn-OR-GUIDE001"]').click();
+    // Guide rate is pre-filled with 60.8 — cashier types 0 to clear commission
+    await page.getByPlaceholder('e.g. 56.50').fill('0');
+    await page.getByTestId('edit-submit-btn').click();
+    await expect(page.getByText('No changes detected')).not.toBeVisible();
+    await expect(page.getByText('Request Submitted')).toBeVisible();
+  });
 });
 
 // ── Admin: edit requests page ─────────────────────────────────────────────────
