@@ -1057,8 +1057,8 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             </div>
           </div>
 
-          {/* Commission Preview */}
-          {ccy?.rateSet && +rateInput.raw > 0 && +amtInput.raw > 0 && (() => {
+          {/* Commission Preview — cashier/admin only */}
+          {role !== 'supervisor' && ccy?.rateSet && +rateInput.raw > 0 && +amtInput.raw > 0 && (() => {
             const offRate = type === 'SELL' ? ccy.todaySellRate : ccy.todayBuyRate;
             if (offRate == null) return null;
             const commission = (+rateInput.raw - offRate) * +amtInput.raw;
@@ -1127,17 +1127,19 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                 ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
               }}
             />
-            <input
-              type="text"
-              value={referrer}
-              onChange={e => setReferrer(e.target.value)}
-              placeholder="Referrer / tour guide (optional)"
-              style={{
-                width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
-                ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
-              }}
-            />
+            {role !== 'supervisor' && (
+              <input
+                type="text"
+                value={referrer}
+                onChange={e => setReferrer(e.target.value)}
+                placeholder="Referrer / tour guide (optional)"
+                style={{
+                  width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
+                  ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+            )}
           </div>
 
           {/* Payment Mode */}
@@ -1312,7 +1314,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                 {/* Column labels */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '100px 48px 56px 64px 90px 80px 100px 80px 48px',
+                  gridTemplateColumns: '100px 48px 56px 64px 90px 80px 100px 80px 72px 48px',
                   padding: '8px 20px', borderBottom: '1px solid var(--border)',
                   ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
                   whiteSpace: 'nowrap',
@@ -1325,6 +1327,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                   <span>FOREIGN</span>
                   <span>RATE</span>
                   <span>PHP AMT</span>
+                  {role !== 'supervisor' && <span>COMM</span>}
                   <span />
                 </div>
 
@@ -1334,7 +1337,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                       key={t.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '100px 48px 56px 64px 90px 80px 100px 80px 48px',
+                        gridTemplateColumns: '100px 48px 56px 64px 90px 80px 100px 80px 72px 48px',
                         padding: '10px 20px',
                         borderBottom: '1px solid var(--border)',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
@@ -1360,6 +1363,16 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                         color: t.type === 'BUY' ? '#5b8cff' : '#f5a623',
                       }}>{t.rate}</span>
                       <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
+                      {role !== 'supervisor' && (() => {
+                        if (t.officialRate == null) return <span />;
+                        const comm = (t.rate - t.officialRate) * t.foreignAmt;
+                        if (comm === 0) return <span />;
+                        return (
+                          <span style={{ ...M, fontSize: 10, color: comm > 0 ? '#00d4aa' : '#ff5c5c' }}>
+                            {comm > 0 ? '+' : ''}{php(Math.abs(comm))}
+                          </span>
+                        );
+                      })()}
                       {pendingEdits.has(t.id) ? (
                         <span title="Edit request pending admin approval" style={{
                           ...M, fontSize: 9, color: '#f5a623',

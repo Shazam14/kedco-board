@@ -79,8 +79,8 @@ test.describe('Dashboard', () => {
 test.describe('Dashboard — supervisor access', () => {
   test.use({ storageState: path.join('tests', '.auth', 'supervisor.json') });
 
-  test('supervisor can access dashboard', async ({ page }) => {
+  test('supervisor is redirected from dashboard to counter', async ({ page }) => {
     await page.goto('/dashboard');
-    await expect(page.getByText('TOTAL CAPITAL POSITION')).toBeVisible();
+    await expect(page).toHaveURL(/\/counter/);
   });
 });

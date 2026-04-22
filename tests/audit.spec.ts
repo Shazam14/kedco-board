@@ -130,8 +130,8 @@ test.describe('Audit Trail — supervisor cannot access', () => {
 
   test('redirects supervisor away from /admin/audit', async ({ page }) => {
     await page.goto('/admin/audit');
-    // Should be redirected to /dashboard (not /login, since supervisor IS logged in)
-    await expect(page).toHaveURL(/\/dashboard/);
+    // Supervisor is redirected to /counter (not /login, since they ARE logged in)
+    await expect(page).toHaveURL(/\/counter/);
   });
 });
 

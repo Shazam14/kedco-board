@@ -31,7 +31,7 @@ function LoginForm() {
         return;
       }
       // Route by role
-      if (data.role === 'cashier') {
+      if (data.role === 'cashier' || data.role === 'supervisor') {
         router.push('/counter');
       } else if (data.role === 'rider') {
         router.push('/rider');
