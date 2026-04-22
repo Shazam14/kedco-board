@@ -221,7 +221,7 @@ test.describe('Admin — /admin/shifts', () => {
       cashier: 'cashier1', cashier_name: 'Cashier One', status: 'OPEN',
       opened_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(), closed_at: null,
       opening_cash_php: 10000, closing_cash_php: null, expected_cash_php: null, cash_variance: null,
-      txn_count: 3, total_sold_php: 29000, total_bought_php: 11500, total_than: 450,
+      txn_count: 3, total_sold_php: 29000, total_bought_php: 11500, total_than: 450, total_commission: 0,
     },
   ];
 
