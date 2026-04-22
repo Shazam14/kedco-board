@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useNumberInput } from '@/hooks/useNumberInput';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -35,7 +36,7 @@ export default function ExpensePanel({ username }: { username: string }) {
   const [showForm, setShowForm] = useState(false);
   const [category, setCategory] = useState('OFFICE_SUPPLIES');
   const [desc, setDesc]         = useState('');
-  const [amount, setAmount]     = useState('');
+  const amountInput             = useNumberInput('', 2);
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const [editId, setEditId]     = useState<string | null>(null);
@@ -48,7 +49,7 @@ export default function ExpensePanel({ username }: { username: string }) {
   useEffect(() => { load(); }, []);
 
   async function submit() {
-    if (!amount || +amount <= 0) { setError('Enter a valid amount'); return; }
+    if (!amountInput.raw || +amountInput.raw <= 0) { setError('Enter a valid amount'); return; }
     if (category === 'OTHERS' && !desc.trim()) { setError('Description required for Others'); return; }
     setSaving(true); setError(null);
     const url    = editId ? `/api/counter/expenses/${editId}` : '/api/counter/expenses';
@@ -56,20 +57,20 @@ export default function ExpensePanel({ username }: { username: string }) {
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount_php: +amount, category, description: desc || undefined }),
+      body: JSON.stringify({ amount_php: +amountInput.raw, category, description: desc || undefined }),
     });
     const data = await res.json();
     if (!res.ok) { setError(data.detail ?? 'Failed'); }
     else {
       setExpenses(prev => editId ? prev.map(e => e.id === editId ? data : e) : [data, ...prev]);
-      setShowForm(false); setEditId(null); setAmount(''); setDesc(''); setCategory('OFFICE_SUPPLIES');
+      setShowForm(false); setEditId(null); amountInput.setValue(''); setDesc(''); setCategory('OFFICE_SUPPLIES');
     }
     setSaving(false);
   }
 
   function startEdit(e: Expense) {
     setEditId(e.id); setCategory(e.category); setDesc(e.description ?? '');
-    setAmount(String(e.amount_php)); setShowForm(true); setError(null);
+    amountInput.setValue(String(e.amount_php)); setShowForm(true); setError(null);
   }
 
   const total = expenses.reduce((s, e) => s + e.amount_php, 0);
@@ -82,7 +83,7 @@ export default function ExpensePanel({ username }: { username: string }) {
           <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: '#ff5c5c' }}>{php(total)}</span>
         </div>
         <button
-          onClick={() => { setShowForm(v => !v); setEditId(null); setError(null); setAmount(''); setDesc(''); setCategory('OFFICE_SUPPLIES'); }}
+          onClick={() => { setShowForm(v => !v); setEditId(null); setError(null); amountInput.setValue(''); setDesc(''); setCategory('OFFICE_SUPPLIES'); }}
           style={{ ...M, fontSize: 11, padding: '7px 16px', borderRadius: 8, cursor: 'pointer', border: 'none', background: showForm ? 'var(--surface2)' : 'rgba(255,92,92,0.15)', color: showForm ? 'var(--muted)' : '#ff5c5c' }}
         >
           {showForm ? 'Cancel' : '+ Expense'}
@@ -112,11 +113,13 @@ export default function ExpensePanel({ username }: { username: string }) {
             />
 
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               placeholder="Amount (PHP)"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              min="0.01" step="0.01"
+              ref={amountInput.ref}
+              value={amountInput.value}
+              onChange={amountInput.onChange}
+              onFocus={amountInput.onFocus}
               style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', color: '#e2e6f0', ...M, fontSize: 14, outline: 'none' }}
             />
 
