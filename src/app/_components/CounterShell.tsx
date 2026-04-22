@@ -164,7 +164,7 @@ export default function CounterShell({
       : null;
 
   const canSubmit =
-    !!ccy?.rateSet && !!amtInput.raw && +amtInput.raw > 0 && !!rateInput.raw && +rateInput.raw > 0 && !loading
+    !!ccy && !!amtInput.raw && +amtInput.raw > 0 && !!rateInput.raw && +rateInput.raw > 0 && !loading
     && (!NEEDS_BANK.includes(payMode) || bankId !== null);
 
   async function handleSubmit() {
@@ -797,7 +797,7 @@ export default function CounterShell({
         }}>
           <span style={{ fontSize: 14 }}>ℹ️</span>
           <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#f5a623' }}>
-            Rates set for {ratesCount} of {currencies.length} currencies today. Currencies without rates are disabled.
+            Rates set for {ratesCount} of {currencies.length} currencies today. Currencies without rates require manual rate entry.
           </span>
         </div>
       )}
@@ -947,14 +947,14 @@ export default function CounterShell({
                     <div
                       key={c.code}
                       data-testid={`currency-option-${c.code}`}
-                      onMouseDown={() => { if (!c.rateSet) return; setCcy(c); setCcyQuery(''); setCcyOpen(false); }}
+                      onMouseDown={() => { setCcy(c); setCcyQuery(''); setCcyOpen(false); }}
                       style={{
-                        padding: '10px 14px', cursor: c.rateSet ? 'pointer' : 'not-allowed',
-                        opacity: c.rateSet ? 1 : 0.4,
+                        padding: '10px 14px', cursor: 'pointer',
+                        opacity: 1,
                         display: 'flex', gap: 10, alignItems: 'center',
                         borderBottom: '1px solid var(--border)',
                       }}
-                      onMouseEnter={e => { if (c.rateSet) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg)'; }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg)'; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
                     >
                       <span style={{ fontSize: 18 }}>{c.flag}</span>
@@ -977,8 +977,8 @@ export default function CounterShell({
               </div>
             )}
             {ccy && !ccy.rateSet && (
-              <div style={{ ...M, fontSize: 10, color: '#ff5c5c', marginTop: 6 }}>
-                No rate set for today — ask admin to set rates first.
+              <div style={{ ...M, fontSize: 10, color: '#f5a623', marginTop: 6 }}>
+                No rate set for today — enter the rate manually below.
               </div>
             )}
           </div>
