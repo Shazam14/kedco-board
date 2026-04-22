@@ -25,6 +25,7 @@ interface CashierRow {
   buy_count: number; buy_php: number;
   sell_count: number; sell_php: number;
   than: number;
+  commission: number;
 }
 interface TxnRow {
   id: string; time: string; type: string; source: string;
@@ -38,6 +39,7 @@ interface Report {
   total_bought_php: number;
   total_sold_php: number;
   total_than: number;
+  total_commission: number;
   by_currency: CurrencyRow[];
   by_cashier: CashierRow[];
   transactions: TxnRow[];
@@ -91,6 +93,7 @@ function printReport(report: Report) {
       </tr>`;
   }).join('');
 
+  const hasComm = report.total_commission !== 0;
   const cashierRows = report.by_cashier.map((r, i) => `
     <tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
       <td style="padding:7px 8px;font-weight:700">${r.cashier}</td>
@@ -99,6 +102,7 @@ function printReport(report: Report) {
       <td style="text-align:right;color:#c47000">${r.sell_count}</td>
       <td style="text-align:right;color:#c47000;font-weight:600">${php(r.sell_php)}</td>
       <td style="text-align:right;color:${r.than > 0 ? '#007a55' : '#999'};font-weight:700">${r.than > 0 ? php(r.than) : '—'}</td>
+      ${hasComm ? `<td style="text-align:right;color:${r.commission !== 0 ? '#007a55' : '#999'};font-weight:700">${r.commission !== 0 ? (r.commission > 0 ? '+' : '') + php(r.commission) : '—'}</td>` : ''}
     </tr>`).join('');
 
   const txnRows = report.transactions.map((t, i) => `
@@ -144,6 +148,7 @@ function printReport(report: Report) {
       <div class="summary-box"><div class="label">TOTAL BOUGHT</div><div class="value" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
       <div class="summary-box"><div class="label">TOTAL SOLD</div><div class="value" style="color:#c47000">${php(report.total_sold_php)}</div></div>
       <div class="summary-box"><div class="label">TOTAL THAN (MARGIN)</div><div class="value" style="color:#007a55">${php(report.total_than)}</div></div>
+      ${hasComm ? `<div class="summary-box"><div class="label">TOTAL COMM</div><div class="value" style="color:#007a55">${report.total_commission > 0 ? '+' : ''}${php(report.total_commission)}</div></div>` : ''}
     </div>
 
     <h2>CURRENCY BREAKDOWN</h2>
@@ -164,7 +169,7 @@ function printReport(report: Report) {
 
     <h2>PER-CASHIER SUMMARY</h2>
     <table>
-      <thead><tr>${th('CASHIER')}${th('BUY TXN','right')}${th('BOUGHT (PHP)','right')}${th('SELL TXN','right')}${th('SOLD (PHP)','right')}${th('THAN','right')}</tr></thead>
+      <thead><tr>${th('CASHIER')}${th('BUY TXN','right')}${th('BOUGHT (PHP)','right')}${th('SELL TXN','right')}${th('SOLD (PHP)','right')}${th('THAN','right')}${hasComm ? th('COMM','right') : ''}</tr></thead>
       <tbody>${cashierRows}</tbody>
     </table>
 
@@ -309,11 +314,12 @@ export default function ReportShell({
             </div>
 
             {/* ── SUMMARY BOXES ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${report.total_commission !== 0 ? 4 : 3},1fr)`, gap: 16 }}>
               {[
                 { label: 'TOTAL BOUGHT', value: php(report.total_bought_php), color: '#5b8cff' },
                 { label: 'TOTAL SOLD',   value: php(report.total_sold_php),   color: '#f5a623' },
                 { label: 'TOTAL THAN',   value: php(report.total_than),       color: '#00d4aa' },
+                ...(report.total_commission !== 0 ? [{ label: 'TOTAL COMM', value: (report.total_commission > 0 ? '+' : '') + php(report.total_commission), color: '#00d4aa' }] : []),
               ].map(s => (
                 <div key={s.label} className="print-card" style={{
                   background: 'var(--surface)', border: '1px solid var(--border)',
@@ -443,42 +449,56 @@ export default function ReportShell({
             </div>
 
             {/* ── BY CASHIER (replaces CASHIER sheet) ── */}
-            <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>Per-Cashier Summary</div>
-                <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>Replaces the CASHIER sheet</div>
-              </div>
-              <div className="print-thead" style={{
-                display: 'grid', gridTemplateColumns: '160px 80px 130px 80px 130px 130px',
-                padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
-                ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
-              }}>
-                <span>CASHIER</span>
-                <span style={{ textAlign: 'right' }}>BUY TXN</span>
-                <span style={{ textAlign: 'right' }}>BOUGHT (PHP)</span>
-                <span style={{ textAlign: 'right' }}>SELL TXN</span>
-                <span style={{ textAlign: 'right' }}>SOLD (PHP)</span>
-                <span style={{ textAlign: 'right' }}>THAN</span>
-              </div>
-              {report.by_cashier.map((r, i) => (
-                <div key={r.cashier} style={{
-                  display: 'grid',
-                  gridTemplateColumns: '160px 80px 130px 80px 130px 130px',
-                  padding: '10px 20px', borderBottom: '1px solid var(--border)',
-                  background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
-                  alignItems: 'center',
-                }}>
-                  <span style={{ ...M, fontSize: 13, color: '#e2e6f0', fontWeight: 700 }}>{r.cashier}</span>
-                  <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>{r.buy_count}</span>
-                  <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>{php(r.buy_php)}</span>
-                  <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{r.sell_count}</span>
-                  <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{php(r.sell_php)}</span>
-                  <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right' }}>
-                    {r.than > 0 ? php(r.than) : '—'}
-                  </span>
+            {(() => {
+              const showComm = report.by_cashier.some(r => r.commission !== 0);
+              const cols = showComm
+                ? '160px 80px 130px 80px 130px 130px 110px'
+                : '160px 80px 130px 80px 130px 130px';
+              return (
+                <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>Per-Cashier Summary</div>
+                    <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>Replaces the CASHIER sheet</div>
+                  </div>
+                  <div className="print-thead" style={{
+                    display: 'grid', gridTemplateColumns: cols,
+                    padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
+                    ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
+                  }}>
+                    <span>CASHIER</span>
+                    <span style={{ textAlign: 'right' }}>BUY TXN</span>
+                    <span style={{ textAlign: 'right' }}>BOUGHT (PHP)</span>
+                    <span style={{ textAlign: 'right' }}>SELL TXN</span>
+                    <span style={{ textAlign: 'right' }}>SOLD (PHP)</span>
+                    <span style={{ textAlign: 'right' }}>THAN</span>
+                    {showComm && <span style={{ textAlign: 'right' }}>COMM</span>}
+                  </div>
+                  {report.by_cashier.map((r, i) => (
+                    <div key={r.cashier} style={{
+                      display: 'grid',
+                      gridTemplateColumns: cols,
+                      padding: '10px 20px', borderBottom: '1px solid var(--border)',
+                      background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
+                      alignItems: 'center',
+                    }}>
+                      <span style={{ ...M, fontSize: 13, color: '#e2e6f0', fontWeight: 700 }}>{r.cashier}</span>
+                      <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>{r.buy_count}</span>
+                      <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>{php(r.buy_php)}</span>
+                      <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{r.sell_count}</span>
+                      <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{php(r.sell_php)}</span>
+                      <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right' }}>
+                        {r.than > 0 ? php(r.than) : '—'}
+                      </span>
+                      {showComm && (
+                        <span style={{ ...M, fontSize: 11, color: r.commission !== 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right', fontWeight: r.commission !== 0 ? 700 : 400 }}>
+                          {r.commission !== 0 ? (r.commission > 0 ? '+' : '') + php(r.commission) : '—'}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
 
             {/* ── FULL TRANSACTION LOG ── */}
             <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>

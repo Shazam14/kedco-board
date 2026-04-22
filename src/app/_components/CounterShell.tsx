@@ -65,6 +65,7 @@ export default function CounterShell({
     opened_at: string; opening_cash_php: number;
     closing_cash_php?: number; expected_cash_php?: number; cash_variance?: number;
     txn_count?: number; total_sold_php?: number; total_bought_php?: number; total_than?: number;
+    total_commission?: number;
   };
   const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
   const openingCashInput = useNumberInput('', 2);
@@ -435,6 +436,89 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
     return s + c;
   }, 0);
 
+  function printShift(s: Shift) {
+    const phpFmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const dateLabel = new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
+    const comm = s.total_commission ?? 0;
+    const variance = s.cash_variance ?? 0;
+
+    // Per-currency breakdown from local txns
+    const byCcy: Record<string, { buyQty: number; buyPhp: number; sellQty: number; sellPhp: number }> = {};
+    for (const t of txns) {
+      if (!byCcy[t.currency]) byCcy[t.currency] = { buyQty: 0, buyPhp: 0, sellQty: 0, sellPhp: 0 };
+      if (t.type === 'BUY') { byCcy[t.currency].buyQty += t.foreignAmt; byCcy[t.currency].buyPhp += t.phpAmt; }
+      else                  { byCcy[t.currency].sellQty += t.foreignAmt; byCcy[t.currency].sellPhp += t.phpAmt; }
+    }
+    const ccyEntries = Object.entries(byCcy);
+    const dp = (code: string) => currencies.find(c => c.code === code)?.decimalPlaces ?? 2;
+    const fmtQ = (amt: number, code: string) => amt.toLocaleString('en-PH', { minimumFractionDigits: dp(code), maximumFractionDigits: dp(code) });
+
+    const th = (label: string, align = 'left') =>
+      `<th style="padding:6px 8px;background:#222;color:#fff;text-align:${align};font-size:10px;letter-spacing:0.08em">${label}</th>`;
+
+    const ccyTable = ccyEntries.length === 0 ? '' : `
+      <h2>CURRENCY BREAKDOWN</h2>
+      <table>
+        <thead><tr>${th('CCY')}${th('BUY QTY','right')}${th('BUY PHP','right')}${th('SELL QTY','right')}${th('SELL PHP','right')}</tr></thead>
+        <tbody>
+          ${ccyEntries.map(([code, d], i) => `
+            <tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
+              <td style="padding:7px 8px;font-weight:700">${code}</td>
+              <td style="text-align:right;color:#2255cc">${d.buyQty > 0 ? fmtQ(d.buyQty, code) : '—'}</td>
+              <td style="text-align:right;color:#2255cc;font-weight:600">${d.buyPhp > 0 ? phpFmt(d.buyPhp) : '—'}</td>
+              <td style="text-align:right;color:#c47000">${d.sellQty > 0 ? fmtQ(d.sellQty, code) : '—'}</td>
+              <td style="text-align:right;color:#c47000;font-weight:600">${d.sellPhp > 0 ? phpFmt(d.sellPhp) : '—'}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>Kedco FX — Shift Report — ${s.cashier}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Courier New', monospace; font-size: 12px; color: #000; background: #fff; padding: 24px; }
+        h1 { font-family: Arial, sans-serif; font-size: 18px; font-weight: 900; }
+        h2 { font-family: Arial, sans-serif; font-size: 13px; font-weight: 800; margin: 20px 0 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 16px; }
+        td { padding: 7px 8px; border-bottom: 1px solid #e0e0e0; }
+        .row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #e0e0e0; }
+        .label { color: #555; }
+        .val { font-weight: 600; }
+        .highlight { background: #fff8e1; padding: 10px 14px; border-radius: 6px; border: 1px solid #f5c842; display: flex; justify-content: space-between; margin: 12px 0; }
+        @media print { body { padding: 12px; } }
+      </style>
+    </head><body>
+      <div style="text-align:center;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #000">
+        <h1>KEDCO FX — SHIFT REPORT</h1>
+        <div style="font-size:12px;color:#555;margin-top:4px">${dateLabel}</div>
+        <div style="font-size:11px;color:#888;margin-top:2px">${s.cashier_name} (@${s.cashier})</div>
+      </div>
+
+      <div class="row"><span class="label">Transactions</span><span class="val">${s.txn_count ?? txns.length}</span></div>
+      <div class="row"><span class="label">Total Sold (PHP)</span><span class="val" style="color:#c47000">${phpFmt(s.total_sold_php ?? 0)}</span></div>
+      <div class="row"><span class="label">Total Bought (PHP)</span><span class="val" style="color:#2255cc">${phpFmt(s.total_bought_php ?? 0)}</span></div>
+      <div class="row"><span class="label">Total THAN</span><span class="val" style="color:#007a55">${phpFmt(s.total_than ?? 0)}</span></div>
+      ${comm !== 0 ? `<div class="row"><span class="label">Commission</span><span class="val" style="color:#007a55">${comm > 0 ? '+' : ''}${phpFmt(comm)}</span></div>` : ''}
+      <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
+      <div class="highlight">
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em">EXPECTED CASH</span>
+        <span style="font-size:16px;font-weight:900">${phpFmt(s.expected_cash_php ?? 0)}</span>
+      </div>
+      <div class="row"><span class="label">Actual Cash</span><span class="val">${phpFmt(s.closing_cash_php ?? 0)}</span></div>
+      <div class="row"><span class="label">Variance</span><span class="val" style="color:${variance === 0 ? '#007a55' : '#cc0000'}">${phpFmt(variance)}</span></div>
+
+      ${ccyTable}
+
+      <div style="text-align:center;font-size:10px;color:#aaa;margin-top:16px;padding-top:12px;border-top:1px solid #ddd">
+        Kedco FX · Pusok, Lapu-Lapu City · Confidential — For Internal Use Only
+      </div>
+      <script>window.onload = () => { window.print(); }</script>
+    </body></html>`;
+
+    const w = window.open('', '_blank', 'width=700,height=600');
+    if (w) { w.document.write(html); w.document.close(); }
+  }
+
   const typeColor = type === 'BUY' ? '#5b8cff' : '#f5a623';
   const noRatesAtAll = currencies.every(c => !c.rateSet);
   const ratesCount   = currencies.filter(c => c.rateSet).length;
@@ -516,40 +600,52 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 24 }}>
               Shift Summary
             </div>
-            {[
-              ['Transactions',    String(shiftClosed.txn_count ?? 0)],
-              ['Total Sold (PHP)', php(shiftClosed.total_sold_php ?? 0)],
-              ['Total Bought (PHP)', php(shiftClosed.total_bought_php ?? 0)],
-              ['Total THAN',       php(shiftClosed.total_than ?? 0)],
-              ['Opening Cash',     php(shiftClosed.opening_cash_php)],
-              ['Expected Cash',    php(shiftClosed.expected_cash_php ?? 0)],
-              ['Actual Cash',      php(shiftClosed.closing_cash_php ?? 0)],
-              ['Variance',         php(shiftClosed.cash_variance ?? 0)],
-            ].map(([k, v]) => (
-              <div key={k} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '8px 0', borderBottom: '1px solid var(--border)',
-              }}>
-                <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{k}</span>
-                <span style={{
-                  ...M, fontSize: 12,
-                  color: k === 'Variance'
-                    ? ((shiftClosed.cash_variance ?? 0) === 0 ? '#00d4aa' : '#ff5c5c')
-                    : '#e2e6f0',
-                  fontWeight: k === 'Variance' ? 700 : 400,
-                }}>{v}</span>
-              </div>
-            ))}
-            <button
-              onClick={handleLogout}
-              style={{
-                width: '100%', padding: '14px', borderRadius: 10, border: 'none',
-                background: 'linear-gradient(135deg,#00d4aa,#00a884)',
-                color: '#000', ...Y, fontSize: 14, fontWeight: 800, cursor: 'pointer', marginTop: 24,
-              }}
-            >
-              LOGOUT
-            </button>
+            {(() => {
+              const comm = shiftClosed.total_commission ?? 0;
+              const variance = shiftClosed.cash_variance ?? 0;
+              const rows: [string, string, string?, number?][] = [
+                ['Transactions',      String(shiftClosed.txn_count ?? 0)],
+                ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),   '#f5a623'],
+                ['Total Bought (PHP)', php(shiftClosed.total_bought_php ?? 0), '#5b8cff'],
+                ['Total THAN',         php(shiftClosed.total_than ?? 0),       '#00d4aa'],
+                ...(comm !== 0 ? [['Commission', (comm > 0 ? '+' : '') + php(comm), '#00d4aa'] as [string, string, string]] : []),
+                ['Opening Cash',       php(shiftClosed.opening_cash_php)],
+                ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), '#f5a623'],
+                ['Actual Cash',        php(shiftClosed.closing_cash_php ?? 0)],
+                ['Variance',           php(variance), variance === 0 ? '#00d4aa' : '#ff5c5c', 700],
+              ];
+              return rows.map(([k, v, color, fw]) => (
+                <div key={k} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '8px 0', borderBottom: '1px solid var(--border)',
+                }}>
+                  <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{k}</span>
+                  <span style={{ ...M, fontSize: 12, color: color ?? '#e2e6f0', fontWeight: (fw as number | undefined) ?? 400 }}>{v}</span>
+                </div>
+              ));
+            })()}
+            <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+              <button
+                onClick={() => printShift(shiftClosed)}
+                style={{
+                  flex: 1, padding: '14px', borderRadius: 10, border: '1px solid rgba(0,212,170,0.35)',
+                  background: 'rgba(0,212,170,0.08)', color: '#00d4aa',
+                  ...M, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                🖨 Print
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{
+                  flex: 2, padding: '14px', borderRadius: 10, border: 'none',
+                  background: 'linear-gradient(135deg,#00d4aa,#00a884)',
+                  color: '#000', ...Y, fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                }}
+              >
+                LOGOUT
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -557,7 +653,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
       {/* ── END SHIFT MODAL ── */}
       {showEndModal && shift && (
         <div style={overlayStyle}>
-          <div style={cardStyle}>
+          <div style={{ ...cardStyle, maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
                 <div style={{ ...M, fontSize: 10, color: '#f5a623', letterSpacing: '0.2em', marginBottom: 4 }}>
@@ -572,20 +668,57 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             </div>
 
             {/* Shift summary so far */}
-            {[
-              ['Transactions',       String(shift.txn_count ?? txns.length)],
-              ['Total Sold (PHP)',   php(shift.total_sold_php ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
-              ['Total Bought (PHP)', php(shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0))],
-              ['Opening Cash',       php(shift.opening_cash_php)],
-            ].map(([k, v]) => (
-              <div key={k} style={{
-                display: 'flex', justifyContent: 'space-between',
-                padding: '7px 0', borderBottom: '1px solid var(--border)',
-              }}>
-                <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{k}</span>
-                <span style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>{v}</span>
-              </div>
-            ))}
+            {(() => {
+              const comm = shift.total_commission ?? totalCommission;
+              const rows: [string, string, string?][] = [
+                ['Transactions',       String(shift.txn_count ?? txns.length)],
+                ['Total Sold (PHP)',   php(shift.total_sold_php ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
+                ['Total Bought (PHP)', php(shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0))],
+                ...(comm !== 0 ? [['Commission', (comm > 0 ? '+' : '') + php(comm), '#00d4aa'] as [string, string, string]] : []),
+                ['Opening Cash',       php(shift.opening_cash_php)],
+              ];
+              return rows.map(([k, v, color]) => (
+                <div key={k} style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  padding: '7px 0', borderBottom: '1px solid var(--border)',
+                }}>
+                  <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{k}</span>
+                  <span style={{ ...M, fontSize: 12, color: color ?? '#e2e6f0' }}>{v}</span>
+                </div>
+              ));
+            })()}
+
+            {/* Per-currency breakdown */}
+            {(() => {
+              const byCcy: Record<string, { buyQty: number; buyPhp: number; sellQty: number; sellPhp: number }> = {};
+              for (const t of txns) {
+                if (!byCcy[t.currency]) byCcy[t.currency] = { buyQty: 0, buyPhp: 0, sellQty: 0, sellPhp: 0 };
+                if (t.type === 'BUY') { byCcy[t.currency].buyQty += t.foreignAmt; byCcy[t.currency].buyPhp += t.phpAmt; }
+                else                  { byCcy[t.currency].sellQty += t.foreignAmt; byCcy[t.currency].sellPhp += t.phpAmt; }
+              }
+              const entries = Object.entries(byCcy);
+              if (entries.length === 0) return null;
+              return (
+                <div style={{ marginTop: 12, borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr 1fr', padding: '6px 10px', background: 'rgba(255,255,255,0.04)', ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em' }}>
+                    <span>CCY</span>
+                    <span style={{ textAlign: 'right' }}>BUY QTY</span>
+                    <span style={{ textAlign: 'right' }}>BUY PHP</span>
+                    <span style={{ textAlign: 'right' }}>SELL QTY</span>
+                    <span style={{ textAlign: 'right' }}>SELL PHP</span>
+                  </div>
+                  {entries.map(([code, d], i) => (
+                    <div key={code} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr 1fr', padding: '7px 10px', borderTop: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                      <span style={{ ...M, fontSize: 11, fontWeight: 700, color: '#e2e6f0' }}>{code}</span>
+                      <span style={{ ...M, fontSize: 10, color: d.buyQty > 0 ? '#5b8cff' : 'var(--muted)', textAlign: 'right' }}>{d.buyQty > 0 ? fmtFx(d.buyQty, code, currencies) : '—'}</span>
+                      <span style={{ ...M, fontSize: 10, color: d.buyPhp > 0 ? '#5b8cff' : 'var(--muted)', textAlign: 'right' }}>{d.buyPhp > 0 ? php(d.buyPhp) : '—'}</span>
+                      <span style={{ ...M, fontSize: 10, color: d.sellQty > 0 ? '#f5a623' : 'var(--muted)', textAlign: 'right' }}>{d.sellQty > 0 ? fmtFx(d.sellQty, code, currencies) : '—'}</span>
+                      <span style={{ ...M, fontSize: 10, color: d.sellPhp > 0 ? '#f5a623' : 'var(--muted)', textAlign: 'right' }}>{d.sellPhp > 0 ? php(d.sellPhp) : '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* Expected closing cash — cashier compares this against their physical count */}
             {(() => {

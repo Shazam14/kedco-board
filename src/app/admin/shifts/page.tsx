@@ -22,6 +22,7 @@ type Shift = {
   total_sold_php: number;
   total_bought_php: number;
   total_than: number;
+  total_commission: number;
 };
 
 function fmtTime(iso: string) {
@@ -116,10 +117,11 @@ export default function ShiftsPage() {
                   {/* Stats grid */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
                     {[
-                      { label: 'TRANSACTIONS',    value: String(s.txn_count),           color: '#e2e6f0' },
-                      { label: 'TOTAL SOLD',       value: php(s.total_sold_php),         color: '#f5a623' },
-                      { label: 'TOTAL BOUGHT',     value: php(s.total_bought_php),       color: '#5b8cff' },
-                      { label: 'TOTAL THAN',       value: php(s.total_than),             color: '#00d4aa' },
+                      { label: 'TRANSACTIONS',    value: String(s.txn_count),                                                         color: '#e2e6f0' },
+                      { label: 'TOTAL SOLD',       value: php(s.total_sold_php),                                                      color: '#f5a623' },
+                      { label: 'TOTAL BOUGHT',     value: php(s.total_bought_php),                                                    color: '#5b8cff' },
+                      { label: 'TOTAL THAN',       value: php(s.total_than),                                                          color: '#00d4aa' },
+                      ...(s.total_commission !== 0 ? [{ label: 'COMMISSION', value: (s.total_commission > 0 ? '+' : '') + php(s.total_commission), color: '#00d4aa' }] : []),
                       { label: 'OPENING CASH',     value: php(s.opening_cash_php),       color: '#e2e6f0' },
                       ...(s.status === 'CLOSED' ? [
                         { label: 'EXPECTED CASH',  value: php(s.expected_cash_php ?? 0), color: '#e2e6f0' },
