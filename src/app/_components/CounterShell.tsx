@@ -722,9 +722,10 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
 
             {/* Expected closing cash — cashier compares this against their physical count */}
             {(() => {
+              const comm      = shift.total_commission ?? totalCommission;
               const soldAmt   = shift.total_sold_php   ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0);
               const boughtAmt = shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
-              const expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt;
+              const expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt - comm;
               return (
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
