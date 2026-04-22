@@ -18,6 +18,12 @@ test.beforeEach(async ({ request }) => {
   await request.post('http://localhost:9999/api/v1/test/reset');
 });
 
+async function fillDate(page: Parameters<typeof test>[1] extends { page: infer P } ? P : never, date: string) {
+  const input = page.locator('input[type="date"]');
+  await expect(input).toBeVisible({ timeout: 10_000 });
+  await input.fill(date);
+}
+
 test.describe('Date Override Panel — admin page', () => {
   test('panel is visible on admin page', async ({ page }) => {
     await page.goto('/admin');
@@ -36,7 +42,7 @@ test.describe('Date Override Panel — admin page', () => {
 
   test('setting a past date shows ACTIVE badge and confirmation message', async ({ page }) => {
     await page.goto('/admin');
-    await page.locator('input[type="date"]').fill(PAST_DATE);
+    await fillDate(page, PAST_DATE);
     await page.getByRole('button', { name: 'Set Date' }).click();
     await expect(page.getByText('ACTIVE')).toBeVisible();
     await expect(page.getByText(/Date override active/i)).toBeVisible();
@@ -44,21 +50,21 @@ test.describe('Date Override Panel — admin page', () => {
 
   test('setting a past date updates the description text', async ({ page }) => {
     await page.goto('/admin');
-    await page.locator('input[type="date"]').fill(PAST_DATE);
+    await fillDate(page, PAST_DATE);
     await page.getByRole('button', { name: 'Set Date' }).click();
     await expect(page.getByText(new RegExp(`running as ${PAST_DATE}`, 'i'))).toBeVisible();
   });
 
   test('Clear button appears after setting a date', async ({ page }) => {
     await page.goto('/admin');
-    await page.locator('input[type="date"]').fill(PAST_DATE);
+    await fillDate(page, PAST_DATE);
     await page.getByRole('button', { name: 'Set Date' }).click();
     await expect(page.getByRole('button', { name: /Clear/i })).toBeVisible();
   });
 
   test('clearing removes ACTIVE badge and description reverts', async ({ page }) => {
     await page.goto('/admin');
-    await page.locator('input[type="date"]').fill(PAST_DATE);
+    await fillDate(page, PAST_DATE);
     await page.getByRole('button', { name: 'Set Date' }).click();
     await expect(page.getByText('ACTIVE')).toBeVisible();
 
@@ -69,7 +75,7 @@ test.describe('Date Override Panel — admin page', () => {
 
   test('setting today\'s date does not show ACTIVE badge', async ({ page }) => {
     await page.goto('/admin');
-    await page.locator('input[type="date"]').fill(TODAY);
+    await fillDate(page, TODAY);
     await page.getByRole('button', { name: 'Set Date' }).click();
     // isOverrideActive is false when date === today
     await expect(page.getByText('ACTIVE')).not.toBeVisible();
@@ -84,7 +90,7 @@ test.describe('Date Override Banner', () => {
 
   test('banner appears after setting a past date', async ({ page }) => {
     await page.goto('/admin');
-    await page.locator('input[type="date"]').fill(PAST_DATE);
+    await fillDate(page, PAST_DATE);
     await page.getByRole('button', { name: 'Set Date' }).click();
 
     // Banner polls every 30s but also fires on mount — navigate away and back to trigger fresh mount
@@ -95,7 +101,7 @@ test.describe('Date Override Banner', () => {
 
   test('banner is not shown when date is set to today', async ({ page }) => {
     await page.goto('/admin');
-    await page.locator('input[type="date"]').fill(TODAY);
+    await fillDate(page, TODAY);
     await page.getByRole('button', { name: 'Set Date' }).click();
 
     await page.goto('/dashboard');
@@ -105,7 +111,7 @@ test.describe('Date Override Banner', () => {
   test('banner disappears after clearing the override', async ({ page }) => {
     // Set a past date first
     await page.goto('/admin');
-    await page.locator('input[type="date"]').fill(PAST_DATE);
+    await fillDate(page, PAST_DATE);
     await page.getByRole('button', { name: 'Set Date' }).click();
 
     // Confirm banner shows on dashboard
@@ -123,7 +129,7 @@ test.describe('Date Override Banner', () => {
 
   test('banner links back to admin panel', async ({ page }) => {
     await page.goto('/admin');
-    await page.locator('input[type="date"]').fill(PAST_DATE);
+    await fillDate(page, PAST_DATE);
     await page.getByRole('button', { name: 'Set Date' }).click();
 
     await page.goto('/dashboard');
