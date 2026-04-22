@@ -3,7 +3,7 @@
  * Uses saved cashier auth state from globalSetup.
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import path from 'path';
 
 test.use({ storageState: path.join('tests', '.auth', 'cashier.json') });
@@ -15,6 +15,13 @@ const OPEN_SHIFT = {
   opening_cash_php: 10000, closing_cash_php: null, expected_cash_php: null, cash_variance: null,
   txn_count: 0, total_sold_php: 0, total_bought_php: 0, total_than: 0,
 };
+
+async function pickCurrency(page: Page, code: string) {
+  const input = page.getByPlaceholder('— Type code or country —');
+  await input.click();
+  await input.fill(code);
+  await page.getByTestId(`currency-option-${code}`).click();
+}
 
 test.describe('Counter screen', () => {
   test.beforeEach(async ({ page }) => {
@@ -39,28 +46,27 @@ test.describe('Counter screen', () => {
   });
 
   test('currency selector shows currencies with rates', async ({ page }) => {
-    const select = page.locator('select');
-    await expect(select).toBeVisible();
-    await expect(select.locator('option', { hasText: 'USD' })).toHaveCount(1);
-    await expect(select.locator('option', { hasText: 'AUD' })).toHaveCount(1);
+    const input = page.getByPlaceholder('— Type code or country —');
+    await expect(input).toBeVisible();
+    await input.click();
+    await expect(page.locator('text="USD"').first()).toBeVisible();
+    await expect(page.locator('text="AUD"').first()).toBeVisible();
   });
 
   test('selecting currency fills rate automatically', async ({ page }) => {
-    await page.selectOption('select', 'USD');
-    const rateInput = page.locator('input').nth(1); // second input is rate
+    await pickCurrency(page, 'USD');
+    const rateInput = page.locator('input').nth(2); // 0=ccy, 1=amount, 2=rate
     await expect(rateInput).not.toHaveValue('');
   });
 
   test('entering amount shows PHP total', async ({ page }) => {
-    await page.selectOption('select', 'USD');
-    await page.locator('input').first().fill('100');
-    // PHP total card updates — look for a ₱ value with actual digits (not ₱ —)
+    await pickCurrency(page, 'USD');
+    await page.locator('input').nth(1).fill('100'); // 0=ccy, 1=amount
     await expect(page.locator('text=/₱[1-9]/').first()).toBeVisible();
   });
 
   test('payment mode selector is visible with all modes', async ({ page }) => {
     await expect(page.getByText('PAYMENT MODE')).toBeVisible();
-    // Use exact: true to avoid partial match ('CASH' inside 'GCASH')
     await expect(page.getByRole('button', { name: 'CASH', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'GCASH', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'MAYA', exact: true })).toBeVisible();
@@ -78,16 +84,15 @@ test.describe('Counter screen', () => {
   });
 
   test('submit button enables after filling required fields', async ({ page }) => {
-    await page.selectOption('select', 'USD');
-    const amtInput = page.locator('input').first();
-    await amtInput.fill('100');
+    await pickCurrency(page, 'USD');
+    await page.locator('input').nth(1).fill('100'); // 0=ccy, 1=amount
     const submitBtn = page.getByRole('button', { name: /CONFIRM BUY/ });
     await expect(submitBtn).toBeEnabled({ timeout: 3_000 });
   });
 
   test('successful transaction shows flash and print button', async ({ page }) => {
-    await page.selectOption('select', 'USD');
-    await page.locator('input').first().fill('100');
+    await pickCurrency(page, 'USD');
+    await page.locator('input').nth(1).fill('100'); // 0=ccy, 1=amount
     await page.getByRole('button', { name: /CONFIRM BUY/ }).click();
     await expect(page.getByText(/Saved/)).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText(/Print Receipt/)).toBeVisible();

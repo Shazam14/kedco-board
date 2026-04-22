@@ -30,11 +30,13 @@ const fmtFx = (amt: number, code: string, currencies: { code: string; decimalPla
 
 export default function CounterShell({
   currencies,
+  banks,
   username,
   role = 'cashier',
   branchLocation,
 }: {
   currencies: CurrencyMeta[];
+  banks: { id: number; name: string; code: string }[];
   username: string;
   role?: string;
   branchLocation: string;
@@ -52,8 +54,9 @@ export default function CounterShell({
     router.push('/login');
   }
 
-  const PAY_MODES = ['CASH', 'GCASH', 'MAYA', 'SHOPEEPAY', 'BANK TRANSFER', 'CHEQUE', 'OTHER'] as const;
+  const PAY_MODES = ['CASH', 'GCASH', 'MAYA', 'SHOPEEPAY', 'BANK_TRANSFER', 'CHEQUE', 'OTHER'] as const;
   type PayMode = typeof PAY_MODES[number];
+  const NEEDS_BANK: readonly PayMode[] = ['BANK_TRANSFER', 'CHEQUE'];
 
   // ── Shift state ──────────────────────────────────────────────────────────
   type Shift = {
@@ -112,12 +115,15 @@ export default function CounterShell({
   // ── Transaction state ─────────────────────────────────────────────────────
   const [type,     setType]     = useState<'BUY' | 'SELL'>('BUY');
   const [ccy,      setCcy]      = useState<CurrencyMeta | null>(null);
+  const [ccyQuery, setCcyQuery] = useState('');
+  const [ccyOpen,  setCcyOpen]  = useState(false);
   const amtInput  = useNumberInput('', 8);
   const rateInput = useNumberInput('', 8);
   const [cust,     setCust]     = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [scanning, setScanning] = useState(false);
   const [payMode,  setPayMode]  = useState<PayMode>('CASH');
+  const [bankId,   setBankId]   = useState<number | null>(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
   const [flash,    setFlash]    = useState<Transaction | null>(null);
@@ -132,6 +138,12 @@ export default function CounterShell({
     );
     fetchTxns();
   }, []);
+
+  // Reset bank selection when switching away from bank-requiring modes
+  useEffect(() => {
+    if (!NEEDS_BANK.includes(payMode)) setBankId(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payMode]);
 
   // Auto-fill rate when currency or BUY/SELL changes
   useEffect(() => {
@@ -152,7 +164,8 @@ export default function CounterShell({
       : null;
 
   const canSubmit =
-    !!ccy?.rateSet && !!amtInput.raw && +amtInput.raw > 0 && !!rateInput.raw && +rateInput.raw > 0 && !loading;
+    !!ccy?.rateSet && !!amtInput.raw && +amtInput.raw > 0 && !!rateInput.raw && +rateInput.raw > 0 && !loading
+    && (!NEEDS_BANK.includes(payMode) || bankId !== null);
 
   async function handleSubmit() {
     if (!canSubmit || !ccy) return;
@@ -172,6 +185,7 @@ export default function CounterShell({
           customer: cust || undefined,
           id_number: idNumber || undefined,
           payment_mode: payMode,
+          bank_id: bankId ?? undefined,
         }),
       });
       const data = await res.json();
@@ -805,6 +819,14 @@ export default function CounterShell({
               END SHIFT
             </button>
           )}
+          {(role === 'admin' || role === 'supervisor') && (<>
+            <a href="/" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
+              DASHBOARD
+            </a>
+            <a href="/admin" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
+              ADMIN
+            </a>
+          </>)}
           <a href="/passbook" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.3)', background: 'transparent', color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
             PASSBOOK
           </a>
@@ -865,27 +887,66 @@ export default function CounterShell({
           </div>
 
           {/* Currency */}
-          <div>
+          <div style={{ position: 'relative' }}>
             <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               CURRENCY
             </label>
-            <select
-              value={ccy?.code ?? ''}
-              onChange={e => setCcy(currencies.find(c => c.code === e.target.value) ?? null)}
+            <input
+              type="text"
+              autoComplete="off"
+              placeholder="— Type code or country —"
+              value={ccyOpen ? ccyQuery : (ccy ? `${ccy.flag} ${ccy.code} — ${ccy.name}` : '')}
+              onFocus={() => { setCcyOpen(true); setCcyQuery(''); }}
+              onBlur={() => setTimeout(() => setCcyOpen(false), 150)}
+              onChange={e => setCcyQuery(e.target.value)}
               style={{
                 width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '12px 14px',
-                color: ccy ? '#e2e6f0' : 'var(--muted)',
-                ...M, fontSize: 13, outline: 'none', cursor: 'pointer',
+                borderRadius: 8, padding: '12px 14px', boxSizing: 'border-box',
+                color: ccy && !ccyOpen ? '#e2e6f0' : 'var(--muted)',
+                ...M, fontSize: 13, outline: 'none', cursor: 'text',
               }}
-            >
-              <option value="">— Select currency —</option>
-              {currencies.map(c => (
-                <option key={c.code} value={c.code} disabled={!c.rateSet}>
-                  {c.flag} {c.code} — {c.name}{!c.rateSet ? ' (no rate set)' : ''}
-                </option>
-              ))}
-            </select>
+            />
+            {ccyOpen && (() => {
+              const q = ccyQuery.toLowerCase();
+              const filtered = currencies.filter(c =>
+                !q || c.code.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
+              );
+              return (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 8, marginTop: 4,
+                  maxHeight: 220, overflowY: 'auto',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                }}>
+                  {filtered.length === 0 && (
+                    <div style={{ ...M, fontSize: 12, color: 'var(--muted)', padding: '10px 14px' }}>
+                      No match
+                    </div>
+                  )}
+                  {filtered.map(c => (
+                    <div
+                      key={c.code}
+                      data-testid={`currency-option-${c.code}`}
+                      onMouseDown={() => { if (!c.rateSet) return; setCcy(c); setCcyQuery(''); setCcyOpen(false); }}
+                      style={{
+                        padding: '10px 14px', cursor: c.rateSet ? 'pointer' : 'not-allowed',
+                        opacity: c.rateSet ? 1 : 0.4,
+                        display: 'flex', gap: 10, alignItems: 'center',
+                        borderBottom: '1px solid var(--border)',
+                      }}
+                      onMouseEnter={e => { if (c.rateSet) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                    >
+                      <span style={{ fontSize: 18 }}>{c.flag}</span>
+                      <span style={{ ...M, fontSize: 13, color: '#e2e6f0', fontWeight: 700 }}>{c.code}</span>
+                      <span style={{ ...M, fontSize: 11, color: 'var(--muted)', flex: 1 }}>{c.name}</span>
+                      {!c.rateSet && <span style={{ ...M, fontSize: 10, color: '#ff5c5c' }}>no rate</span>}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             {ccy?.rateSet && (
               <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 6 }}>
                 Rate board — B: <span style={{ color: '#5b8cff' }}>
@@ -1021,10 +1082,33 @@ export default function CounterShell({
                     ...M, fontSize: 10, letterSpacing: '0.05em',
                   }}
                 >
-                  {m}
+                  {m.replace('_', ' ')}
                 </button>
               ))}
             </div>
+            {NEEDS_BANK.includes(payMode) && (
+              <div style={{ marginTop: 10 }}>
+                <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
+                  {payMode === 'CHEQUE' ? 'BANK (CHEQUE)' : 'BANK'}
+                </label>
+                <select
+                  value={bankId ?? ''}
+                  onChange={e => setBankId(e.target.value ? +e.target.value : null)}
+                  style={{
+                    width: '100%', background: 'var(--surface)',
+                    border: `1px solid ${bankId ? 'rgba(0,212,170,0.4)' : '#ff5c5c44'}`,
+                    borderRadius: 8, padding: '10px 14px', boxSizing: 'border-box',
+                    color: bankId ? '#e2e6f0' : 'var(--muted)',
+                    ...M, fontSize: 13, outline: 'none',
+                  }}
+                >
+                  <option value="">Select bank…</option>
+                  {banks.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Error */}

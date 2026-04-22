@@ -61,10 +61,10 @@ test.describe('Counter — mobile (390px)', () => {
   });
 
   test('currency picker is visible and opens', async ({ page }) => {
-    // Counter uses a <select> element, not button text
-    const select = page.locator('select');
-    await expect(select).toBeVisible();
-    await expect(select.locator('option', { hasText: 'USD' })).toHaveCount(1);
+    const input = page.getByPlaceholder('— Type code or country —');
+    await expect(input).toBeVisible();
+    await input.click();
+    await expect(page.getByTestId('currency-option-USD')).toBeVisible();
   });
 
   test('form inputs are accessible on small screen', async ({ page }) => {
@@ -117,7 +117,7 @@ test.describe('Counter — tablet (820px)', () => {
 
   test('form and controls are visible', async ({ page }) => {
     await expect(page.getByText('↓ BUY')).toBeVisible();
-    await expect(page.locator('select')).toBeVisible();
+    await expect(page.getByPlaceholder('— Type code or country —')).toBeVisible();
     await expect(page.getByText('PAYMENT MODE')).toBeVisible();
   });
 
