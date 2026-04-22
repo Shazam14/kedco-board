@@ -122,8 +122,10 @@ export default function CounterShell({
   const [cust,     setCust]     = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [scanning, setScanning] = useState(false);
-  const [referrer, setReferrer] = useState('');
-  const [payMode,  setPayMode]  = useState<PayMode>('CASH');
+  const [referrer,       setReferrer]       = useState('');
+  const [paymentTag,     setPaymentTag]     = useState<'ADVANCE' | 'LATE' | ''>('');
+  const [referenceDate,  setReferenceDate]  = useState('');
+  const [payMode,        setPayMode]        = useState<PayMode>('CASH');
   const [bankId,   setBankId]   = useState<number | null>(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
@@ -132,11 +134,9 @@ export default function CounterShell({
   const [today,    setToday]    = useState('');
 
   useEffect(() => {
-    setToday(
-      new Date().toLocaleDateString('en-US', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-      })
-    );
+    const now = new Date();
+    setToday(now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+    setReferenceDate(now.toISOString().split('T')[0]);
     fetchTxns();
   }, []);
 
@@ -188,6 +188,8 @@ export default function CounterShell({
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
           referrer: referrer || undefined,
+          payment_tag: paymentTag || undefined,
+          reference_date: (role === 'supervisor' && referenceDate) ? referenceDate : undefined,
         }),
       });
       const data = await res.json();
@@ -203,12 +205,16 @@ export default function CounterShell({
           paymentMode: data.payment_mode ?? payMode,
           officialRate: data.official_rate ?? undefined,
           referrer: data.referrer ?? undefined,
+          paymentTag: data.payment_tag ?? undefined,
+          referenceDate: data.reference_date ?? undefined,
         };
         setFlash(txn);
         amtInput.setValue('');
         setCust('');
         setIdNumber('');
         setReferrer('');
+        setPaymentTag('');
+        setReferenceDate(new Date().toISOString().split('T')[0]);
         await fetchTxns();
         setTimeout(() => setFlash(null), 5000);
       }
@@ -1152,6 +1158,43 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             )}
           </div>
 
+          {/* Supervisor: reference date + advance/late tag */}
+          {role === 'supervisor' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em' }}>
+                PAYMENT DATE <span style={{ opacity: 0.45 }}>(reference)</span>
+              </label>
+              <input
+                type="date"
+                value={referenceDate}
+                onChange={e => setReferenceDate(e.target.value)}
+                style={{
+                  width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
+                  ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['', 'ADVANCE', 'LATE'] as const).map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setPaymentTag(tag)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 6, cursor: 'pointer', ...M, fontSize: 10,
+                      border: `1px solid ${paymentTag === tag ? 'rgba(0,212,170,0.5)' : 'var(--border)'}`,
+                      background: paymentTag === tag ? 'rgba(0,212,170,0.1)' : 'transparent',
+                      color: paymentTag === tag ? '#00d4aa' : 'var(--muted)',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    {tag === '' ? 'REGULAR' : tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Payment Mode */}
           <div>
             <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
@@ -1337,7 +1380,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                   <span>FOREIGN</span>
                   <span>RATE</span>
                   <span>PHP AMT</span>
-                  {role !== 'supervisor' && <span>COMM</span>}
+                  {role === 'supervisor' ? <span>TAG</span> : <span>COMM</span>}
                   <span />
                 </div>
 
@@ -1373,7 +1416,17 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
                         color: t.type === 'BUY' ? '#5b8cff' : '#f5a623',
                       }}>{t.rate}</span>
                       <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
-                      {role !== 'supervisor' && (() => {
+                      {role === 'supervisor' ? (
+                        t.paymentTag ? (
+                          <span style={{
+                            ...M, fontSize: 8, fontWeight: 700, letterSpacing: '0.06em',
+                            padding: '2px 5px', borderRadius: 4,
+                            color: t.paymentTag === 'ADVANCE' ? '#00d4aa' : '#f5a623',
+                            background: t.paymentTag === 'ADVANCE' ? 'rgba(0,212,170,0.12)' : 'rgba(245,166,35,0.12)',
+                            border: `1px solid ${t.paymentTag === 'ADVANCE' ? 'rgba(0,212,170,0.3)' : 'rgba(245,166,35,0.3)'}`,
+                          }}>{t.paymentTag}</span>
+                        ) : <span />
+                      ) : (() => {
                         if (t.officialRate == null) return <span />;
                         const comm = t.type === 'SELL'
                           ? (t.rate - t.officialRate) * t.foreignAmt

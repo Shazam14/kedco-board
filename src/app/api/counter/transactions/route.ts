@@ -33,8 +33,10 @@ export async function GET() {
     customer:    t.customer ?? undefined,
     paymentMode:  t.payment_mode ?? undefined,
     bankId:       t.bank_id != null ? Number(t.bank_id) : undefined,
-    officialRate: t.official_rate != null ? Number(t.official_rate) : undefined,
-    referrer:     t.referrer ?? undefined,
+    officialRate:   t.official_rate != null ? Number(t.official_rate) : undefined,
+    referrer:       t.referrer ?? undefined,
+    paymentTag:     t.payment_tag ?? undefined,
+    referenceDate:  t.reference_date ?? undefined,
   }));
 
   return NextResponse.json(mapped);
