@@ -110,3 +110,47 @@ test.describe('Counter screen', () => {
     expect(page.url()).toContain('/login');
   });
 });
+
+test.describe('Supervisor counter', () => {
+  test.use({ storageState: path.join('tests', '.auth', 'supervisor.json') });
+
+  test.beforeEach(async ({ page }) => {
+    await page.route('/api/counter/shift', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(OPEN_SHIFT) })
+    );
+    await page.route('/api/counter/edit-requests', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
+    );
+    await page.goto('/counter');
+  });
+
+  test('supervisor counter has no DASHBOARD or ADMIN nav links', async ({ page }) => {
+    await expect(page.getByRole('link', { name: 'DASHBOARD' })).not.toBeVisible();
+    await expect(page.getByRole('link', { name: 'ADMIN' })).not.toBeVisible();
+  });
+
+  test('supervisor counter shows username and logout', async ({ page }) => {
+    await expect(page.getByText('supervisor1')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'LOGOUT' })).toBeVisible();
+  });
+
+  test('supervisor edit button submits a request, not direct save', async ({ page }) => {
+    await page.route('/api/counter/transactions', route =>
+      route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([{
+          id: 'OR-AABBCC11', time: '10:00 AM', type: 'BUY', source: 'COUNTER',
+          currency: 'USD', foreignAmt: 100, rate: 56, phpAmt: 5600, than: 0,
+          cashier: 'cashier1', paymentMode: 'CASH',
+        }]),
+      })
+    );
+    await page.route('/api/counter/transactions/OR-AABBCC11/edit-request', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: '{"id":"OR-AABBCC11"}' })
+    );
+    await page.reload();
+    await page.getByTestId('edit-btn-OR-AABBCC11').click();
+    await expect(page.getByText('REQUEST EDIT')).toBeVisible();
+    await expect(page.getByTestId('edit-submit-btn')).toHaveText('SEND REQUEST');
+  });
+});
