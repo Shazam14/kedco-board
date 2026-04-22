@@ -66,6 +66,14 @@ test.describe('Commission and referrer — cashier counter', () => {
     await expect(page.getByText('COMMISSION PREVIEW')).not.toBeVisible();
   });
 
+  test('no commission preview when guide rate is 0', async ({ page }) => {
+    await pickCurrency(page, 'USD');
+    await page.getByPlaceholder('e.g. 59.00').fill('0');
+    await page.locator('input').nth(2).fill('60.00');
+    await page.locator('input').nth(1).fill('100');
+    await expect(page.getByText('COMMISSION PREVIEW')).not.toBeVisible();
+  });
+
   test('referrer name shows split in commission preview', async ({ page }) => {
     await pickCurrency(page, 'USD');
     await page.getByPlaceholder('e.g. 59.00').fill('56.00');
