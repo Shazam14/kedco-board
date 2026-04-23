@@ -79,7 +79,7 @@ function buildStockSummary(report: Report): StockRow[] {
     const total_in      = carry_in_qty + buy_qty;
     // weighted daily avg cost: blends opening inventory with today's buys
     const rate = total_in > 0
-      ? (carry_in_qty * carry_in_rate + buy_php) / total_in
+      ? Math.round((carry_in_qty * carry_in_rate + buy_php) / total_in * 1e6) / 1e6
       : carry_in_rate;
     const stocks_left_qty = carry_in_qty + buy_qty - sell_qty;
     return {
