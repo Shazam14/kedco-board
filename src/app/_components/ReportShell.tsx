@@ -15,15 +15,22 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 interface CurrencyRow {
-  code: string; name: string; flag: string; category: string; decimal_places: number;
+  code: string; name: string; flag: string; category: string;
+  sort_order?: number; decimal_places: number;
   buy_count: number; buy_qty: number; buy_php: number;
   sell_count: number; sell_qty: number; sell_php: number;
   than: number;
 }
 interface PositionRow {
   code: string; name: string; flag: string; category: string;
-  decimal_places: number;
+  sort_order?: number; decimal_places: number;
   carry_in_qty: number; carry_in_rate: number; carry_in_php: number;
+}
+interface StockRow {
+  code: string; name: string; flag: string; category: string;
+  sort_order: number; decimal_places: number;
+  carry_in_qty: number; buy_qty: number; sell_qty: number;
+  stocks_left_qty: number; rate: number; stocks_left_php: number | null;
 }
 interface CashierRow {
   cashier: string;
@@ -50,6 +57,40 @@ interface Report {
   by_currency: CurrencyRow[];
   by_cashier: CashierRow[];
   transactions: TxnRow[];
+}
+
+function buildStockSummary(report: Report): StockRow[] {
+  const catOrder: Record<string, number> = { MAIN: 0, '2ND': 1, OTHERS: 2 };
+  const posMap = Object.fromEntries((report.opening_positions ?? []).map(p => [p.code, p]));
+  const txnMap = Object.fromEntries((report.by_currency ?? []).map(r => [r.code, r]));
+  const codes = Array.from(new Set([
+    ...(report.opening_positions ?? []).map(p => p.code),
+    ...(report.by_currency ?? []).map(r => r.code),
+  ]));
+  return codes.map(code => {
+    const pos = posMap[code];
+    const txn = txnMap[code];
+    const meta = pos ?? txn!;
+    const carry_in_qty = pos?.carry_in_qty ?? 0;
+    const buy_qty      = txn?.buy_qty      ?? 0;
+    const sell_qty     = txn?.sell_qty     ?? 0;
+    const rate         = pos?.carry_in_rate ?? 0;
+    const stocks_left_qty = carry_in_qty + buy_qty - sell_qty;
+    return {
+      code,
+      name:            meta.name,
+      flag:            meta.flag,
+      category:        meta.category ?? 'OTHERS',
+      sort_order:      meta.sort_order ?? 99,
+      decimal_places:  meta.decimal_places,
+      carry_in_qty, buy_qty, sell_qty, stocks_left_qty, rate,
+      stocks_left_php: rate > 0 ? Math.round(stocks_left_qty * rate * 100) / 100 : null,
+    };
+  }).sort((a, b) => {
+    const ca = catOrder[a.category] ?? 9;
+    const cb = catOrder[b.category] ?? 9;
+    return ca !== cb ? ca - cb : a.sort_order - b.sort_order;
+  });
 }
 
 function printReport(report: Report) {
@@ -209,6 +250,42 @@ function printReport(report: Report) {
       </tr></tfoot>
     </table>
 
+    <h2>STOCK SUMMARY (END OF DAY)</h2>
+    <table>
+      <thead><tr>
+        ${th('CURRENCY')}${th('NAME')}${th('CARRY-IN','right')}${th('+ BOUGHT','right')}${th('− SOLD','right')}${th('STOCKS LEFT','right')}${th('RATE','right')}${th('VALUE PHP','right')}
+      </tr></thead>
+      <tbody>${(() => {
+        const stockRows = buildStockSummary(report);
+        return categories.map(cat => {
+          const rows = stockRows.filter(r => r.category === cat);
+          if (!rows.length) return '';
+          const catLeftPhp = rows.reduce((s, r) => s + (r.stocks_left_php ?? 0), 0);
+          return `
+            <tr style="background:#f0f0f0"><td colspan="8" style="padding:6px 8px;font-weight:700;font-size:11px;letter-spacing:0.1em">${CATEGORY_LABEL[cat] ?? cat}</td></tr>
+            ${rows.map((r, i) => `
+              <tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
+                <td style="padding:7px 8px;font-weight:700">${r.flag} ${r.code}</td>
+                <td style="color:#555">${r.name}</td>
+                <td style="text-align:right;color:#555">${r.carry_in_qty > 0 ? r.carry_in_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}</td>
+                <td style="text-align:right;color:#2255cc">${r.buy_qty > 0 ? r.buy_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}</td>
+                <td style="text-align:right;color:#c47000">${r.sell_qty > 0 ? r.sell_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}</td>
+                <td style="text-align:right;font-weight:700">${r.stocks_left_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places })}</td>
+                <td style="text-align:right;color:#555">${r.rate > 0 ? r.rate : '—'}</td>
+                <td style="text-align:right;font-weight:600">${r.stocks_left_php !== null ? php(r.stocks_left_php) : '—'}</td>
+              </tr>`).join('')}
+            <tr style="background:#e8e8e8;font-weight:700">
+              <td colspan="7" style="padding:6px 8px;font-size:11px">${CATEGORY_LABEL[cat]} subtotal</td>
+              <td style="text-align:right">${php(catLeftPhp)}</td>
+            </tr>`;
+        }).join('');
+      })()}</tbody>
+      <tfoot><tr style="background:#111;color:#fff;font-weight:900">
+        <td colspan="7" style="padding:8px;font-size:12px">TOTAL CLOSING STOCK (EST.)</td>
+        <td style="text-align:right;padding:8px;font-size:13px">${php(closingEstimate)}</td>
+      </tr></tfoot>
+    </table>
+
     <h2>CURRENCY BREAKDOWN</h2>
     <table>
       <thead><tr>
@@ -285,6 +362,7 @@ export default function ReportShell({
 
   const openingStock = report?.total_opening_stock_php ?? 0;
   const openingPositions = report?.opening_positions ?? [];
+  const stockSummary = report ? buildStockSummary(report) : [];
 
   return (
     <>
@@ -499,6 +577,95 @@ export default function ReportShell({
                   }}>
                     <span style={{ ...Y, fontSize: 12, fontWeight: 800, color: '#aab4c8', gridColumn: '1/5' }}>TOTAL OPENING STOCK</span>
                     <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#aab4c8', textAlign: 'right' }}>{php(openingStock)}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── STOCK SUMMARY ── */}
+            {stockSummary.length > 0 && (() => {
+              const COL = '110px 1fr 110px 100px 100px 120px 80px 130px';
+              const byCat = (cat: string) => stockSummary.filter(r => r.category === cat);
+              const fmtQty = (r: StockRow, qty: number) =>
+                qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places });
+              const totalClosingPhp = stockSummary.reduce((s, r) => s + (r.stocks_left_php ?? 0), 0);
+              return (
+                <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>Stock Summary</div>
+                    <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                      Carry-in + bought − sold = stocks left · replaces STOCKSLEFT sheet
+                    </div>
+                  </div>
+                  <div className="print-thead" style={{
+                    display: 'grid', gridTemplateColumns: COL,
+                    padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
+                    ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
+                  }}>
+                    <span>CURRENCY</span><span>NAME</span>
+                    <span style={{ textAlign: 'right' }}>CARRY-IN</span>
+                    <span style={{ textAlign: 'right' }}>+ BOUGHT</span>
+                    <span style={{ textAlign: 'right' }}>− SOLD</span>
+                    <span style={{ textAlign: 'right' }}>STOCKS LEFT</span>
+                    <span style={{ textAlign: 'right' }}>RATE</span>
+                    <span style={{ textAlign: 'right' }}>VALUE PHP</span>
+                  </div>
+                  {categories.map(cat => {
+                    const rows = byCat(cat);
+                    if (!rows.length) return null;
+                    const catPhp = rows.reduce((s, r) => s + (r.stocks_left_php ?? 0), 0);
+                    return (
+                      <div key={cat}>
+                        <div style={{ padding: '7px 20px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)', ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.15em' }}>
+                          {CATEGORY_LABEL[cat] ?? cat}
+                        </div>
+                        {rows.map((r, i) => (
+                          <div key={r.code} style={{
+                            display: 'grid', gridTemplateColumns: COL,
+                            padding: '9px 20px', borderBottom: '1px solid var(--border)',
+                            background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
+                            alignItems: 'center',
+                          }}>
+                            <span style={{ ...M, fontSize: 13, fontWeight: 700, color: '#e2e6f0' }}>{r.flag} {r.code}</span>
+                            <span className="print-muted" style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{r.name}</span>
+                            <span style={{ ...M, fontSize: 11, color: 'var(--muted)', textAlign: 'right' }}>
+                              {r.carry_in_qty > 0 ? fmtQty(r, r.carry_in_qty) : '—'}
+                            </span>
+                            <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>
+                              {r.buy_qty > 0 ? fmtQty(r, r.buy_qty) : '—'}
+                            </span>
+                            <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>
+                              {r.sell_qty > 0 ? fmtQty(r, r.sell_qty) : '—'}
+                            </span>
+                            <span style={{ ...M, fontSize: 12, fontWeight: 700, color: '#e2e6f0', textAlign: 'right' }}>
+                              {fmtQty(r, r.stocks_left_qty)}
+                            </span>
+                            <span style={{ ...M, fontSize: 11, color: 'var(--muted)', textAlign: 'right' }}>
+                              {r.rate > 0 ? r.rate : '—'}
+                            </span>
+                            <span style={{ ...M, fontSize: 11, fontWeight: 600, color: '#aab4c8', textAlign: 'right' }}>
+                              {r.stocks_left_php !== null ? php(r.stocks_left_php) : '—'}
+                            </span>
+                          </div>
+                        ))}
+                        <div style={{
+                          display: 'grid', gridTemplateColumns: COL,
+                          padding: '8px 20px', borderBottom: '1px solid var(--border)',
+                          background: 'rgba(255,255,255,0.05)',
+                        }}>
+                          <span style={{ ...M, fontSize: 10, color: 'var(--muted)', gridColumn: '1/8' }}>{CATEGORY_LABEL[cat]} subtotal</span>
+                          <span style={{ ...M, fontSize: 11, fontWeight: 700, color: '#aab4c8', textAlign: 'right' }}>{php(catPhp)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: COL,
+                    padding: '12px 20px', background: 'rgba(170,180,200,0.08)',
+                    borderTop: '1px solid rgba(170,180,200,0.3)',
+                  }}>
+                    <span style={{ ...Y, fontSize: 12, fontWeight: 800, color: '#aab4c8', gridColumn: '1/8' }}>TOTAL CLOSING STOCK (EST.)</span>
+                    <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#aab4c8', textAlign: 'right' }}>{php(totalClosingPhp)}</span>
                   </div>
                 </div>
               );
