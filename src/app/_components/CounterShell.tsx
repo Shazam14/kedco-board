@@ -155,7 +155,10 @@ export default function CounterShell({
   const [bankId,   setBankId]   = useState<number | null>(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
-  const [flash,    setFlash]    = useState<Transaction | null>(null);
+  const [flash,       setFlash]       = useState<Transaction | null>(null);
+  const [batchFlash,  setBatchFlash]  = useState<Transaction[] | null>(null);
+  type CartItem = { ccy: CurrencyMeta; foreign_amt: number; rate: number; official_rate?: number };
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [txns,     setTxns]     = useState<Transaction[]>([]);
   const [today,    setToday]    = useState('');
 
@@ -346,6 +349,124 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
 
 </body>
 </html>`);
+    w.document.close();
+  }
+
+  function addToCart() {
+    if (!ccy || !+amtInput.raw || !+rateInput.raw) return;
+    setCart(prev => [...prev, {
+      ccy,
+      foreign_amt: +amtInput.raw,
+      rate: +rateInput.raw,
+      official_rate: +guideRateInput.raw > 0 ? +guideRateInput.raw : undefined,
+    }]);
+    setCcy(null); setCcyQuery(''); amtInput.setValue(''); rateInput.setValue(''); guideRateInput.setValue('');
+  }
+
+  async function handleBatchSubmit() {
+    if (cart.length === 0) return;
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch('/api/counter/transactions/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          source: 'COUNTER',
+          customer: cust || undefined,
+          payment_mode: payMode,
+          bank_id: bankId ?? undefined,
+          referrer: referrer || undefined,
+          items: cart.map(item => ({
+            currency: item.ccy.code,
+            foreign_amt: item.foreign_amt,
+            rate: item.rate,
+            official_rate: item.official_rate,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail ?? 'Batch transaction failed');
+      } else {
+        const mapped: Transaction[] = data.map((t: Record<string, unknown>) => ({
+          id: t.id, time: t.time, type: t.type, source: t.source,
+          currency: t.currency, foreignAmt: t.foreign_amt,
+          rate: t.rate, phpAmt: t.php_amt, than: t.than,
+          cashier: t.cashier, customer: t.customer ?? undefined,
+          paymentMode: t.payment_mode ?? payMode,
+          officialRate: t.official_rate ?? undefined,
+          referrer: t.referrer ?? undefined,
+        }));
+        setCart([]);
+        setBatchFlash(mapped);
+        setCcy(null); setCcyQuery(''); amtInput.setValue(''); rateInput.setValue('');
+        setCust(''); setIdNumber(''); setReferrer('');
+        guideRateInput.setValue(''); setPaymentTag('');
+        await fetchTxns();
+        setTimeout(() => setBatchFlash(null), 8000);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function printBatchReceipt(txns: Transaction[]) {
+    if (txns.length === 0) return;
+    const w = window.open('', '_blank', 'width=320,height=700');
+    if (!w) return;
+    const d = new Date();
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const hh = d.getHours() % 12 || 12;
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ap = d.getHours() < 12 ? 'AM' : 'PM';
+    const dateStr = `${MONTHS[d.getMonth()]} ${d.getDate()} ${d.getFullYear()} (${DAYS[d.getDay()]}) ${hh}:${mm}${ap}`;
+    const totalPhp = txns.reduce((s, t) => s + t.phpAmt, 0);
+    const fmtPhpTotal = totalPhp.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const pm = txns[0].paymentMode ?? 'CASH';
+    const rows = txns.map(t => {
+      const fmtAmt  = fmtFx(t.foreignAmt, t.currency, currencies);
+      const fmtRate = t.rate.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+      const fmtPhp  = t.phpAmt.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return `<tr>
+        <td style="padding:1px 0;white-space:nowrap">${t.currency}</td>
+        <td style="padding:1px 0;text-align:center;white-space:nowrap">${fmtAmt}&nbsp;x&nbsp;@&nbsp;${fmtRate}</td>
+        <td style="padding:1px 0;text-align:right;white-space:nowrap">${fmtPhp}</td>
+      </tr>`;
+    }).join('');
+    w.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>OR#${txns[0].id}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Courier New',Courier,monospace;background:#fff;color:#000;padding:10px 8px;font-size:12px;line-height:1.65;width:300px;margin:0 auto}
+  .center{text-align:center}.bold{font-weight:bold}.dot{border-top:1px dashed #000;margin:6px 0}.row{display:flex;justify-content:space-between}.field{margin-bottom:1px}
+  @media print{body{padding:4px}@page{margin:0;size:80mm auto}}
+</style>
+<script>window.onload=()=>window.print();</script>
+</head><body>
+<div class="center bold">Kedco Foreign Exchange Services</div>
+<div class="center">${branchLocation}</div>
+<div style="margin-top:6px"><div>${dateStr}</div><div>TM#001</div><div>OR#${txns[0].id}</div></div>
+<div class="dot"></div><div class="center bold">${txns[0].type}</div><div class="dot"></div>
+<table style="width:100%;border-collapse:collapse;font-size:12px;">${rows}</table>
+<div class="dot"></div>
+<div class="row"><span>TOTAL</span><span>&#8369;${fmtPhpTotal}</span></div>
+<div class="row"><span>${pm}</span><span>&#8369;${fmtPhpTotal}</span></div>
+<div class="dot"></div>
+<div class="field"># PAX &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</div>
+<div class="field">CASHIER &nbsp;&nbsp;: ${txns[0].cashier}</div>
+<div style="margin-top:8px"></div>
+<div class="field">SOLD TO &nbsp;&nbsp;: ${txns[0].customer ?? ''}</div>
+<div class="field">ADDRESS &nbsp;&nbsp;:</div>
+<div class="field">ID NO &nbsp;&nbsp;&nbsp;&nbsp;:</div>
+<div class="field">BUSINESS STY :</div>
+<div class="field">SIGNATURE &nbsp;:</div>
+${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referrer}</div>` : ''}
+<div class="dot"></div>
+<div class="center">Thank you.</div>
+<div class="center">This is not an official receipt.</div>
+</body></html>`);
     w.document.close();
   }
 
@@ -1606,7 +1727,48 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             </div>
           )}
 
-          {/* Success flash */}
+          {/* Batch flash */}
+          {batchFlash && batchFlash.length > 0 && (
+            <div style={{
+              background: 'rgba(0,212,170,0.07)', border: '1px solid rgba(0,212,170,0.3)',
+              borderRadius: 10, padding: '14px 18px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ ...Y, fontSize: 12, fontWeight: 700, color: '#00d4aa' }}>
+                  ✓ Batch saved — {batchFlash.length} items
+                </div>
+                <button
+                  onClick={() => printBatchReceipt(batchFlash)}
+                  style={{
+                    padding: '5px 14px', borderRadius: 6,
+                    border: '1px solid rgba(0,212,170,0.4)',
+                    background: 'rgba(0,212,170,0.1)', color: '#00d4aa',
+                    ...M, fontSize: 11, cursor: 'pointer',
+                  }}
+                >
+                  🖨 Print Receipt
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {batchFlash.map(t => (
+                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>
+                      {t.currency} &nbsp;{fmtFx(t.foreignAmt, t.currency, currencies)} @ {t.rate}
+                    </div>
+                    <div style={{ ...M, fontSize: 11, color: '#00d4aa', fontWeight: 700 }}>{php(t.phpAmt)}</div>
+                  </div>
+                ))}
+                <div style={{ borderTop: '1px solid rgba(0,212,170,0.2)', paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em' }}>TOTAL</span>
+                  <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#00d4aa' }}>
+                    {php(batchFlash.reduce((s, t) => s + t.phpAmt, 0))}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Single success flash */}
           {flash && (
             <div style={{
               background: 'rgba(0,212,170,0.07)', border: '1px solid rgba(0,212,170,0.3)',
@@ -1645,25 +1807,104 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             </div>
           )}
 
+          {/* Cart */}
+          {cart.length > 0 && (
+            <div style={{
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 10, padding: '14px 18px',
+            }}>
+              <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 10 }}>
+                CART — {cart.length} ITEM{cart.length > 1 ? 'S' : ''}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {cart.map((item, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1, ...M, fontSize: 12, color: '#e2e6f0' }}>
+                      {item.ccy.flag} {item.ccy.code} &nbsp;
+                      {fmtFx(item.foreign_amt, item.ccy.code, currencies)} @ {item.rate}
+                    </div>
+                    <div style={{ ...M, fontSize: 12, color: '#00d4aa', fontWeight: 700, minWidth: 90, textAlign: 'right' }}>
+                      {php(item.foreign_amt * item.rate)}
+                    </div>
+                    <button
+                      onClick={() => setCart(prev => prev.filter((_, j) => j !== i))}
+                      style={{
+                        background: 'transparent', border: 'none', color: 'var(--muted)',
+                        cursor: 'pointer', fontSize: 14, padding: '0 4px', lineHeight: 1,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: 10, paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em' }}>SUBTOTAL</span>
+                <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#e2e6f0' }}>
+                  {php(cart.reduce((s, item) => s + item.foreign_amt * item.rate, 0))}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Submit */}
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            style={{
-              padding: '16px', borderRadius: 10, border: 'none',
-              background: !canSubmit
-                ? 'var(--border)'
-                : type === 'BUY'
-                  ? 'linear-gradient(135deg,#5b8cff,#3a6fef)'
-                  : 'linear-gradient(135deg,#f5a623,#e09000)',
-              color: !canSubmit ? 'var(--muted)' : '#000',
-              ...Y, fontSize: 14, fontWeight: 800,
-              cursor: !canSubmit ? 'not-allowed' : 'pointer',
-              letterSpacing: '0.04em', transition: 'all 0.2s',
-            }}
-          >
-            {loading ? 'PROCESSING...' : `CONFIRM ${type} TRANSACTION`}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                style={{
+                  flex: 1, padding: '16px', borderRadius: 10, border: 'none',
+                  background: !canSubmit
+                    ? 'var(--border)'
+                    : type === 'BUY'
+                      ? 'linear-gradient(135deg,#5b8cff,#3a6fef)'
+                      : 'linear-gradient(135deg,#f5a623,#e09000)',
+                  color: !canSubmit ? 'var(--muted)' : '#000',
+                  ...Y, fontSize: 14, fontWeight: 800,
+                  cursor: !canSubmit ? 'not-allowed' : 'pointer',
+                  letterSpacing: '0.04em', transition: 'all 0.2s',
+                }}
+              >
+                {loading ? 'PROCESSING...' : `CONFIRM ${type}`}
+              </button>
+              <button
+                onClick={addToCart}
+                disabled={!canSubmit}
+                title="Add to cart for multi-currency batch"
+                style={{
+                  padding: '16px 18px', borderRadius: 10, border: '1px solid var(--border)',
+                  background: !canSubmit ? 'transparent' : 'var(--surface)',
+                  color: !canSubmit ? 'var(--muted)' : '#e2e6f0',
+                  ...Y, fontSize: 18, fontWeight: 700,
+                  cursor: !canSubmit ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                +
+              </button>
+            </div>
+            {cart.length > 0 && (
+              <button
+                onClick={handleBatchSubmit}
+                disabled={loading}
+                style={{
+                  padding: '16px', borderRadius: 10, border: 'none',
+                  background: loading
+                    ? 'var(--border)'
+                    : type === 'BUY'
+                      ? 'linear-gradient(135deg,#00d4aa,#009977)'
+                      : 'linear-gradient(135deg,#b45cf5,#8a2be2)',
+                  color: loading ? 'var(--muted)' : '#000',
+                  ...Y, fontSize: 14, fontWeight: 800,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  letterSpacing: '0.04em', transition: 'all 0.2s',
+                }}
+              >
+                {loading ? 'PROCESSING...' : `SUBMIT BATCH (${cart.length})`}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── RIGHT: LOG ── */}

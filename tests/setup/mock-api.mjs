@@ -464,6 +464,28 @@ const server = createServer(async (req, res) => {
   if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, payment_mode: t.payment_mode, bank_id: null })));
   if (method === 'GET' && /transactions/.test(url)) return json(res, []);
 
+  // Submit batch counter transaction
+  if (method === 'POST' && url === '/api/v1/transactions/batch') {
+    const body = await readBody(req);
+    const data = JSON.parse(body);
+    const time = new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+    return json(res, data.items.map((item, i) => ({
+      id:           `TXN-BATCH-${String(i + 1).padStart(3, '0')}`,
+      time,
+      type:         data.type,
+      source:       data.source ?? 'COUNTER',
+      currency:     item.currency,
+      foreign_amt:  item.foreign_amt,
+      rate:         item.rate,
+      php_amt:      item.foreign_amt * item.rate,
+      than:         0,
+      cashier:      'cashier1',
+      customer:     data.customer ?? null,
+      payment_mode: data.payment_mode ?? 'CASH',
+      batch_id:     'mock-batch-uuid',
+    })), 201);
+  }
+
   // Submit counter transaction
   if (method === 'POST' && url === '/api/v1/transactions/') {
     const body = await readBody(req);
