@@ -1170,21 +1170,23 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
             <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginTop: -2 }}>Counter</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>
-            <span style={{ color: '#e2e6f0' }}>{username}</span>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
+          {!isMobile && (
+            <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>
+              <span style={{ color: '#e2e6f0' }}>{username}</span>
+            </div>
+          )}
           {shift && (<>
             <button
               onClick={() => { setReplenishError(null); replenishInput.setValue(''); setReplenishNote(''); setShowReplenishModal(true); }}
               style={{
-                padding: '5px 14px', borderRadius: 6,
+                padding: '5px 10px', borderRadius: 6,
                 border: '1px solid rgba(0,212,170,0.35)',
                 background: 'rgba(0,212,170,0.07)',
                 color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
               }}
             >
-              REPLENISH
+              REPL
             </button>
             <button
               onClick={() => { setShiftError(null); setShowEndModal(true); }}
