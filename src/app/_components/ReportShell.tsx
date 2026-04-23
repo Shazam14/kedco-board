@@ -71,10 +71,16 @@ function buildStockSummary(report: Report): StockRow[] {
     const pos = posMap[code];
     const txn = txnMap[code];
     const meta = pos ?? txn!;
-    const carry_in_qty = pos?.carry_in_qty ?? 0;
-    const buy_qty      = txn?.buy_qty      ?? 0;
-    const sell_qty     = txn?.sell_qty     ?? 0;
-    const rate         = pos?.carry_in_rate ?? 0;
+    const carry_in_qty  = pos?.carry_in_qty   ?? 0;
+    const carry_in_rate = pos?.carry_in_rate  ?? 0;
+    const buy_qty       = txn?.buy_qty        ?? 0;
+    const buy_php       = txn?.buy_php        ?? 0;
+    const sell_qty      = txn?.sell_qty       ?? 0;
+    const total_in      = carry_in_qty + buy_qty;
+    // weighted daily avg cost: blends opening inventory with today's buys
+    const rate = total_in > 0
+      ? (carry_in_qty * carry_in_rate + buy_php) / total_in
+      : carry_in_rate;
     const stocks_left_qty = carry_in_qty + buy_qty - sell_qty;
     return {
       code,
