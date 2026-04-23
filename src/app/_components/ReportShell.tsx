@@ -41,12 +41,12 @@ interface Report {
   date: string;
   generated_at: string;
   total_transactions: number;
-  total_opening_stock_php: number;
+  total_opening_stock_php?: number;
   total_bought_php: number;
   total_sold_php: number;
   total_than: number;
   total_commission: number;
-  opening_positions: PositionRow[];
+  opening_positions?: PositionRow[];
   by_currency: CurrencyRow[];
   by_cashier: CashierRow[];
   transactions: TxnRow[];
@@ -129,10 +129,11 @@ function printReport(report: Report) {
   const th = (label: string, align = 'left') =>
     `<th style="padding:7px 8px;background:#222;color:#fff;text-align:${align};font-size:10px;letter-spacing:0.08em;white-space:nowrap">${label}</th>`;
 
-  const closingEstimate = report.total_opening_stock_php + report.total_bought_php - report.total_sold_php;
+  const openingStockPhp = report.total_opening_stock_php ?? 0;
+  const closingEstimate = openingStockPhp + report.total_bought_php - report.total_sold_php;
 
   const positionRows = categories.map(cat => {
-    const rows = report.opening_positions.filter(r => r.category === cat);
+    const rows = (report.opening_positions ?? []).filter(r => r.category === cat);
     if (!rows.length) return '';
     const catTotal = rows.reduce((s, r) => s + r.carry_in_php, 0);
     return `
@@ -180,14 +181,14 @@ function printReport(report: Report) {
     </div>
 
     <div class="summary">
-      <div class="summary-box"><div class="label">OPENING STOCK</div><div class="value" style="color:#555">${php(report.total_opening_stock_php)}</div></div>
+      <div class="summary-box"><div class="label">OPENING STOCK</div><div class="value" style="color:#555">${php(openingStockPhp)}</div></div>
       <div class="summary-box"><div class="label">TOTAL BOUGHT</div><div class="value" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
       <div class="summary-box"><div class="label">TOTAL SOLD</div><div class="value" style="color:#c47000">${php(report.total_sold_php)}</div></div>
       <div class="summary-box"><div class="label">TOTAL THAN (MARGIN)</div><div class="value" style="color:#007a55">${php(report.total_than)}</div></div>
       ${hasComm ? `<div class="summary-box"><div class="label">TOTAL COMM</div><div class="value" style="color:#007a55">${report.total_commission > 0 ? '+' : ''}${php(report.total_commission)}</div></div>` : ''}
     </div>
     <div class="flow">
-      <div class="flow-item"><div class="fl">OPENING STOCK</div><div class="fv" style="color:#555">${php(report.total_opening_stock_php)}</div></div>
+      <div class="flow-item"><div class="fl">OPENING STOCK</div><div class="fv" style="color:#555">${php(openingStockPhp)}</div></div>
       <div class="flow-op">+</div>
       <div class="flow-item"><div class="fl">BOUGHT</div><div class="fv" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
       <div class="flow-op">−</div>
@@ -204,7 +205,7 @@ function printReport(report: Report) {
       <tbody>${positionRows}</tbody>
       <tfoot><tr style="background:#111;color:#fff;font-weight:900">
         <td colspan="4" style="padding:8px;font-size:12px">TOTAL OPENING STOCK</td>
-        <td style="text-align:right;padding:8px;font-size:13px">${php(report.total_opening_stock_php)}</td>
+        <td style="text-align:right;padding:8px;font-size:13px">${php(openingStockPhp)}</td>
       </tr></tfoot>
     </table>
 
@@ -281,6 +282,9 @@ export default function ReportShell({
     sell_php:   rows.reduce((s, r) => s + r.sell_php,   0),
     than:       rows.reduce((s, r) => s + r.than,       0),
   });
+
+  const openingStock = report?.total_opening_stock_php ?? 0;
+  const openingPositions = report?.opening_positions ?? [];
 
   return (
     <>
@@ -374,7 +378,7 @@ export default function ReportShell({
             {(() => {
               const cols = report.total_commission !== 0 ? 5 : 4;
               const boxes = [
-                { label: 'OPENING STOCK', value: php(report.total_opening_stock_php), color: '#aab4c8' },
+                { label: 'OPENING STOCK', value: php(openingStock), color: '#aab4c8' },
                 { label: 'TOTAL BOUGHT',  value: php(report.total_bought_php),        color: '#5b8cff' },
                 { label: 'TOTAL SOLD',    value: php(report.total_sold_php),           color: '#f5a623' },
                 { label: 'TOTAL THAN',    value: php(report.total_than),               color: '#00d4aa' },
@@ -397,7 +401,7 @@ export default function ReportShell({
 
             {/* ── STOCK MOVEMENT ── */}
             {(() => {
-              const closing = report.total_opening_stock_php + report.total_bought_php - report.total_sold_php;
+              const closing = openingStock + report.total_bought_php - report.total_sold_php;
               const item = (label: string, value: string, color: string) => (
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 4 }}>{label}</div>
@@ -413,7 +417,7 @@ export default function ReportShell({
                   borderRadius: 12, padding: '14px 24px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
                 }}>
-                  {item('OPENING STOCK', php(report.total_opening_stock_php), '#aab4c8')}
+                  {item('OPENING STOCK', php(openingStock), '#aab4c8')}
                   {op('+')}
                   {item('BOUGHT', php(report.total_bought_php), '#5b8cff')}
                   {op('−')}
@@ -425,8 +429,8 @@ export default function ReportShell({
             })()}
 
             {/* ── OPENING POSITIONS ── */}
-            {report.opening_positions.length > 0 && (() => {
-              const posByCat = (cat: string) => report.opening_positions.filter(r => r.category === cat);
+            {openingPositions.length > 0 && (() => {
+              const posByCat = (cat: string) => openingPositions.filter(r => r.category === cat);
               const catPhpTotal = (rows: PositionRow[]) => rows.reduce((s, r) => s + r.carry_in_php, 0);
               return (
                 <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
@@ -494,7 +498,7 @@ export default function ReportShell({
                     borderTop: '1px solid rgba(170,180,200,0.3)',
                   }}>
                     <span style={{ ...Y, fontSize: 12, fontWeight: 800, color: '#aab4c8', gridColumn: '1/5' }}>TOTAL OPENING STOCK</span>
-                    <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#aab4c8', textAlign: 'right' }}>{php(report.total_opening_stock_php)}</span>
+                    <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#aab4c8', textAlign: 'right' }}>{php(openingStock)}</span>
                   </div>
                 </div>
               );
