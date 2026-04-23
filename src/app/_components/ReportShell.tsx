@@ -858,8 +858,10 @@ export default function ReportShell({
                   All {report.total_transactions} transactions for the day
                 </div>
               </div>
+              <div style={{ overflowX: 'auto' }}>
               <div className="print-thead" style={{
                 display: 'grid', gridTemplateColumns: '110px 60px 50px 46px 60px 80px 90px 90px 80px 80px 1fr',
+                minWidth: 786,
                 padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
                 ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
               }}>
@@ -874,6 +876,7 @@ export default function ReportShell({
                 <div key={t.id} style={{
                   display: 'grid',
                   gridTemplateColumns: '110px 60px 50px 46px 60px 80px 90px 90px 80px 80px 1fr',
+                  minWidth: 786,
                   padding: '8px 20px', borderBottom: '1px solid var(--border)',
                   background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
                   alignItems: 'center',
@@ -897,6 +900,7 @@ export default function ReportShell({
                   </span>
                 </div>
               ))}
+              </div>{/* end overflowX:auto */}
             </div>
 
           </div>
