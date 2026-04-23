@@ -20,6 +20,11 @@ interface CurrencyRow {
   sell_count: number; sell_qty: number; sell_php: number;
   than: number;
 }
+interface PositionRow {
+  code: string; name: string; flag: string; category: string;
+  decimal_places: number;
+  carry_in_qty: number; carry_in_rate: number; carry_in_php: number;
+}
 interface CashierRow {
   cashier: string;
   buy_count: number; buy_php: number;
@@ -36,10 +41,12 @@ interface Report {
   date: string;
   generated_at: string;
   total_transactions: number;
+  total_opening_stock_php: number;
   total_bought_php: number;
   total_sold_php: number;
   total_than: number;
   total_commission: number;
+  opening_positions: PositionRow[];
   by_currency: CurrencyRow[];
   by_cashier: CashierRow[];
   transactions: TxnRow[];
@@ -122,6 +129,29 @@ function printReport(report: Report) {
   const th = (label: string, align = 'left') =>
     `<th style="padding:7px 8px;background:#222;color:#fff;text-align:${align};font-size:10px;letter-spacing:0.08em;white-space:nowrap">${label}</th>`;
 
+  const closingEstimate = report.total_opening_stock_php + report.total_bought_php - report.total_sold_php;
+
+  const positionRows = categories.map(cat => {
+    const rows = report.opening_positions.filter(r => r.category === cat);
+    if (!rows.length) return '';
+    const catTotal = rows.reduce((s, r) => s + r.carry_in_php, 0);
+    return `
+      <tr style="background:#f0f0f0"><td colspan="5" style="padding:6px 8px;font-weight:700;font-size:11px;letter-spacing:0.1em">${CATEGORY_LABEL[cat] ?? cat}</td></tr>
+      ${rows.map((r, i) => `
+        <tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
+          <td style="padding:7px 8px;font-weight:700">${r.flag} ${r.code}</td>
+          <td style="color:#555">${r.name}</td>
+          <td style="text-align:right">${r.carry_in_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places })}</td>
+          <td style="text-align:right;color:#555">${r.carry_in_rate}</td>
+          <td style="text-align:right;font-weight:600">${php(r.carry_in_php)}</td>
+        </tr>`).join('')}
+      <tr style="background:#e8e8e8;font-weight:700">
+        <td colspan="2" style="padding:6px 8px;font-size:11px">${CATEGORY_LABEL[cat]} subtotal</td>
+        <td></td><td></td>
+        <td style="text-align:right">${php(catTotal)}</td>
+      </tr>`;
+  }).join('');
+
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
     <title>Kedco FX Daily Report — ${report.date}</title>
     <style>
@@ -131,10 +161,15 @@ function printReport(report: Report) {
       h2 { font-family: Arial, sans-serif; font-size: 13px; font-weight: 800; margin: 20px 0 8px; }
       table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 24px; }
       td { padding: 7px 8px; border-bottom: 1px solid #e0e0e0; }
-      .summary { display: flex; gap: 16px; margin-bottom: 24px; }
+      .summary { display: flex; gap: 16px; margin-bottom: 16px; }
       .summary-box { flex: 1; border: 1px solid #ccc; border-radius: 6px; padding: 12px 16px; }
       .summary-box .label { font-size: 9px; color: #555; letter-spacing: 0.15em; margin-bottom: 4px; }
       .summary-box .value { font-size: 20px; font-weight: 900; font-family: Arial, sans-serif; }
+      .flow { display:flex; align-items:center; gap:12px; background:#f5f5f5; border:1px solid #ddd; border-radius:6px; padding:12px 16px; margin-bottom:24px; font-family:Arial,sans-serif; }
+      .flow-item { text-align:center; }
+      .flow-item .fl { font-size:9px; color:#555; letter-spacing:0.1em; }
+      .flow-item .fv { font-size:15px; font-weight:900; }
+      .flow-op { font-size:20px; font-weight:900; color:#999; }
       @media print { body { padding: 12px; } }
     </style>
   </head><body>
@@ -145,11 +180,33 @@ function printReport(report: Report) {
     </div>
 
     <div class="summary">
+      <div class="summary-box"><div class="label">OPENING STOCK</div><div class="value" style="color:#555">${php(report.total_opening_stock_php)}</div></div>
       <div class="summary-box"><div class="label">TOTAL BOUGHT</div><div class="value" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
       <div class="summary-box"><div class="label">TOTAL SOLD</div><div class="value" style="color:#c47000">${php(report.total_sold_php)}</div></div>
       <div class="summary-box"><div class="label">TOTAL THAN (MARGIN)</div><div class="value" style="color:#007a55">${php(report.total_than)}</div></div>
       ${hasComm ? `<div class="summary-box"><div class="label">TOTAL COMM</div><div class="value" style="color:#007a55">${report.total_commission > 0 ? '+' : ''}${php(report.total_commission)}</div></div>` : ''}
     </div>
+    <div class="flow">
+      <div class="flow-item"><div class="fl">OPENING STOCK</div><div class="fv" style="color:#555">${php(report.total_opening_stock_php)}</div></div>
+      <div class="flow-op">+</div>
+      <div class="flow-item"><div class="fl">BOUGHT</div><div class="fv" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
+      <div class="flow-op">−</div>
+      <div class="flow-item"><div class="fl">SOLD</div><div class="fv" style="color:#c47000">${php(report.total_sold_php)}</div></div>
+      <div class="flow-op">=</div>
+      <div class="flow-item"><div class="fl">CLOSING STOCK EST.</div><div class="fv" style="color:#007a55">${php(closingEstimate)}</div></div>
+    </div>
+
+    <h2>OPENING POSITIONS</h2>
+    <table>
+      <thead><tr>
+        ${th('CURRENCY')}${th('NAME')}${th('CARRY-IN QTY','right')}${th('CARRY-IN RATE','right')}${th('VALUE (PHP)','right')}
+      </tr></thead>
+      <tbody>${positionRows}</tbody>
+      <tfoot><tr style="background:#111;color:#fff;font-weight:900">
+        <td colspan="4" style="padding:8px;font-size:12px">TOTAL OPENING STOCK</td>
+        <td style="text-align:right;padding:8px;font-size:13px">${php(report.total_opening_stock_php)}</td>
+      </tr></tfoot>
+    </table>
 
     <h2>CURRENCY BREAKDOWN</h2>
     <table>
@@ -314,22 +371,134 @@ export default function ReportShell({
             </div>
 
             {/* ── SUMMARY BOXES ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${report.total_commission !== 0 ? 4 : 3},1fr)`, gap: 16 }}>
-              {[
-                { label: 'TOTAL BOUGHT', value: php(report.total_bought_php), color: '#5b8cff' },
-                { label: 'TOTAL SOLD',   value: php(report.total_sold_php),   color: '#f5a623' },
-                { label: 'TOTAL THAN',   value: php(report.total_than),       color: '#00d4aa' },
+            {(() => {
+              const cols = report.total_commission !== 0 ? 5 : 4;
+              const boxes = [
+                { label: 'OPENING STOCK', value: php(report.total_opening_stock_php), color: '#aab4c8' },
+                { label: 'TOTAL BOUGHT',  value: php(report.total_bought_php),        color: '#5b8cff' },
+                { label: 'TOTAL SOLD',    value: php(report.total_sold_php),           color: '#f5a623' },
+                { label: 'TOTAL THAN',    value: php(report.total_than),               color: '#00d4aa' },
                 ...(report.total_commission !== 0 ? [{ label: 'TOTAL COMM', value: (report.total_commission > 0 ? '+' : '') + php(report.total_commission), color: '#00d4aa' }] : []),
-              ].map(s => (
-                <div key={s.label} className="print-card" style={{
-                  background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 12, padding: '18px 24px',
-                }}>
-                  <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>{s.label}</div>
-                  <div className="print-accent" style={{ ...Y, fontSize: 26, fontWeight: 800, color: s.color }}>{s.value}</div>
+              ];
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols},1fr)`, gap: 16 }}>
+                  {boxes.map(s => (
+                    <div key={s.label} className="print-card" style={{
+                      background: 'var(--surface)', border: '1px solid var(--border)',
+                      borderRadius: 12, padding: '18px 24px',
+                    }}>
+                      <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>{s.label}</div>
+                      <div className="print-accent" style={{ ...Y, fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
+
+            {/* ── STOCK MOVEMENT ── */}
+            {(() => {
+              const closing = report.total_opening_stock_php + report.total_bought_php - report.total_sold_php;
+              const item = (label: string, value: string, color: string) => (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 4 }}>{label}</div>
+                  <div style={{ ...Y, fontSize: 16, fontWeight: 800, color }}>{value}</div>
+                </div>
+              );
+              const op = (sym: string) => (
+                <div style={{ ...Y, fontSize: 20, fontWeight: 800, color: 'var(--muted)', padding: '0 4px' }}>{sym}</div>
+              );
+              return (
+                <div className="print-card" style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 12, padding: '14px 24px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
+                }}>
+                  {item('OPENING STOCK', php(report.total_opening_stock_php), '#aab4c8')}
+                  {op('+')}
+                  {item('BOUGHT', php(report.total_bought_php), '#5b8cff')}
+                  {op('−')}
+                  {item('SOLD', php(report.total_sold_php), '#f5a623')}
+                  {op('=')}
+                  {item('CLOSING STOCK EST.', php(closing), '#00d4aa')}
+                </div>
+              );
+            })()}
+
+            {/* ── OPENING POSITIONS ── */}
+            {report.opening_positions.length > 0 && (() => {
+              const posByCat = (cat: string) => report.opening_positions.filter(r => r.category === cat);
+              const catPhpTotal = (rows: PositionRow[]) => rows.reduce((s, r) => s + r.carry_in_php, 0);
+              return (
+                <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>Opening Positions</div>
+                    <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                      Carry-in stock from previous day — basis for today's averaging
+                    </div>
+                  </div>
+                  {/* Column headers */}
+                  <div className="print-thead" style={{
+                    display: 'grid', gridTemplateColumns: '110px 1fr 120px 120px 130px',
+                    padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
+                    ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
+                  }}>
+                    <span>CURRENCY</span><span>NAME</span>
+                    <span style={{ textAlign: 'right' }}>CARRY-IN QTY</span>
+                    <span style={{ textAlign: 'right' }}>CARRY-IN RATE</span>
+                    <span style={{ textAlign: 'right' }}>VALUE (PHP)</span>
+                  </div>
+                  {categories.map(cat => {
+                    const rows = posByCat(cat);
+                    if (!rows.length) return null;
+                    const total = catPhpTotal(rows);
+                    return (
+                      <div key={cat}>
+                        <div style={{
+                          padding: '7px 20px', background: 'rgba(255,255,255,0.03)',
+                          borderBottom: '1px solid var(--border)',
+                          ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.15em',
+                        }}>
+                          {CATEGORY_LABEL[cat] ?? cat}
+                        </div>
+                        {rows.map((r, i) => (
+                          <div key={r.code} style={{
+                            display: 'grid', gridTemplateColumns: '110px 1fr 120px 120px 130px',
+                            padding: '9px 20px', borderBottom: '1px solid var(--border)',
+                            background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
+                            alignItems: 'center',
+                          }}>
+                            <span style={{ ...M, fontSize: 13, fontWeight: 700 }}>{r.flag} {r.code}</span>
+                            <span className="print-muted" style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{r.name}</span>
+                            <span style={{ ...M, fontSize: 11, textAlign: 'right' }}>
+                              {r.carry_in_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places })}
+                            </span>
+                            <span className="print-muted" style={{ ...M, fontSize: 11, color: 'var(--muted)', textAlign: 'right' }}>{r.carry_in_rate}</span>
+                            <span style={{ ...M, fontSize: 11, fontWeight: 700, textAlign: 'right' }}>{php(r.carry_in_php)}</span>
+                          </div>
+                        ))}
+                        <div style={{
+                          display: 'grid', gridTemplateColumns: '110px 1fr 120px 120px 130px',
+                          padding: '8px 20px', borderBottom: '1px solid var(--border)',
+                          background: 'rgba(255,255,255,0.05)',
+                        }}>
+                          <span style={{ ...M, fontSize: 10, color: 'var(--muted)', gridColumn: '1/5' }}>{CATEGORY_LABEL[cat]} subtotal</span>
+                          <span style={{ ...M, fontSize: 11, fontWeight: 700, textAlign: 'right' }}>{php(total)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {/* Grand total */}
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '110px 1fr 120px 120px 130px',
+                    padding: '12px 20px', background: 'rgba(170,180,200,0.1)',
+                    borderTop: '1px solid rgba(170,180,200,0.3)',
+                  }}>
+                    <span style={{ ...Y, fontSize: 12, fontWeight: 800, color: '#aab4c8', gridColumn: '1/5' }}>TOTAL OPENING STOCK</span>
+                    <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#aab4c8', textAlign: 'right' }}>{php(report.total_opening_stock_php)}</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ── BY CURRENCY (replaces 6 books) ── */}
             <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
