@@ -81,9 +81,9 @@ function buildStockSummary(report: Report): StockRow[] {
     const rawRate = total_in > 0
       ? (carry_in_qty * carry_in_rate + buy_php) / total_in
       : carry_in_rate;
-    const rate = rawRate >= 1
-      ? Math.round(rawRate * 100) / 100    // 2 dp for normal currencies (USD 59.60)
-      : Math.round(rawRate * 10000) / 10000; // 4 dp for sub-1 currencies (JPY 0.3706, IDR 0.0033)
+    // round to same precision as carry_in_rate (e.g. 0.45→2dp, 0.3704→4dp, 59.55→2dp)
+    const rateDP = carry_in_rate ? (carry_in_rate.toString().split('.')[1]?.length ?? 2) : 2;
+    const rate = Math.round(rawRate * Math.pow(10, rateDP)) / Math.pow(10, rateDP);
     const stocks_left_qty = carry_in_qty + buy_qty - sell_qty;
     return {
       code,
