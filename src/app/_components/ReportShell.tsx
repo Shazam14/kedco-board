@@ -78,9 +78,12 @@ function buildStockSummary(report: Report): StockRow[] {
     const sell_qty      = txn?.sell_qty       ?? 0;
     const total_in      = carry_in_qty + buy_qty;
     // weighted daily avg cost: blends opening inventory with today's buys
-    const rate = total_in > 0
-      ? Math.round((carry_in_qty * carry_in_rate + buy_php) / total_in * 1e6) / 1e6
+    const rawRate = total_in > 0
+      ? (carry_in_qty * carry_in_rate + buy_php) / total_in
       : carry_in_rate;
+    const rate = rawRate >= 1
+      ? Math.round(rawRate * 100) / 100    // 2 dp for normal currencies (USD 59.60)
+      : Math.round(rawRate * 10000) / 10000; // 4 dp for sub-1 currencies (JPY 0.3706, IDR 0.0033)
     const stocks_left_qty = carry_in_qty + buy_qty - sell_qty;
     return {
       code,
