@@ -173,7 +173,8 @@ function printReport(report: Report) {
       <td style="text-align:right;color:${t.type === 'BUY' ? '#2255cc' : '#c47000'}">${t.rate}</td>
       <td style="text-align:right;font-weight:600">${php(t.php_amt)}</td>
       <td style="text-align:right;color:${t.than > 0 ? '#007a55' : '#999'}">${t.than > 0 ? php(t.than) : '—'}</td>
-      <td style="font-size:10px;color:#555">${t.cashier}${t.customer ? ` / ${t.customer}` : ''}</td>
+      <td style="font-size:10px;color:#555">${t.cashier}</td>
+      <td style="font-size:10px;color:#555">${t.customer ?? '—'}</td>
     </tr>`).join('');
 
   const th = (label: string, align = 'left') =>
@@ -319,7 +320,7 @@ function printReport(report: Report) {
 
     <h2>TRANSACTION LOG</h2>
     <table>
-      <thead><tr>${th('RECEIPT')}${th('TIME')}${th('TYPE')}${th('SRC')}${th('CCY')}${th('FOREIGN','right')}${th('RATE','right')}${th('PHP','right')}${th('THAN','right')}${th('CASHIER / CUST')}</tr></thead>
+      <thead><tr>${th('RECEIPT')}${th('TIME')}${th('TYPE')}${th('SRC')}${th('CCY')}${th('FOREIGN','right')}${th('RATE','right')}${th('PHP','right')}${th('THAN','right')}${th('CASHIER')}${th('CUST')}</tr></thead>
       <tbody>${txnRows}</tbody>
     </table>
 
@@ -858,7 +859,7 @@ export default function ReportShell({
                 </div>
               </div>
               <div className="print-thead" style={{
-                display: 'grid', gridTemplateColumns: '110px 60px 50px 56px 70px 80px 100px 80px 110px 120px',
+                display: 'grid', gridTemplateColumns: '110px 60px 50px 46px 60px 80px 90px 90px 80px 80px 1fr',
                 padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
                 ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
               }}>
@@ -867,12 +868,12 @@ export default function ReportShell({
                 <span style={{ textAlign: 'right' }}>RATE</span>
                 <span style={{ textAlign: 'right' }}>PHP</span>
                 <span style={{ textAlign: 'right' }}>THAN</span>
-                <span>CASHIER / CUST</span>
+                <span>CASHIER</span><span>CUST</span>
               </div>
               {report.transactions.map((t, i) => (
                 <div key={t.id} style={{
                   display: 'grid',
-                  gridTemplateColumns: '110px 60px 50px 56px 70px 80px 100px 80px 110px 120px',
+                  gridTemplateColumns: '110px 60px 50px 46px 60px 80px 90px 90px 80px 80px 1fr',
                   padding: '8px 20px', borderBottom: '1px solid var(--border)',
                   background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
                   alignItems: 'center',
@@ -889,7 +890,10 @@ export default function ReportShell({
                     {t.than > 0 ? php(t.than) : '—'}
                   </span>
                   <span style={{ ...M, fontSize: 10, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.cashier}{t.customer ? ` / ${t.customer}` : ''}
+                    {t.cashier}
+                  </span>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {t.customer ?? '—'}
                   </span>
                 </div>
               ))}
