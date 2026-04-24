@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -343,9 +343,12 @@ export default function ReportShell({
 }) {
   const router  = useRouter();
   const [date, setDate] = useState(selectedDate);
+  const [isPending, startTransition] = useTransition();
 
   function goToDate(d: string) {
-    router.push(`/admin/report${d ? `?date=${d}` : ''}`);
+    startTransition(() => {
+      router.push(`/admin/report${d ? `?date=${d}` : ''}`);
+    });
   }
 
   // dp lookup for on-screen foreign amount formatting
@@ -415,11 +418,14 @@ export default function ReportShell({
             <input
               type="date"
               value={date}
-              onChange={e => setDate(e.target.value)}
-              onBlur={e => goToDate(e.target.value)}
+              onChange={e => {
+                setDate(e.target.value);
+                if (e.target.value.length === 10) goToDate(e.target.value);
+              }}
               style={{
                 background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-                padding: '6px 12px', color: '#e2e6f0', ...M, fontSize: 12, outline: 'none',
+                padding: '6px 12px', color: isPending ? 'var(--muted)' : '#e2e6f0', ...M, fontSize: 12, outline: 'none',
+                opacity: isPending ? 0.7 : 1,
               }}
             />
             <button
@@ -438,6 +444,30 @@ export default function ReportShell({
             </a>
           </div>
         </nav>
+
+        {/* ── LOADING OVERLAY ── */}
+        {isPending && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backdropFilter: 'blur(2px)',
+          }}>
+            <div style={{
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: 12, padding: '20px 32px',
+              display: 'flex', alignItems: 'center', gap: 12,
+              ...M, fontSize: 13, color: '#e2e6f0',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00d4aa" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83">
+                  <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/>
+                </path>
+              </svg>
+              Loading report…
+            </div>
+          </div>
+        )}
 
         {/* ── NO DATA STATE ── */}
         {!report && (
