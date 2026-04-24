@@ -30,7 +30,7 @@ interface StockRow {
   code: string; name: string; flag: string; category: string;
   sort_order: number; decimal_places: number;
   carry_in_qty: number; buy_qty: number; sell_qty: number;
-  stocks_left_qty: number; rate: number; stocks_left_php: number | null;
+  closing_qty: number; closing_rate: number; closing_php: number;
 }
 interface CashierRow {
   cashier: string;
@@ -54,53 +54,13 @@ interface Report {
   total_than: number;
   total_commission: number;
   opening_positions?: PositionRow[];
+  stock_summary?: StockRow[];
+  total_closing_stock_php?: number;
   by_currency: CurrencyRow[];
   by_cashier: CashierRow[];
   transactions: TxnRow[];
 }
 
-function buildStockSummary(report: Report): StockRow[] {
-  const catOrder: Record<string, number> = { MAIN: 0, '2ND': 1, OTHERS: 2 };
-  const posMap = Object.fromEntries((report.opening_positions ?? []).map(p => [p.code, p]));
-  const txnMap = Object.fromEntries((report.by_currency ?? []).map(r => [r.code, r]));
-  const codes = Array.from(new Set([
-    ...(report.opening_positions ?? []).map(p => p.code),
-    ...(report.by_currency ?? []).map(r => r.code),
-  ]));
-  return codes.map(code => {
-    const pos = posMap[code];
-    const txn = txnMap[code];
-    const meta = pos ?? txn!;
-    const carry_in_qty  = pos?.carry_in_qty   ?? 0;
-    const carry_in_rate = pos?.carry_in_rate  ?? 0;
-    const buy_qty       = txn?.buy_qty        ?? 0;
-    const buy_php       = txn?.buy_php        ?? 0;
-    const sell_qty      = txn?.sell_qty       ?? 0;
-    const total_in      = carry_in_qty + buy_qty;
-    // weighted daily avg cost: blends opening inventory with today's buys
-    const rawRate = total_in > 0
-      ? (carry_in_qty * carry_in_rate + buy_php) / total_in
-      : carry_in_rate;
-    // round to same precision as carry_in_rate (e.g. 0.45→2dp, 0.3704→4dp, 59.55→2dp)
-    const rateDP = carry_in_rate ? (carry_in_rate.toString().split('.')[1]?.length ?? 2) : 2;
-    const rate = Math.round(rawRate * Math.pow(10, rateDP)) / Math.pow(10, rateDP);
-    const stocks_left_qty = carry_in_qty + buy_qty - sell_qty;
-    return {
-      code,
-      name:            meta.name,
-      flag:            meta.flag,
-      category:        meta.category ?? 'OTHERS',
-      sort_order:      meta.sort_order ?? 99,
-      decimal_places:  meta.decimal_places,
-      carry_in_qty, buy_qty, sell_qty, stocks_left_qty, rate,
-      stocks_left_php: rate > 0 ? Math.round(stocks_left_qty * rate * 100) / 100 : null,
-    };
-  }).sort((a, b) => {
-    const ca = catOrder[a.category] ?? 9;
-    const cb = catOrder[b.category] ?? 9;
-    return ca !== cb ? ca - cb : a.sort_order - b.sort_order;
-  });
-}
 
 function printReport(report: Report) {
   const php = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -266,11 +226,11 @@ function printReport(report: Report) {
         ${th('CURRENCY')}${th('NAME')}${th('CARRY-IN','right')}${th('+ BOUGHT','right')}${th('− SOLD','right')}${th('STOCKS LEFT','right')}${th('RATE','right')}${th('VALUE PHP','right')}
       </tr></thead>
       <tbody>${(() => {
-        const stockRows = buildStockSummary(report);
+        const stockRows = report.stock_summary ?? [];
         return categories.map(cat => {
           const rows = stockRows.filter(r => r.category === cat);
           if (!rows.length) return '';
-          const catLeftPhp = rows.reduce((s, r) => s + (r.stocks_left_php ?? 0), 0);
+          const catLeftPhp = rows.reduce((s, r) => s + r.closing_php, 0);
           return `
             <tr style="background:#f0f0f0"><td colspan="8" style="padding:6px 8px;font-weight:700;font-size:11px;letter-spacing:0.1em">${CATEGORY_LABEL[cat] ?? cat}</td></tr>
             ${rows.map((r, i) => `
@@ -280,9 +240,9 @@ function printReport(report: Report) {
                 <td style="text-align:right;color:#555">${r.carry_in_qty > 0 ? r.carry_in_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}</td>
                 <td style="text-align:right;color:#2255cc">${r.buy_qty > 0 ? r.buy_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}</td>
                 <td style="text-align:right;color:#c47000">${r.sell_qty > 0 ? r.sell_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}</td>
-                <td style="text-align:right;font-weight:700">${r.stocks_left_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places })}</td>
-                <td style="text-align:right;color:#555">${r.rate > 0 ? r.rate : '—'}</td>
-                <td style="text-align:right;font-weight:600">${r.stocks_left_php !== null ? php(r.stocks_left_php) : '—'}</td>
+                <td style="text-align:right;font-weight:700">${r.closing_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places })}</td>
+                <td style="text-align:right;color:#555">${r.closing_rate > 0 ? r.closing_rate : '—'}</td>
+                <td style="text-align:right;font-weight:600">${r.closing_php > 0 ? php(r.closing_php) : '—'}</td>
               </tr>`).join('')}
             <tr style="background:#e8e8e8;font-weight:700">
               <td colspan="7" style="padding:6px 8px;font-size:11px">${CATEGORY_LABEL[cat]} subtotal</td>
@@ -375,7 +335,7 @@ export default function ReportShell({
 
   const openingStock = report?.total_opening_stock_php ?? 0;
   const openingPositions = report?.opening_positions ?? [];
-  const stockSummary = report ? buildStockSummary(report) : [];
+  const stockSummary = report?.stock_summary ?? [];
 
   return (
     <>
@@ -628,7 +588,7 @@ export default function ReportShell({
               const byCat = (cat: string) => stockSummary.filter(r => r.category === cat);
               const fmtQty = (r: StockRow, qty: number) =>
                 qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places });
-              const totalClosingPhp = stockSummary.reduce((s, r) => s + (r.stocks_left_php ?? 0), 0);
+              const totalClosingPhp = report?.total_closing_stock_php ?? stockSummary.reduce((s, r) => s + r.closing_php, 0);
               return (
                 <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
                   <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
@@ -653,7 +613,7 @@ export default function ReportShell({
                   {categories.map(cat => {
                     const rows = byCat(cat);
                     if (!rows.length) return null;
-                    const catPhp = rows.reduce((s, r) => s + (r.stocks_left_php ?? 0), 0);
+                    const catPhp = rows.reduce((s, r) => s + r.closing_php, 0);
                     return (
                       <div key={cat}>
                         <div style={{ padding: '7px 20px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)', ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.15em' }}>
@@ -678,13 +638,13 @@ export default function ReportShell({
                               {r.sell_qty > 0 ? fmtQty(r, r.sell_qty) : '—'}
                             </span>
                             <span style={{ ...M, fontSize: 12, fontWeight: 700, color: '#e2e6f0', textAlign: 'right' }}>
-                              {fmtQty(r, r.stocks_left_qty)}
+                              {fmtQty(r, r.closing_qty)}
                             </span>
                             <span style={{ ...M, fontSize: 11, color: 'var(--muted)', textAlign: 'right' }}>
-                              {r.rate > 0 ? r.rate : '—'}
+                              {r.closing_rate > 0 ? r.closing_rate : '—'}
                             </span>
                             <span style={{ ...M, fontSize: 11, fontWeight: 600, color: '#aab4c8', textAlign: 'right' }}>
-                              {r.stocks_left_php !== null ? php(r.stocks_left_php) : '—'}
+                              {r.closing_php > 0 ? php(r.closing_php) : '—'}
                             </span>
                           </div>
                         ))}
