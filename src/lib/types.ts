@@ -47,6 +47,11 @@ export interface CurrencyMeta {
   rateSet: boolean;
 }
 
+export interface CapitalTrendPoint {
+  date: string;
+  value: number;
+}
+
 export interface DashboardSummary {
   date: string;
   openingCapital: number;
@@ -59,4 +64,5 @@ export interface DashboardSummary {
   totalSoldToday: number;
   positions: CurrencyPosition[];
   recentTransactions: Transaction[];
+  capitalTrend: CapitalTrendPoint[];
 }

@@ -138,10 +138,9 @@ function DashboardTab({ data, role }: { data: DashboardSummary; role: string }) 
   const gain    = useCountUp(capitalGain, 1400);
   const than    = useCountUp(data.totalThanToday, 1000);
 
-  const chartData = [
-    { t:'08:00', cap: data.openingCapital },
-    { t:'18:43', cap: data.totalCapital },
-  ];
+  const chartData = data.capitalTrend.length > 1
+    ? data.capitalTrend.map(p => ({ t: p.date, cap: p.value }))
+    : [{ t: 'Open', cap: data.openingCapital }, { t: 'Now', cap: data.totalCapital }];
   const pieData = [
     { name:'MAIN',     value: data.positions.filter(c=>c.category==='MAIN').reduce((s,c)=>s+c.stockValuePhp,0),   color:'#00d4aa' },
     { name:'2ND',      value: data.positions.filter(c=>c.category==='2ND').reduce((s,c)=>s+c.stockValuePhp,0),    color:'#5b8cff' },
