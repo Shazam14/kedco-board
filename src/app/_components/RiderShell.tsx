@@ -32,19 +32,47 @@ const PAYMENT_MODES = [
 
 const NEEDS_BANK = ['BANK_TRANSFER', 'CHEQUE'];
 
+const BRANCHES = [
+  { code: 'MAIN',  name: 'Main' },
+  { code: 'CTS',   name: 'CTS' },
+  { code: 'BAI',   name: 'Bai' },
+  { code: 'SM',    name: 'SM' },
+  { code: 'GOLD',  name: 'Gold' },
+  { code: 'JMALL', name: 'Jmall' },
+  { code: 'ESY2',  name: 'ESY 2' },
+  { code: 'DATAG', name: 'Monekat Datag' },
+  { code: 'MOBO',  name: 'Monekat Mobo' },
+] as const;
+
 export default function RiderShell({
-  currencies, banks, username, branchLocation,
+  currencies, banks, username,
 }: {
   currencies: CurrencyMeta[];
   banks: Bank[];
   username: string;
-  branchLocation: string;
 }) {
   const router = useRouter();
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
+  }
+
+  // ── Branch (Device Setup) ─────────────────────────────────────────────────
+  const [branch,          setBranch]          = useState<string>('');
+  const [showBranchModal, setShowBranchModal] = useState(false);
+  const [branchDraft,     setBranchDraft]     = useState('');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('kedco_branch') ?? '';
+    setBranch(saved);
+    if (!saved) setShowBranchModal(true);
+  }, []);
+
+  function saveBranch(val: string) {
+    localStorage.setItem('kedco_branch', val);
+    setBranch(val);
+    setShowBranchModal(false);
   }
 
   const [type,        setType]        = useState<'BUY' | 'SELL'>('BUY');
@@ -142,6 +170,7 @@ export default function RiderShell({
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
           payment_status: payPending ? 'PENDING' : 'RECEIVED',
+          branch_id: branch || undefined,
         }),
       });
       const data = await res.json();
@@ -202,6 +231,34 @@ export default function RiderShell({
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0', maxWidth: 480, margin: '0 auto', paddingBottom: 32 }}>
 
+      {/* ── BRANCH SELECTOR MODAL ── */}
+      {showBranchModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 400 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 32, width: 340, maxWidth: '90vw' }}>
+            <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.2em', marginBottom: 8 }}>THIS DEVICE</div>
+            <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Select Branch</div>
+            <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 28 }}>
+              Which branch is this device physically located at?
+            </div>
+            <select
+              value={branchDraft}
+              onChange={e => setBranchDraft(e.target.value)}
+              style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', color: '#e2e6f0', ...M, fontSize: 16, outline: 'none', boxSizing: 'border-box', marginBottom: 20 }}
+            >
+              <option value="">— select branch —</option>
+              {BRANCHES.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+            </select>
+            <button
+              onClick={() => branchDraft && saveBranch(branchDraft)}
+              disabled={!branchDraft}
+              style={{ width: '100%', padding: '14px', borderRadius: 10, border: 'none', background: !branchDraft ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)', color: !branchDraft ? 'var(--muted)' : '#000', ...Y, fontSize: 14, fontWeight: 800, cursor: !branchDraft ? 'not-allowed' : 'pointer' }}
+            >
+              CONFIRM
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── HEADER ── */}
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 }}>
         <div>
@@ -209,6 +266,13 @@ export default function RiderShell({
           <div style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>🏍️ {username}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => { setBranchDraft(branch); setShowBranchModal(true); }}
+            title="Change branch"
+            style={{ ...M, fontSize: 10, background: 'transparent', border: '1px solid rgba(0,212,170,0.2)', borderRadius: 8, padding: '6px 10px', color: '#00d4aa', cursor: 'pointer' }}
+          >
+            {branch || 'SET BRANCH'}
+          </button>
           <button
             onClick={() => setShowLog(v => !v)}
             style={{ ...M, fontSize: 11, background: showLog ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${showLog ? '#a78bfa44' : 'var(--border)'}`, borderRadius: 8, padding: '6px 14px', color: showLog ? '#a78bfa' : 'var(--muted)', cursor: 'pointer' }}

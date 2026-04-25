@@ -34,13 +34,11 @@ export default function CounterShell({
   banks,
   username,
   role = 'cashier',
-  branchLocation,
 }: {
   currencies: CurrencyMeta[];
   banks: { id: number; name: string; code: string }[];
   username: string;
   role?: string;
-  branchLocation: string;
 }) {
   const router = useRouter();
   useIdleTimeout(20);
@@ -58,6 +56,45 @@ export default function CounterShell({
   const PAY_MODES = ['CASH', 'GCASH', 'MAYA', 'SHOPEEPAY', 'BANK_TRANSFER', 'CHEQUE', 'OTHER'] as const;
   type PayMode = typeof PAY_MODES[number];
   const NEEDS_BANK: readonly PayMode[] = ['BANK_TRANSFER', 'CHEQUE'];
+
+  // ── Branch & Terminal (Device Setup) ────────────────────────────────────
+  const BRANCHES = [
+    { code: 'MAIN',  name: 'Main',          address: 'ML Quezon National Highway, Pusok, Lapu Lapu City, Cebu' },
+    { code: 'CTS',   name: 'CTS',           address: 'A-218 City Timesquare, Mantawe Ave., Mandaue City, Cebu' },
+    { code: 'BAI',   name: 'Bai',           address: 'Bai Hotel, Piano Avenue COR C.D. Seno St. CSSEAZ Mantuyong, Mandaue City' },
+    { code: 'SM',    name: 'SM',            address: 'Gspot Food park, Kaohsiung St., Mabolo, Cebu City' },
+    { code: 'GOLD',  name: 'Gold',          address: 'Sitio Seabreeze, Pusok, Lapu-Lapu City' },
+    { code: 'JMALL', name: 'Jmall',         address: 'V. Albino St. Bakilid, Mandaue City, Cebu' },
+    { code: 'ESY2',  name: 'ESY 2',         address: 'ML Quezon National Highway, Pusok, Lapu Lapu City, Cebu' },
+    { code: 'DATAG', name: 'Monekat Datag', address: 'Maribago, City of Lapu-Lapu, Cebu' },
+    { code: 'MOBO',  name: 'Monekat Mobo',  address: 'Basdiot, Moalboal, Cebu' },
+  ] as const;
+  const TERMINALS = ['Counter 1', 'Counter 2', 'Counter 3', 'Rider Phone', 'Supervisor Tablet'] as const;
+  const [branch,          setBranch]          = useState<string>('');
+  const [terminal,        setTerminal]        = useState<string>('');
+  const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const [deviceStep,      setDeviceStep]      = useState<1 | 2>(1);
+  const [branchDraft,     setBranchDraft]     = useState('');
+  const [terminalDraft,   setTerminalDraft]   = useState('');
+
+  useEffect(() => {
+    const savedBranch   = localStorage.getItem('kedco_branch')   ?? '';
+    const savedTerminal = localStorage.getItem('kedco_terminal') ?? '';
+    setBranch(savedBranch);
+    setTerminal(savedTerminal);
+    if (!savedBranch || !savedTerminal) {
+      setDeviceStep(!savedBranch ? 1 : 2);
+      setShowDeviceModal(true);
+    }
+  }, []);
+
+  function saveDevice(b: string, t: string) {
+    localStorage.setItem('kedco_branch',   b);
+    localStorage.setItem('kedco_terminal', t);
+    setBranch(b);
+    setTerminal(t);
+    setShowDeviceModal(false);
+  }
 
   // ── Shift state ──────────────────────────────────────────────────────────
   type Replenishment = { id: string; amount_php: number; note?: string; added_at: string };
@@ -97,7 +134,7 @@ export default function CounterShell({
       const res = await fetch('/api/counter/shift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'open', opening_cash_php: cash }),
+        body: JSON.stringify({ action: 'open', opening_cash_php: cash, terminal_id: terminal || undefined, branch_id: branch || undefined }),
       });
       const data = await res.json();
       if (!res.ok) { setShiftError(data.detail ?? 'Failed to open shift.'); }
@@ -220,6 +257,8 @@ export default function CounterShell({
           referrer: referrer || undefined,
           payment_tag: paymentTag || undefined,
           reference_date: (role === 'supervisor' && referenceDate) ? referenceDate : undefined,
+          terminal_id: terminal || undefined,
+          branch_id: branch || undefined,
         }),
       });
       const data = await res.json();
@@ -257,6 +296,8 @@ export default function CounterShell({
   function printReceipt(txn: Transaction) {
     const w = window.open('', '_blank', 'width=320,height=700');
     if (!w) return;
+
+    const branchAddr = BRANCHES.find(b => b.code === branch)?.address ?? 'Cebu, Philippines';
 
     // Date format: Apr 13 2026 (Mon) 12:42PM
     const d = new Date();
@@ -305,11 +346,11 @@ export default function CounterShell({
 <body>
 
 <div class="center bold lg">Kedco Foreign Exchange Services</div>
-<div class="center">${branchLocation}</div>
+<div class="center">${branchAddr}</div>
 
 <div style="margin-top:4px">
   <div>${dateStr}</div>
-  <div>TM#001</div>
+  <div>${terminal || 'Counter'}</div>
   <div>OR#${txn.id}</div>
 </div>
 
@@ -379,6 +420,8 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
           referrer: referrer || undefined,
+          terminal_id: terminal || undefined,
+          branch_id: branch || undefined,
           items: cart.map(item => ({
             currency: item.ccy.code,
             foreign_amt: item.foreign_amt,
@@ -417,6 +460,7 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
     if (txns.length === 0) return;
     const w = window.open('', '_blank', 'width=320,height=700');
     if (!w) return;
+    const branchAddr = BRANCHES.find(b => b.code === branch)?.address ?? 'Cebu, Philippines';
     const d = new Date();
     const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -449,8 +493,8 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
 <script>window.onload=()=>window.print();</script>
 </head><body>
 <div class="center bold lg">Kedco Foreign Exchange Services</div>
-<div class="center">${branchLocation}</div>
-<div style="margin-top:4px"><div>${dateStr}</div><div>TM#001</div><div>OR#${txns[0].id}</div></div>
+<div class="center">${branchAddr}</div>
+<div style="margin-top:4px"><div>${dateStr}</div><div>${terminal || 'Counter'}</div><div>OR#${txns[0].id}</div></div>
 <div class="dot"></div><div class="center xl">${txns[0].type}</div><div class="dot"></div>
 <table style="width:100%;border-collapse:collapse;font-size:9pt;">${rows}</table>
 <div class="dot"></div>
@@ -684,6 +728,92 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
+
+      {/* ── DEVICE SETUP MODAL (branch + terminal, two steps) ── */}
+      {showDeviceModal && (
+        <div style={{ ...overlayStyle, zIndex: 400 }}>
+          <div style={cardStyle}>
+            <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.2em', marginBottom: 8 }}>
+              THIS DEVICE — STEP {deviceStep} OF 2
+            </div>
+            {deviceStep === 1 ? (
+              <>
+                <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Select Branch</div>
+                <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 28 }}>
+                  Which branch is this device physically located at?
+                </div>
+                <select
+                  value={branchDraft}
+                  onChange={e => setBranchDraft(e.target.value)}
+                  style={{
+                    width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 8, padding: '14px 16px', color: '#e2e6f0',
+                    ...M, fontSize: 16, outline: 'none', boxSizing: 'border-box', marginBottom: 20,
+                  }}
+                >
+                  <option value="">— select branch —</option>
+                  {BRANCHES.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+                </select>
+                <button
+                  onClick={() => branchDraft && setDeviceStep(2)}
+                  disabled={!branchDraft}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: 10, border: 'none',
+                    background: !branchDraft ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)',
+                    color: !branchDraft ? 'var(--muted)' : '#000',
+                    ...Y, fontSize: 14, fontWeight: 800, cursor: !branchDraft ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  NEXT →
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Select Terminal</div>
+                <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 28 }}>
+                  Choose which terminal this device is. Shown on receipts.
+                </div>
+                <select
+                  value={terminalDraft}
+                  onChange={e => setTerminalDraft(e.target.value)}
+                  style={{
+                    width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 8, padding: '14px 16px', color: '#e2e6f0',
+                    ...M, fontSize: 16, outline: 'none', boxSizing: 'border-box', marginBottom: 20,
+                  }}
+                >
+                  <option value="">— select terminal —</option>
+                  {TERMINALS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => setDeviceStep(1)}
+                    style={{
+                      flex: 1, padding: '14px', borderRadius: 10, border: '1px solid var(--border)',
+                      background: 'transparent', color: 'var(--muted)',
+                      ...Y, fontSize: 14, fontWeight: 800, cursor: 'pointer',
+                    }}
+                  >
+                    ← BACK
+                  </button>
+                  <button
+                    onClick={() => terminalDraft && saveDevice(branchDraft, terminalDraft)}
+                    disabled={!terminalDraft}
+                    style={{
+                      flex: 2, padding: '14px', borderRadius: 10, border: 'none',
+                      background: !terminalDraft ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)',
+                      color: !terminalDraft ? 'var(--muted)' : '#000',
+                      ...Y, fontSize: 14, fontWeight: 800, cursor: !terminalDraft ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    CONFIRM
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── OPEN SHIFT OVERLAY (blocks counter until shift is opened) ── */}
       {shift === null && !shiftClosed && (
@@ -1352,6 +1482,13 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           {!isMobile && <a href="/passbook" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.3)', background: 'transparent', color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
             PASSBOOK
           </a>}
+          <button
+            onClick={() => { setBranchDraft(branch); setTerminalDraft(terminal); setDeviceStep(1); setShowDeviceModal(true); }}
+            title="Change branch / terminal"
+            style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.2)', background: 'transparent', color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}
+          >
+            {branch ? `${branch} · ${terminal || '?'}` : 'SET DEVICE'}
+          </button>
           <button onClick={handleLogout} style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}>
             LOGOUT
           </button>

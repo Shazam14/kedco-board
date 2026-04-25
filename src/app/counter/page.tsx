@@ -20,7 +20,6 @@ export default async function CounterPage() {
   }
 
   const [currencies, banks] = await Promise.all([getCurrencies(), getBanks()]);
-  const branchLocation = process.env.BRANCH_LOCATION ?? 'Lapu-Lapu City';
 
-  return <CounterShell currencies={currencies} banks={banks} username={username ?? 'cashier'} role={role} branchLocation={branchLocation} />;
+  return <CounterShell currencies={currencies} banks={banks} username={username ?? 'cashier'} role={role} />;
 }
