@@ -11,14 +11,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing credentials' }, { status: 400 });
   }
 
-  const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET_KEY, response: cfToken }),
-  });
-  const verifyData = await verifyRes.json();
-  if (!verifyData.success) {
-    return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 400 });
+  if (process.env.TURNSTILE_SECRET_KEY) {
+    const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET_KEY, response: cfToken }),
+    });
+    const verifyData = await verifyRes.json();
+    if (!verifyData.success) {
+      return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 400 });
+    }
   }
 
   const result = await loginToApi(username, password);
