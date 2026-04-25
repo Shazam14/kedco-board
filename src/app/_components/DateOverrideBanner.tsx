@@ -8,7 +8,10 @@ export default function DateOverrideBanner() {
   const [activeDate, setActiveDate] = useState<string | null>(null);
 
   useEffect(() => {
-    if (pathname === '/login') return;
+    if (pathname === '/login' || pathname === '/admin') {
+      setActiveDate(null);
+      return;
+    }
 
     const check = () =>
       fetch('/api/admin/test-date')
