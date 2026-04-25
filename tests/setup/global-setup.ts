@@ -19,6 +19,7 @@ const ROLES = [
 
 // Pre-set device localStorage so modals don't block tests
 const DEVICE_STATE: Record<string, Record<string, string>> = {
+  'admin.json':      { kedco_branch: 'MAIN', kedco_terminal: 'Counter 1' },
   'cashier.json':    { kedco_branch: 'MAIN', kedco_terminal: 'Counter 1' },
   'supervisor.json': { kedco_branch: 'MAIN', kedco_terminal: 'Counter 1' },
   'rider.json':      { kedco_branch: 'MAIN' },
