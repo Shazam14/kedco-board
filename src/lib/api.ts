@@ -72,6 +72,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary | null> {
     totalSoldToday: raw.total_sold_today as number,
     positions: (raw.positions as Record<string, unknown>[]).map(mapPosition),
     recentTransactions: (raw.recent_transactions as Record<string, unknown>[]).map(mapTransaction),
+    capitalTrend: (raw.capital_trend as { date: string; value: number }[]) ?? [],
   };
 }
 
