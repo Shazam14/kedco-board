@@ -17,6 +17,13 @@ const ROLES = [
   { username: 'rider01',     file: 'rider.json',       expectPath: '/rider'     },
 ];
 
+// Pre-set device localStorage so modals don't block tests
+const DEVICE_STATE: Record<string, Record<string, string>> = {
+  'cashier.json':    { kedco_branch: 'MAIN', kedco_terminal: 'Counter 1' },
+  'supervisor.json': { kedco_branch: 'MAIN', kedco_terminal: 'Counter 1' },
+  'rider.json':      { kedco_branch: 'MAIN' },
+};
+
 export default async function globalSetup(_config: FullConfig) {
   const authDir = path.join(process.cwd(), 'tests', '.auth');
   fs.mkdirSync(authDir, { recursive: true });
@@ -37,6 +44,12 @@ export default async function globalSetup(_config: FullConfig) {
     await page.click('button[type="submit"]');
 
     await page.waitForURL(url => url.pathname !== '/login', { timeout: 15_000 });
+
+    // Set device localStorage so device modal doesn't block tests
+    const deviceItems = DEVICE_STATE[role.file] ?? {};
+    for (const [k, v] of Object.entries(deviceItems)) {
+      await page.evaluate(([key, val]) => localStorage.setItem(key, val), [k, v] as [string, string]);
+    }
 
     const statePath = path.join(authDir, role.file);
     await context.storageState({ path: statePath });
