@@ -21,6 +21,8 @@ test.describe('Login page', () => {
     await page.goto('/login');
     await page.fill('input[autocomplete="username"]', 'nobody');
     await page.fill('input[autocomplete="current-password"]', 'wrong');
+    await page.waitForFunction(() => typeof (window as any).handleTurnstile === 'function');
+    await page.evaluate(() => (window as any).handleTurnstile('test-token'));
     await page.click('button[type="submit"]');
     await expect(page.getByText(/Invalid username or password/i)).toBeVisible();
   });
@@ -31,6 +33,8 @@ test.describe('Role-based redirects after login', () => {
     await page.goto('/login');
     await page.fill('input[autocomplete="username"]', username);
     await page.fill('input[autocomplete="current-password"]', username);
+    await page.waitForFunction(() => typeof (window as any).handleTurnstile === 'function');
+    await page.evaluate(() => (window as any).handleTurnstile('test-token'));
     await page.click('button[type="submit"]');
     await page.waitForURL(url => !url.pathname.startsWith('/login'), { timeout: 15_000 });
   }
@@ -82,6 +86,8 @@ test.describe('Wrong-role access is redirected', () => {
     await page.goto('/login');
     await page.fill('input[autocomplete="username"]', 'cashier1');
     await page.fill('input[autocomplete="current-password"]', 'cashier1');
+    await page.waitForFunction(() => typeof (window as any).handleTurnstile === 'function');
+    await page.evaluate(() => (window as any).handleTurnstile('test-token'));
     await page.click('button[type="submit"]');
     await page.waitForURL('**/counter');
 
@@ -95,6 +101,8 @@ test.describe('Wrong-role access is redirected', () => {
     await page.goto('/login');
     await page.fill('input[autocomplete="username"]', 'rider01');
     await page.fill('input[autocomplete="current-password"]', 'rider01');
+    await page.waitForFunction(() => typeof (window as any).handleTurnstile === 'function');
+    await page.evaluate(() => (window as any).handleTurnstile('test-token'));
     await page.click('button[type="submit"]');
     await page.waitForURL('**/rider');
 
