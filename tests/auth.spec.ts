@@ -18,11 +18,13 @@ test.describe('Login page', () => {
   });
 
   test('shows error on unknown user', async ({ page }) => {
+    await page.route('**/turnstile/v0/api.js', route => route.fulfill({
+      contentType: 'application/javascript',
+      body: `window.turnstile = { render: (el, opts) => { opts.callback('test-token'); return 'fake-id'; } };`,
+    }));
     await page.goto('/login');
     await page.fill('input[autocomplete="username"]', 'nobody');
     await page.fill('input[autocomplete="current-password"]', 'wrong');
-    await page.waitForFunction(() => typeof (window as any).handleTurnstile === 'function');
-    await page.evaluate(() => (window as any).handleTurnstile('test-token'));
     await page.click('button[type="submit"]');
     await expect(page.getByText(/Invalid username or password/i)).toBeVisible();
   });
@@ -30,11 +32,13 @@ test.describe('Login page', () => {
 
 test.describe('Role-based redirects after login', () => {
   async function loginAs(page: Parameters<typeof test>[1] extends { page: infer P } ? P : never, username: string) {
+    await page.route('**/turnstile/v0/api.js', route => route.fulfill({
+      contentType: 'application/javascript',
+      body: `window.turnstile = { render: (el, opts) => { opts.callback('test-token'); return 'fake-id'; } };`,
+    }));
     await page.goto('/login');
     await page.fill('input[autocomplete="username"]', username);
     await page.fill('input[autocomplete="current-password"]', username);
-    await page.waitForFunction(() => typeof (window as any).handleTurnstile === 'function');
-    await page.evaluate(() => (window as any).handleTurnstile('test-token'));
     await page.click('button[type="submit"]');
     await page.waitForURL(url => !url.pathname.startsWith('/login'), { timeout: 15_000 });
   }
@@ -83,11 +87,13 @@ test.describe('Unauthenticated access is blocked', () => {
 test.describe('Wrong-role access is redirected', () => {
   test('cashier accessing /dashboard → redirected to /counter', async ({ page }) => {
     // Log in as cashier
+    await page.route('**/turnstile/v0/api.js', route => route.fulfill({
+      contentType: 'application/javascript',
+      body: `window.turnstile = { render: (el, opts) => { opts.callback('test-token'); return 'fake-id'; } };`,
+    }));
     await page.goto('/login');
     await page.fill('input[autocomplete="username"]', 'cashier1');
     await page.fill('input[autocomplete="current-password"]', 'cashier1');
-    await page.waitForFunction(() => typeof (window as any).handleTurnstile === 'function');
-    await page.evaluate(() => (window as any).handleTurnstile('test-token'));
     await page.click('button[type="submit"]');
     await page.waitForURL('**/counter');
 
@@ -98,11 +104,13 @@ test.describe('Wrong-role access is redirected', () => {
   });
 
   test('rider accessing /dashboard → redirected to /rider', async ({ page }) => {
+    await page.route('**/turnstile/v0/api.js', route => route.fulfill({
+      contentType: 'application/javascript',
+      body: `window.turnstile = { render: (el, opts) => { opts.callback('test-token'); return 'fake-id'; } };`,
+    }));
     await page.goto('/login');
     await page.fill('input[autocomplete="username"]', 'rider01');
     await page.fill('input[autocomplete="current-password"]', 'rider01');
-    await page.waitForFunction(() => typeof (window as any).handleTurnstile === 'function');
-    await page.evaluate(() => (window as any).handleTurnstile('test-token'));
     await page.click('button[type="submit"]');
     await page.waitForURL('**/rider');
 

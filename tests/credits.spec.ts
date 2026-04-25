@@ -195,11 +195,13 @@ test.describe('Access control', () => {
   test('cashier cannot access /admin/credits', async ({ page, context }) => {
     // Use cashier auth state
     await context.clearCookies();
+    await page.route('**/turnstile/v0/api.js', route => route.fulfill({
+      contentType: 'application/javascript',
+      body: `window.turnstile = { render: (el, opts) => { opts.callback('test-token'); return 'fake-id'; } };`,
+    }));
     await page.goto('/login');
     await page.fill('input[autocomplete="username"]', 'cashier1');
     await page.fill('input[autocomplete="current-password"]', 'cashier1');
-    await page.waitForFunction(() => typeof (window as any).handleTurnstile === 'function');
-    await page.evaluate(() => (window as any).handleTurnstile('test-token'));
     await page.click('button[type="submit"]');
     await page.waitForURL('**/counter');
 

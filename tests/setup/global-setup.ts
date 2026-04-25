@@ -27,12 +27,13 @@ export default async function globalSetup(_config: FullConfig) {
     const context = await browser.newContext();
     const page    = await context.newPage();
 
+    await page.route('**/turnstile/v0/api.js', route => route.fulfill({
+      contentType: 'application/javascript',
+      body: `window.turnstile = { render: (el, opts) => { opts.callback('test-token'); return 'fake-id'; } };`,
+    }));
     await page.goto(`${BASE_URL}/login`);
     await page.fill('input[autocomplete="username"]', role.username);
     await page.fill('input[autocomplete="current-password"]', role.username); // mock API accepts any password
-    // Simulate Turnstile completion so the submit button becomes enabled
-    await page.waitForFunction(() => typeof (window as any).handleTurnstile === 'function');
-    await page.evaluate(() => (window as any).handleTurnstile('test-token'));
     await page.click('button[type="submit"]');
 
     await page.waitForURL(url => url.pathname !== '/login', { timeout: 15_000 });
