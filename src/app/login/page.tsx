@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Script from 'next/script';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -12,11 +12,22 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [idleMsg, setIdleMsg] = useState(false);
   const [cfToken, setCfToken] = useState('');
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (searchParams.get('reason') === 'idle') setIdleMsg(true);
-    (window as any).handleTurnstile = (token: string) => setCfToken(token);
   }, [searchParams]);
+
+  function renderTurnstile() {
+    if (turnstileRef.current && !(widgetIdRef.current)) {
+      widgetIdRef.current = (window as any).turnstile.render(turnstileRef.current, {
+        sitekey: '0x4AAAAAADCyhLNEN4SvhkFe',
+        callback: (token: string) => setCfToken(token),
+        theme: 'dark',
+      });
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,7 +108,7 @@ function LoginForm() {
             </div>
           )}
 
-          <div className="cf-turnstile" data-sitekey="0x4AAAAAADCyhLNEN4SvhkFe" data-callback="handleTurnstile" data-theme="dark" />
+          <div ref={turnstileRef} />
 
           <button
             type="submit"
@@ -107,7 +118,7 @@ function LoginForm() {
             {loading ? 'SIGNING IN...' : 'SIGN IN'}
           </button>
         </form>
-        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" />
+        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" onLoad={renderTurnstile} />
       </div>
     </div>
   );
