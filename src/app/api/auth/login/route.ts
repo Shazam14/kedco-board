@@ -5,10 +5,20 @@ const AUTH_COOKIE = process.env.AUTH_COOKIE ?? 'kedco_token';
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 export async function POST(req: NextRequest) {
-  const { username, password } = await req.json();
+  const { username, password, cfToken } = await req.json();
 
   if (!username || !password) {
     return NextResponse.json({ error: 'Missing credentials' }, { status: 400 });
+  }
+
+  const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ secret: process.env.TURNSTILE_SECRET_KEY, response: cfToken }),
+  });
+  const verifyData = await verifyRes.json();
+  if (!verifyData.success) {
+    return NextResponse.json({ error: 'Verification failed. Please try again.' }, { status: 400 });
   }
 
   const result = await loginToApi(username, password);

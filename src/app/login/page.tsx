@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
+import Script from 'next/script';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 function LoginForm() {
@@ -10,9 +11,11 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [idleMsg, setIdleMsg] = useState(false);
+  const [cfToken, setCfToken] = useState('');
 
   useEffect(() => {
     if (searchParams.get('reason') === 'idle') setIdleMsg(true);
+    (window as any).handleTurnstile = (token: string) => setCfToken(token);
   }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -23,7 +26,7 @@ function LoginForm() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, cfToken }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -94,14 +97,17 @@ function LoginForm() {
             </div>
           )}
 
+          <div className="cf-turnstile" data-sitekey="0x4AAAAAADCyhLNEN4SvhkFe" data-callback="handleTurnstile" data-theme="dark" />
+
           <button
             type="submit"
-            disabled={loading}
-            style={{ marginTop:8, padding:'12px', background: loading ? 'var(--border)' : 'rgba(0,212,170,0.12)', border:'1px solid rgba(0,212,170,0.3)', borderRadius:8, color:'#00d4aa', fontSize:13, fontWeight:600, cursor: loading ? 'not-allowed' : 'pointer', letterSpacing:'0.05em', fontFamily:"'Syne',sans-serif" }}
+            disabled={loading || !cfToken}
+            style={{ marginTop:8, padding:'12px', background: (loading || !cfToken) ? 'var(--border)' : 'rgba(0,212,170,0.12)', border:'1px solid rgba(0,212,170,0.3)', borderRadius:8, color: (loading || !cfToken) ? 'var(--muted)' : '#00d4aa', fontSize:13, fontWeight:600, cursor: (loading || !cfToken) ? 'not-allowed' : 'pointer', letterSpacing:'0.05em', fontFamily:"'Syne',sans-serif" }}
           >
             {loading ? 'SIGNING IN...' : 'SIGN IN'}
           </button>
         </form>
+        <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" />
       </div>
     </div>
   );
