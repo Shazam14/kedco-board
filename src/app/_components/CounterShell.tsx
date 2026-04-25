@@ -282,50 +282,52 @@ export default function CounterShell({
   body {
     font-family: 'Courier New', Courier, monospace;
     background: #fff; color: #000;
-    padding: 10px 8px;
-    font-size: 12px;
-    line-height: 1.65;
-    width: 300px;
+    padding: 3mm 3mm;
+    font-size: 9pt;
+    line-height: 1.5;
+    width: 52mm;
     margin: 0 auto;
   }
   .center { text-align: center; }
   .bold   { font-weight: bold; }
-  .dot    { border-top: 1px dashed #000; margin: 6px 0; }
+  .lg     { font-size: 10pt; font-weight: bold; }
+  .xl     { font-size: 12pt; font-weight: bold; }
+  .dot    { border-top: 1px dashed #000; margin: 4px 0; }
   .row    { display: flex; justify-content: space-between; }
   .field  { margin-bottom: 1px; }
   @media print {
-    body { padding: 4px 4px; }
-    @page { margin: 0; size: 80mm auto; }
+    body { padding: 2mm 2mm; width: 100%; }
+    @page { margin: 0; size: 58mm auto; }
   }
 </style>
 <script>window.onload = () => window.print();</script>
 </head>
 <body>
 
-<div class="center bold">Kedco Foreign Exchange Services</div>
+<div class="center bold lg">Kedco Foreign Exchange Services</div>
 <div class="center">${branchLocation}</div>
 
-<div style="margin-top:6px">
+<div style="margin-top:4px">
   <div>${dateStr}</div>
   <div>TM#001</div>
   <div>OR#${txn.id}</div>
 </div>
 
 <div class="dot"></div>
-<div class="center bold">${txn.type}</div>
+<div class="center xl">${txn.type}</div>
 <div class="dot"></div>
 
-<table style="width:100%; border-collapse:collapse; font-size:12px;">
+<table style="width:100%; border-collapse:collapse; font-size:9pt;">
   <tr>
-    <td style="padding:1px 0; white-space:nowrap">${txn.currency}</td>
-    <td style="padding:1px 0; text-align:center; white-space:nowrap">${fmtAmt}&nbsp;x&nbsp;@&nbsp;${fmtRate}</td>
-    <td style="padding:1px 0; text-align:right; white-space:nowrap">${fmtPhp}</td>
+    <td style="padding:2px 0; white-space:nowrap; font-weight:bold">${txn.currency}</td>
+    <td style="padding:2px 0; text-align:center; white-space:nowrap">${fmtAmt}&nbsp;@&nbsp;${fmtRate}</td>
+    <td style="padding:2px 0; text-align:right; white-space:nowrap; font-weight:bold">${fmtPhp}</td>
   </tr>
 </table>
 
 <div class="dot"></div>
 
-<div class="row"><span>TOTAL</span><span>${fmtPhp}</span></div>
+<div class="row lg"><span>TOTAL</span><span>${fmtPhp}</span></div>
 <div class="row"><span>${pm}</span><span>${fmtPhp}</span></div>
 
 <div class="dot"></div>
@@ -333,7 +335,7 @@ export default function CounterShell({
 <div class="field"># PAX &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</div>
 <div class="field">CASHIER &nbsp;&nbsp;: ${txn.cashier}</div>
 
-<div style="margin-top:8px"></div>
+<div style="margin-top:5px"></div>
 
 <div class="field">SOLD TO &nbsp;&nbsp;: ${txn.customer ?? ''}</div>
 <div class="field">ADDRESS &nbsp;&nbsp;:</div>
@@ -430,33 +432,34 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
       const fmtRate = t.rate.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 8 });
       const fmtPhp  = t.phpAmt.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       return `<tr>
-        <td style="padding:1px 0;white-space:nowrap">${t.currency}</td>
-        <td style="padding:1px 0;text-align:center;white-space:nowrap">${fmtAmt}&nbsp;x&nbsp;@&nbsp;${fmtRate}</td>
-        <td style="padding:1px 0;text-align:right;white-space:nowrap">${fmtPhp}</td>
+        <td style="padding:2px 0;white-space:nowrap;font-weight:bold">${t.currency}</td>
+        <td style="padding:2px 0;text-align:center;white-space:nowrap">${fmtAmt}&nbsp;@&nbsp;${fmtRate}</td>
+        <td style="padding:2px 0;text-align:right;white-space:nowrap;font-weight:bold">${fmtPhp}</td>
       </tr>`;
     }).join('');
     w.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>OR#${txns[0].id}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Courier New',Courier,monospace;background:#fff;color:#000;padding:10px 8px;font-size:12px;line-height:1.65;width:300px;margin:0 auto}
-  .center{text-align:center}.bold{font-weight:bold}.dot{border-top:1px dashed #000;margin:6px 0}.row{display:flex;justify-content:space-between}.field{margin-bottom:1px}
-  @media print{body{padding:4px}@page{margin:0;size:80mm auto}}
+  body{font-family:'Courier New',Courier,monospace;background:#fff;color:#000;padding:3mm 3mm;font-size:9pt;line-height:1.5;width:52mm;margin:0 auto}
+  .center{text-align:center}.bold{font-weight:bold}.lg{font-size:10pt;font-weight:bold}.xl{font-size:12pt;font-weight:bold}
+  .dot{border-top:1px dashed #000;margin:4px 0}.row{display:flex;justify-content:space-between}.field{margin-bottom:1px}
+  @media print{body{padding:2mm 2mm;width:100%}@page{margin:0;size:58mm auto}}
 </style>
 <script>window.onload=()=>window.print();</script>
 </head><body>
-<div class="center bold">Kedco Foreign Exchange Services</div>
+<div class="center bold lg">Kedco Foreign Exchange Services</div>
 <div class="center">${branchLocation}</div>
-<div style="margin-top:6px"><div>${dateStr}</div><div>TM#001</div><div>OR#${txns[0].id}</div></div>
-<div class="dot"></div><div class="center bold">${txns[0].type}</div><div class="dot"></div>
-<table style="width:100%;border-collapse:collapse;font-size:12px;">${rows}</table>
+<div style="margin-top:4px"><div>${dateStr}</div><div>TM#001</div><div>OR#${txns[0].id}</div></div>
+<div class="dot"></div><div class="center xl">${txns[0].type}</div><div class="dot"></div>
+<table style="width:100%;border-collapse:collapse;font-size:9pt;">${rows}</table>
 <div class="dot"></div>
-<div class="row"><span>TOTAL</span><span>&#8369;${fmtPhpTotal}</span></div>
+<div class="row lg"><span>TOTAL</span><span>&#8369;${fmtPhpTotal}</span></div>
 <div class="row"><span>${pm}</span><span>&#8369;${fmtPhpTotal}</span></div>
 <div class="dot"></div>
 <div class="field"># PAX &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:</div>
 <div class="field">CASHIER &nbsp;&nbsp;: ${txns[0].cashier}</div>
-<div style="margin-top:8px"></div>
+<div style="margin-top:5px"></div>
 <div class="field">SOLD TO &nbsp;&nbsp;: ${txns[0].customer ?? ''}</div>
 <div class="field">ADDRESS &nbsp;&nbsp;:</div>
 <div class="field">ID NO &nbsp;&nbsp;&nbsp;&nbsp;:</div>
