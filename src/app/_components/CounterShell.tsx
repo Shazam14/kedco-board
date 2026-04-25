@@ -1248,18 +1248,35 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
         </div>
       )}
 
-      {/* ── RATES WARNING BANNER ── */}
+      {/* ── NO RATES BLOCKING OVERLAY (sits above shift overlay — zIndex 300) ── */}
       {noRatesAtAll && (
-        <div style={{
-          background: 'rgba(245,166,35,0.1)', borderBottom: '1px solid rgba(245,166,35,0.35)',
-          padding: `12px ${px}px`, display: 'flex', alignItems: 'center', gap: 12,
-        }}>
-          <span style={{ fontSize: 16 }}>⚠️</span>
-          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: '#f5a623' }}>
-            No rates set for today — ask admin or supervisor to set rates before processing transactions.
-          </span>
+        <div style={{ ...overlayStyle, zIndex: 300 }}>
+          <div style={cardStyle}>
+            <div style={{ ...M, fontSize: 10, color: '#f5a623', letterSpacing: '0.2em', marginBottom: 8 }}>
+              SETUP REQUIRED
+            </div>
+            <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
+              Rates Not Set Yet
+            </div>
+            <div style={{ ...M, fontSize: 12, color: 'var(--muted)', marginBottom: 28, lineHeight: 1.7 }}>
+              Today&apos;s buy/sell rates haven&apos;t been set. You cannot process transactions until admin sets them. Ask your admin or supervisor to go to{' '}
+              <span style={{ color: '#00d4aa' }}>/admin/rates</span> and set today&apos;s rates.
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 10, border: '1px solid rgba(245,166,35,0.3)',
+                background: 'rgba(245,166,35,0.08)', color: '#f5a623',
+                ...M, fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.1em',
+              }}
+            >
+              CHECK AGAIN
+            </button>
+          </div>
         </div>
       )}
+
+      {/* ── PARTIAL RATES BANNER (some currencies missing rates) ── */}
       {!noRatesAtAll && ratesCount < currencies.length && (
         <div style={{
           background: 'rgba(245,166,35,0.06)', borderBottom: '1px solid rgba(245,166,35,0.2)',

@@ -964,9 +964,55 @@ function TrackerTab({ data }: { data: DashboardSummary }) {
   );
 }
 
+function SetupStep({ done, label, detail, href, actionLabel }: {
+  done: boolean; label: string; detail: string; href: string; actionLabel: string;
+}) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px',
+      background: done ? 'rgba(0,212,170,0.05)' : 'rgba(245,166,35,0.06)',
+      border: `1px solid ${done ? 'rgba(0,212,170,0.2)' : 'rgba(245,166,35,0.25)'}`,
+      borderRadius: 10,
+    }}>
+      <div style={{
+        width: 24, height: 24, borderRadius: '50%', flexShrink: 0, marginTop: 1,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12,
+        background: done ? 'rgba(0,212,170,0.15)' : 'rgba(245,166,35,0.12)',
+        color: done ? '#00d4aa' : '#f5a623', fontWeight: 800,
+      }}>
+        {done ? '✓' : '!'}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 13, fontWeight: 700, color: done ? '#00d4aa' : '#e2e6f0', marginBottom: 3 }}>
+          {label}
+        </div>
+        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: 'var(--muted)', lineHeight: 1.6 }}>
+          {detail}
+        </div>
+      </div>
+      {!done && (
+        <a href={href} style={{
+          flexShrink: 0, padding: '7px 14px', borderRadius: 8,
+          background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)',
+          color: '#f5a623', fontFamily: "'DM Mono',monospace", fontSize: 11,
+          fontWeight: 700, textDecoration: 'none', letterSpacing: '0.05em',
+          whiteSpace: 'nowrap',
+        }}>
+          {actionLabel} →
+        </a>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardShell({ data, role }: { data: DashboardSummary; role: string }) {
   const [active, setActive] = useState('Dashboard');
   useIdleTimeout(20);
+
+  const ratesSet   = data.positions.some(p => p.todayBuyRate > 0 || p.todaySellRate > 0);
+  const carryInSet = data.positions.length > 0;
+  const needsSetup = role === 'admin' && (!ratesSet || !carryInSet);
+
   return (
     <div style={{ minHeight:'100vh', position:'relative', zIndex:1, overflowX:'hidden', maxWidth:'100vw' }}>
       <DashboardTourAutoStart />
@@ -974,6 +1020,58 @@ export default function DashboardShell({ data, role }: { data: DashboardSummary;
         @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
         @keyframes ticker { from { transform:translateX(0); } to { transform:translateX(-50%); } }
       `}</style>
+
+      {/* ── DAILY SETUP GATE (blocks dashboard until rates + carry-in are ready) ── */}
+      {needsSetup && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(7,9,13,0.95)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }}>
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 16, padding: 36, width: '100%', maxWidth: 480,
+          }}>
+            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#f5a623', letterSpacing: '0.2em', marginBottom: 8 }}>
+              DAILY SETUP REQUIRED
+            </div>
+            <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, marginBottom: 6 }}>
+              Before cashiers can transact
+            </div>
+            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, color: 'var(--muted)', marginBottom: 24, lineHeight: 1.7 }}>
+              Complete these steps first. Cashiers are blocked until both are done.
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+              <SetupStep
+                done={carryInSet}
+                label="Opening positions set"
+                detail={carryInSet ? 'Carry-in stock is ready for today.' : "No positions for today — run yesterday's EOD or set opening stock manually."}
+                href="/admin/positions"
+                actionLabel="Set Positions"
+              />
+              <SetupStep
+                done={ratesSet}
+                label="Today's rates set"
+                detail={ratesSet ? 'Buy/sell rates are live for cashiers.' : 'No rates set for today — cashiers cannot process any transactions.'}
+                href="/admin/rates"
+                actionLabel="Set Rates"
+              />
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 10,
+                border: '1px solid var(--border)', background: 'transparent',
+                color: 'var(--muted)', fontFamily: "'DM Mono',monospace",
+                fontSize: 12, cursor: 'pointer', letterSpacing: '0.1em',
+              }}
+            >
+              REFRESH
+            </button>
+          </div>
+        </div>
+      )}
+
       <Nav active={active} set={setActive} role={role}/>
       <Ticker positions={data.positions}/>
       {active==='Dashboard'    && <DashboardTab    data={data} role={role}/>}
