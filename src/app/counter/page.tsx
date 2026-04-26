@@ -19,12 +19,9 @@ export default async function CounterPage() {
     redirect('/login');
   }
 
-  const [currencies, banks, positions] = await Promise.all([
-    getCurrencies(), getBanks(), getPositions(),
-  ]);
+  const [currencies, banks] = await Promise.all([getCurrencies(), getBanks()]);
 
-  const ratesSet     = currencies.some(c => c.rateSet);
-  const positionsSet = positions.some(p => p.positionSet);
+  const ratesSet = currencies.some(c => c.rateSet);
 
   return (
     <CounterShell
@@ -33,7 +30,6 @@ export default async function CounterPage() {
       username={username ?? 'cashier'}
       role={role}
       ratesSet={ratesSet}
-      positionsSet={positionsSet}
     />
   );
 }

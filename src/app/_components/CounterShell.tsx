@@ -35,14 +35,12 @@ export default function CounterShell({
   username,
   role = 'cashier',
   ratesSet = false,
-  positionsSet = false,
 }: {
   currencies: CurrencyMeta[];
   banks: { id: number; name: string; code: string }[];
   username: string;
   role?: string;
   ratesSet?: boolean;
-  positionsSet?: boolean;
 }) {
   const router = useRouter();
   useIdleTimeout(20);
@@ -720,6 +718,17 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
   const noRatesAtAll = currencies.every(c => !c.rateSet);
   const ratesCount   = currencies.filter(c => c.rateSet).length;
 
+  // Client-side positions check (so it doesn't block initial server render)
+  const [positionsSet, setPositionsSet] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetch('/api/v1/positions/today')
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Array<{ position_set?: boolean }>) => {
+        setPositionsSet(Array.isArray(data) && data.some(p => p.position_set));
+      })
+      .catch(() => setPositionsSet(false));
+  }, []);
+
   const overlayStyle: React.CSSProperties = {
     position: 'fixed', inset: 0, zIndex: 200,
     background: 'rgba(7,9,13,0.92)', backdropFilter: 'blur(8px)',
@@ -731,10 +740,11 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
   };
 
   // ── DAILY SETUP GUARD ─────────────────────────────────────────────────────
-  if (!ratesSet || !positionsSet) {
+  // positionsSet is null while the client-side fetch is in flight — don't block during that window
+  if (!ratesSet || positionsSet === false) {
     const checks = [
-      { label: "Today's rates set",        done: ratesSet,     hint: "Admin needs to set buy/sell rates for today." },
-      { label: "Opening positions set",    done: positionsSet, hint: "Admin needs to set carry-in stock for today." },
+      { label: "Today's rates set",        done: ratesSet,               hint: "Admin needs to set buy/sell rates for today." },
+      { label: "Opening positions set",    done: positionsSet === true,  hint: "Admin needs to set carry-in stock for today." },
     ];
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg-deep)', color: 'var(--text)' }}>
