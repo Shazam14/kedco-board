@@ -6,7 +6,7 @@
   --surface: #131c2e;          /* cards, panels — distinct from bg */
   --surface2: #1a2440;         /* inputs, nested sections */
   --border: #2a3a5c;           /* borders — actually visible now */
-  --nav-bg: rgba(12,16,24,0.96); /* sticky nav backdrop */
+  --nav-bg: #096C6C;             /* sticky nav — brand teal */
   --accent: #00d4aa;
   --accent2: #f5a623;
   --accent3: #5b8cff;
@@ -32,8 +32,8 @@ body::before {
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(0,212,170,0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,212,170,0.018) 1px, transparent 1px);
+    linear-gradient(rgba(9,108,108,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(9,108,108,0.025) 1px, transparent 1px);
   background-size: 48px 48px;
   pointer-events: none;
   z-index: 0;

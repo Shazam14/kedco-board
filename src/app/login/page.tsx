@@ -63,7 +63,7 @@ function LoginForm() {
       <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:'40px 48px', width:'100%', maxWidth:400 }}>
         {/* Logo */}
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:32 }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#00d4aa,#00a884)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:800, color:'#000' }}>K</div>
+          <div style={{ width:36, height:36, borderRadius:10, background:'#096C6C', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:800, color:'#fff' }}>K</div>
           <div>
             <div style={{ fontSize:15, fontWeight:700, color:'#e2e6f0', fontFamily:"'Syne',sans-serif" }}>Kedco FX</div>
             <div style={{ fontSize:10, color:'var(--muted)', marginTop:-2 }}>Pusok · Lapu-Lapu City</div>
@@ -113,7 +113,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading || !cfToken}
-            style={{ marginTop:8, padding:'12px', background: (loading || !cfToken) ? 'var(--border)' : 'rgba(0,212,170,0.12)', border:'1px solid rgba(0,212,170,0.3)', borderRadius:8, color: (loading || !cfToken) ? 'var(--muted)' : '#00d4aa', fontSize:13, fontWeight:600, cursor: (loading || !cfToken) ? 'not-allowed' : 'pointer', letterSpacing:'0.05em', fontFamily:"'Syne',sans-serif" }}
+            style={{ marginTop:8, padding:'12px', background: (loading || !cfToken) ? 'var(--border)' : '#096C6C', border:'1px solid transparent', borderRadius:8, color: (loading || !cfToken) ? 'var(--muted)' : '#fff', fontSize:13, fontWeight:600, cursor: (loading || !cfToken) ? 'not-allowed' : 'pointer', letterSpacing:'0.05em', fontFamily:"'Syne',sans-serif" }}
           >
             {loading ? 'SIGNING IN...' : 'SIGN IN'}
           </button>
