@@ -44,7 +44,6 @@ function LoginForm() {
         setError(data.error ?? 'Login failed');
         return;
       }
-      // Route by role
       if (data.role === 'cashier' || data.role === 'supervisor') {
         router.push('/counter');
       } else if (data.role === 'rider') {
@@ -58,52 +57,58 @@ function LoginForm() {
     }
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box',
+    background: 'var(--bg-raised)', border: '1px solid var(--border-subtle)',
+    borderRadius: 8, padding: '11px 14px',
+    color: 'var(--text-strong)', fontSize: 13,
+    fontFamily: 'var(--font-mono)', outline: 'none',
+  };
+
   return (
-    <div style={{ minHeight:'100vh', background:'var(--bg)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'DM Mono',monospace" }}>
-      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:'40px 48px', width:'100%', maxWidth:400 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-sans)' }}>
+      <div style={{
+        background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
+        borderRadius: 20, padding: '40px 44px', width: '100%', maxWidth: 380,
+        boxShadow: 'var(--shadow-pop)',
+      }}>
         {/* Logo */}
-        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:32 }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:'#096C6C', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:800, color:'#fff' }}>K</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 10,
+            background: 'linear-gradient(135deg, var(--teal-300), var(--teal-600))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, fontWeight: 700, color: 'var(--text-on-teal)',
+            fontFamily: 'var(--font-display)',
+          }}>K</div>
           <div>
-            <div style={{ fontSize:15, fontWeight:700, color:'#e2e6f0', fontFamily:"'Syne',sans-serif" }}>Kedco FX</div>
-            <div style={{ fontSize:10, color:'var(--muted)', marginTop:-2 }}>Pusok · Lapu-Lapu City</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-strong)' }}>
+              Kedco<span style={{ color: 'var(--teal-300)' }}>FX</span>
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-faint)', marginTop: -1 }}>Pusok · Lapu-Lapu City</div>
           </div>
         </div>
 
-        <div style={{ fontSize:11, color:'var(--muted)', letterSpacing:'0.15em', marginBottom:24 }}>SIGN IN TO DASHBOARD</div>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)', letterSpacing: '0.15em', marginBottom: 24 }}>SIGN IN TO DASHBOARD</div>
 
-        <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:16 }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={{ fontSize:10, color:'var(--muted)', letterSpacing:'0.1em', display:'block', marginBottom:6 }}>USERNAME</label>
-            <input
-              type="text"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              autoComplete="username"
-              required
-              style={{ width:'100%', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 14px', color:'#e2e6f0', fontSize:13, outline:'none', boxSizing:'border-box' }}
-            />
+            <label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.1em', display: 'block', marginBottom: 6 }}>USERNAME</label>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" required style={inputStyle} />
           </div>
           <div>
-            <label style={{ fontSize:10, color:'var(--muted)', letterSpacing:'0.1em', display:'block', marginBottom:6 }}>PASSWORD</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-              style={{ width:'100%', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 14px', color:'#e2e6f0', fontSize:13, outline:'none', boxSizing:'border-box' }}
-            />
+            <label style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.1em', display: 'block', marginBottom: 6 }}>PASSWORD</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required style={inputStyle} />
           </div>
 
           {idleMsg && (
-            <div style={{ fontSize:12, color:'#f5a623', background:'rgba(245,166,35,0.08)', border:'1px solid rgba(245,166,35,0.2)', borderRadius:8, padding:'8px 12px', fontFamily:"'DM Mono',monospace" }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--accent-gold)', background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.2)', borderRadius: 8, padding: '8px 12px' }}>
               Session ended due to inactivity. Please log in again.
             </div>
           )}
 
           {error && (
-            <div style={{ fontSize:12, color:'#f87171', background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:8, padding:'8px 12px' }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--accent-coral)', background: 'rgba(238,108,90,0.08)', border: '1px solid rgba(238,108,90,0.2)', borderRadius: 8, padding: '8px 12px' }}>
               {error}
             </div>
           )}
@@ -113,7 +118,14 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading || !cfToken}
-            style={{ marginTop:8, padding:'12px', background: (loading || !cfToken) ? 'var(--border)' : '#096C6C', border:'1px solid transparent', borderRadius:8, color: (loading || !cfToken) ? 'var(--muted)' : '#fff', fontSize:13, fontWeight:600, cursor: (loading || !cfToken) ? 'not-allowed' : 'pointer', letterSpacing:'0.05em', fontFamily:"'Syne',sans-serif" }}
+            style={{
+              marginTop: 8, padding: '13px', borderRadius: 10, border: 'none',
+              background: (loading || !cfToken) ? 'var(--bg-raised)' : 'var(--teal-400)',
+              color: (loading || !cfToken) ? 'var(--text-faint)' : 'var(--text-on-teal)',
+              fontSize: 13, fontWeight: 600, letterSpacing: '0.05em',
+              cursor: (loading || !cfToken) ? 'not-allowed' : 'pointer',
+              transition: 'background 150ms',
+            }}
           >
             {loading ? 'SIGNING IN...' : 'SIGN IN'}
           </button>

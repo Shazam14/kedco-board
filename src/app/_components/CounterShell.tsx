@@ -7,8 +7,8 @@ import { useNumberInput } from '@/hooks/useNumberInput';
 import IDScanner, { type ScannedID } from '@/app/_components/IDScanner';
 import ExpensePanel from '@/app/_components/ExpensePanel';
 
-const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
-const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
+const M: React.CSSProperties = { fontFamily: 'var(--font-mono)' };
+const Y: React.CSSProperties = { fontFamily: 'var(--font-sans)' };
 
 function useWindowWidth() {
   const [w, setW] = useState(1440);
@@ -712,7 +712,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
     if (w) { w.document.write(html); w.document.close(); }
   }
 
-  const typeColor = type === 'BUY' ? '#5b8cff' : '#f5a623';
+  const typeColor = type === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)';
   const noRatesAtAll = currencies.every(c => !c.rateSet);
   const ratesCount   = currencies.filter(c => c.rateSet).length;
 
@@ -722,24 +722,24 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
   };
   const cardStyle: React.CSSProperties = {
-    background: 'var(--surface)', border: '1px solid var(--border)',
+    background: 'var(--bg-card)', border: '1px solid var(--border)',
     borderRadius: 16, padding: 32, width: '100%', maxWidth: 440,
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-strong)' }}>
 
       {/* ── DEVICE SETUP MODAL (branch + terminal, two steps) ── */}
       {showDeviceModal && (
         <div style={{ ...overlayStyle, zIndex: 400 }}>
           <div style={cardStyle}>
-            <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.2em', marginBottom: 8 }}>
+            <div style={{ ...M, fontSize: 10, color: 'var(--teal-300)', letterSpacing: '0.2em', marginBottom: 8 }}>
               THIS DEVICE — STEP {deviceStep} OF 2
             </div>
             {deviceStep === 1 ? (
               <>
                 <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Select Branch</div>
-                <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 28 }}>
+                <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)', marginBottom: 28 }}>
                   Which branch is this device physically located at?
                 </div>
                 <select
@@ -747,7 +747,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                   onChange={e => setBranchDraft(e.target.value)}
                   style={{
                     width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
-                    borderRadius: 8, padding: '14px 16px', color: '#e2e6f0',
+                    borderRadius: 8, padding: '14px 16px', color: 'var(--text-strong)',
                     ...M, fontSize: 16, outline: 'none', boxSizing: 'border-box', marginBottom: 20,
                   }}
                 >
@@ -759,8 +759,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                   disabled={!branchDraft}
                   style={{
                     width: '100%', padding: '14px', borderRadius: 10, border: 'none',
-                    background: !branchDraft ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)',
-                    color: !branchDraft ? 'var(--muted)' : '#000',
+                    background: !branchDraft ? 'var(--border-subtle)' : 'linear-gradient(135deg,var(--teal-300),var(--teal-600))',
+                    color: !branchDraft ? 'var(--text-muted)' : '#000',
                     ...Y, fontSize: 14, fontWeight: 800, cursor: !branchDraft ? 'not-allowed' : 'pointer',
                   }}
                 >
@@ -770,7 +770,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
             ) : (
               <>
                 <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Select Terminal</div>
-                <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 28 }}>
+                <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)', marginBottom: 28 }}>
                   Choose which terminal this device is. Shown on receipts.
                 </div>
                 <select
@@ -778,7 +778,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                   onChange={e => setTerminalDraft(e.target.value)}
                   style={{
                     width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
-                    borderRadius: 8, padding: '14px 16px', color: '#e2e6f0',
+                    borderRadius: 8, padding: '14px 16px', color: 'var(--text-strong)',
                     ...M, fontSize: 16, outline: 'none', boxSizing: 'border-box', marginBottom: 20,
                   }}
                 >
@@ -790,7 +790,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                     onClick={() => setDeviceStep(1)}
                     style={{
                       flex: 1, padding: '14px', borderRadius: 10, border: '1px solid var(--border)',
-                      background: 'transparent', color: 'var(--muted)',
+                      background: 'transparent', color: 'var(--text-muted)',
                       ...Y, fontSize: 14, fontWeight: 800, cursor: 'pointer',
                     }}
                   >
@@ -801,8 +801,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                     disabled={!terminalDraft}
                     style={{
                       flex: 2, padding: '14px', borderRadius: 10, border: 'none',
-                      background: !terminalDraft ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)',
-                      color: !terminalDraft ? 'var(--muted)' : '#000',
+                      background: !terminalDraft ? 'var(--border-subtle)' : 'linear-gradient(135deg,var(--teal-300),var(--teal-600))',
+                      color: !terminalDraft ? 'var(--text-muted)' : '#000',
                       ...Y, fontSize: 14, fontWeight: 800, cursor: !terminalDraft ? 'not-allowed' : 'pointer',
                     }}
                   >
@@ -819,17 +819,17 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
       {shift === null && !shiftClosed && (
         <div style={overlayStyle}>
           <div style={cardStyle}>
-            <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.2em', marginBottom: 8 }}>
+            <div style={{ ...M, fontSize: 10, color: 'var(--teal-300)', letterSpacing: '0.2em', marginBottom: 8 }}>
               START SHIFT
             </div>
             <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
               Open Your Shift
             </div>
-            <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 28 }}>
+            <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)', marginBottom: 28 }}>
               Count your drawer and enter the opening PHP cash before processing transactions.
             </div>
 
-            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               OPENING CASH (PHP)
             </label>
             <input
@@ -844,13 +844,13 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               data-testid="opening-cash-input"
               style={{
                 width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '14px 16px', color: '#e2e6f0',
+                borderRadius: 8, padding: '14px 16px', color: 'var(--text-strong)',
                 ...M, fontSize: 24, outline: 'none', boxSizing: 'border-box', marginBottom: 20,
               }}
             />
 
             {shiftError && (
-              <div style={{ ...M, fontSize: 11, color: '#ff5c5c', marginBottom: 16 }}>✗ {shiftError}</div>
+              <div style={{ ...M, fontSize: 11, color: 'var(--accent-coral)', marginBottom: 16 }}>✗ {shiftError}</div>
             )}
 
             <button
@@ -858,8 +858,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               disabled={shiftLoading || !openingCashInput.value}
               style={{
                 width: '100%', padding: '14px', borderRadius: 10, border: 'none',
-                background: shiftLoading || !openingCashInput.value ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)',
-                color: shiftLoading || !openingCashInput.value ? 'var(--muted)' : '#000',
+                background: shiftLoading || !openingCashInput.value ? 'var(--border-subtle)' : 'linear-gradient(135deg,var(--teal-300),var(--teal-600))',
+                color: shiftLoading || !openingCashInput.value ? 'var(--text-muted)' : '#000',
                 ...Y, fontSize: 14, fontWeight: 800, cursor: shiftLoading || !openingCashInput.value ? 'not-allowed' : 'pointer',
               }}
             >
@@ -873,7 +873,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
       {shiftClosed && (
         <div style={overlayStyle}>
           <div style={cardStyle}>
-            <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.2em', marginBottom: 8 }}>
+            <div style={{ ...M, fontSize: 10, color: 'var(--teal-300)', letterSpacing: '0.2em', marginBottom: 8 }}>
               SHIFT CLOSED
             </div>
             <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 24 }}>
@@ -885,23 +885,23 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               const variance = shiftClosed.cash_variance ?? 0;
               const rows: [string, string, string?, number?][] = [
                 ['Transactions',      String(shiftClosed.txn_count ?? 0)],
-                ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),   '#f5a623'],
-                ['Total Bought (PHP)', php(shiftClosed.total_bought_php ?? 0), '#5b8cff'],
-                ['Total THAN',         php(shiftClosed.total_than ?? 0),       '#00d4aa'],
-                ...(comm !== 0 ? [['Commission', (comm > 0 ? '-' : '+') + php(Math.abs(comm)), '#ff5c5c'] as [string, string, string]] : []),
-                ...(repl !== 0 ? [['Replenishment', '+' + php(repl), '#00d4aa'] as [string, string, string]] : []),
+                ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),   'var(--accent-gold)'],
+                ['Total Bought (PHP)', php(shiftClosed.total_bought_php ?? 0), 'var(--accent-sky)'],
+                ['Total THAN',         php(shiftClosed.total_than ?? 0),       'var(--teal-300)'],
+                ...(comm !== 0 ? [['Commission', (comm > 0 ? '-' : '+') + php(Math.abs(comm)), 'var(--accent-coral)'] as [string, string, string]] : []),
+                ...(repl !== 0 ? [['Replenishment', '+' + php(repl), 'var(--teal-300)'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shiftClosed.opening_cash_php)],
-                ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), '#f5a623'],
+                ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
                 ['Actual Cash',        php(shiftClosed.closing_cash_php ?? 0)],
-                ['Variance',           php(variance), variance === 0 ? '#00d4aa' : '#ff5c5c', 700],
+                ['Variance',           php(variance), variance === 0 ? 'var(--teal-300)' : 'var(--accent-coral)', 700],
               ];
               return rows.map(([k, v, color, fw]) => (
                 <div key={k} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '8px 0', borderBottom: '1px solid var(--border)',
                 }}>
-                  <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{k}</span>
-                  <span style={{ ...M, fontSize: 12, color: color ?? '#e2e6f0', fontWeight: (fw as number | undefined) ?? 400 }}>{v}</span>
+                  <span style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>{k}</span>
+                  <span style={{ ...M, fontSize: 12, color: color ?? 'var(--text-strong)', fontWeight: (fw as number | undefined) ?? 400 }}>{v}</span>
                 </div>
               ));
             })()}
@@ -909,8 +909,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               <button
                 onClick={() => printShift(shiftClosed)}
                 style={{
-                  flex: 1, padding: '14px', borderRadius: 10, border: '1px solid rgba(0,212,170,0.35)',
-                  background: 'rgba(0,212,170,0.08)', color: '#00d4aa',
+                  flex: 1, padding: '14px', borderRadius: 10, border: '1px solid rgba(61,199,173,0.35)',
+                  background: 'rgba(61,199,173,0.08)', color: 'var(--teal-300)',
                   ...M, fontSize: 12, fontWeight: 700, cursor: 'pointer',
                 }}
               >
@@ -920,7 +920,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 onClick={handleLogout}
                 style={{
                   flex: 2, padding: '14px', borderRadius: 10, border: 'none',
-                  background: 'linear-gradient(135deg,#00d4aa,#00a884)',
+                  background: 'linear-gradient(135deg,var(--teal-300),var(--teal-600))',
                   color: '#000', ...Y, fontSize: 14, fontWeight: 800, cursor: 'pointer',
                 }}
               >
@@ -937,11 +937,11 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           <div style={cardStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
-                <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.2em', marginBottom: 4 }}>CASH REPLENISHMENT</div>
+                <div style={{ ...M, fontSize: 10, color: 'var(--teal-300)', letterSpacing: '0.2em', marginBottom: 4 }}>CASH REPLENISHMENT</div>
                 <div style={{ ...Y, fontSize: 20, fontWeight: 800 }}>Add Cash to Drawer</div>
               </div>
               <button onClick={() => setShowReplenishModal(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
             </div>
 
             {/* Running total so far */}
@@ -949,18 +949,18 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               <div style={{ marginBottom: 12 }}>
                 {shift.replenishments!.map(r => (
                   <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{r.note || 'Replenishment'}</span>
-                    <span style={{ ...M, fontSize: 12, color: '#00d4aa' }}>+{php(r.amount_php)}</span>
+                    <span style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>{r.note || 'Replenishment'}</span>
+                    <span style={{ ...M, fontSize: 12, color: 'var(--teal-300)' }}>+{php(r.amount_php)}</span>
                   </div>
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', marginTop: 2 }}>
-                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>TOTAL REPLENISHED</span>
-                  <span style={{ ...M, fontSize: 12, color: '#00d4aa', fontWeight: 700 }}>+{php(shift.total_replenishment_php ?? 0)}</span>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--text-muted)' }}>TOTAL REPLENISHED</span>
+                  <span style={{ ...M, fontSize: 12, color: 'var(--teal-300)', fontWeight: 700 }}>+{php(shift.total_replenishment_php ?? 0)}</span>
                 </div>
               </div>
             )}
 
-            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               AMOUNT (PHP)
             </label>
             <input
@@ -971,12 +971,12 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               onFocus={replenishInput.onFocus}
               placeholder="0.00" autoFocus
               style={{
-                width: '100%', background: 'var(--bg)', border: '1px solid rgba(0,212,170,0.4)',
-                borderRadius: 8, padding: '14px 16px', color: '#00d4aa',
+                width: '100%', background: 'var(--bg)', border: '1px solid rgba(61,199,173,0.4)',
+                borderRadius: 8, padding: '14px 16px', color: 'var(--teal-300)',
                 ...M, fontSize: 22, outline: 'none', boxSizing: 'border-box', marginBottom: 12,
               }}
             />
-            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               NOTE (optional)
             </label>
             <input
@@ -986,13 +986,13 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               placeholder="e.g. from safe, branch replenishment..."
               style={{
                 width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
+                borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)',
                 ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box',
               }}
             />
 
             {replenishError && (
-              <div style={{ ...M, fontSize: 11, color: '#ff5c5c', marginTop: 12 }}>✗ {replenishError}</div>
+              <div style={{ ...M, fontSize: 11, color: 'var(--accent-coral)', marginTop: 12 }}>✗ {replenishError}</div>
             )}
 
             <button
@@ -1000,8 +1000,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               disabled={replenishLoading || !replenishInput.value}
               style={{
                 width: '100%', padding: '14px', borderRadius: 10, border: 'none', marginTop: 20,
-                background: replenishLoading || !replenishInput.value ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)',
-                color: replenishLoading || !replenishInput.value ? 'var(--muted)' : '#000',
+                background: replenishLoading || !replenishInput.value ? 'var(--border-subtle)' : 'linear-gradient(135deg,var(--teal-300),var(--teal-600))',
+                color: replenishLoading || !replenishInput.value ? 'var(--text-muted)' : '#000',
                 ...Y, fontSize: 14, fontWeight: 800, cursor: replenishLoading || !replenishInput.value ? 'not-allowed' : 'pointer',
               }}
             >
@@ -1017,13 +1017,13 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           <div style={{ ...cardStyle, maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
-                <div style={{ ...M, fontSize: 10, color: '#f5a623', letterSpacing: '0.2em', marginBottom: 4 }}>
+                <div style={{ ...M, fontSize: 10, color: 'var(--accent-gold)', letterSpacing: '0.2em', marginBottom: 4 }}>
                   END SHIFT
                 </div>
                 <div style={{ ...Y, fontSize: 20, fontWeight: 800 }}>Close Your Shift</div>
               </div>
               <button onClick={() => { setShowEndModal(false); setShiftError(null); }}
-                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>
                 ✕
               </button>
             </div>
@@ -1035,8 +1035,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 ['Transactions',       String(shift.txn_count ?? txns.length)],
                 ['Total Sold (PHP)',   php(shift.total_sold_php ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
                 ['Total Bought (PHP)', php(shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0))],
-                ...(comm !== 0 ? [['Commission', (comm > 0 ? '-' : '+') + php(Math.abs(comm)), '#ff5c5c'] as [string, string, string]] : []),
-                ...((shift.total_replenishment_php ?? 0) !== 0 ? [['Replenishment', '+' + php(shift.total_replenishment_php ?? 0), '#00d4aa'] as [string, string, string]] : []),
+                ...(comm !== 0 ? [['Commission', (comm > 0 ? '-' : '+') + php(Math.abs(comm)), 'var(--accent-coral)'] as [string, string, string]] : []),
+                ...((shift.total_replenishment_php ?? 0) !== 0 ? [['Replenishment', '+' + php(shift.total_replenishment_php ?? 0), 'var(--teal-300)'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shift.opening_cash_php)],
               ];
               return rows.map(([k, v, color]) => (
@@ -1044,8 +1044,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                   display: 'flex', justifyContent: 'space-between',
                   padding: '7px 0', borderBottom: '1px solid var(--border)',
                 }}>
-                  <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{k}</span>
-                  <span style={{ ...M, fontSize: 12, color: color ?? '#e2e6f0' }}>{v}</span>
+                  <span style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>{k}</span>
+                  <span style={{ ...M, fontSize: 12, color: color ?? 'var(--text-strong)' }}>{v}</span>
                 </div>
               ));
             })()}
@@ -1062,7 +1062,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               if (entries.length === 0) return null;
               return (
                 <div style={{ marginTop: 12, borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr 1fr', padding: '6px 10px', background: 'rgba(255,255,255,0.04)', ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr 1fr', padding: '6px 10px', background: 'rgba(255,255,255,0.04)', ...M, fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>
                     <span>CCY</span>
                     <span style={{ textAlign: 'right' }}>BUY QTY</span>
                     <span style={{ textAlign: 'right' }}>BUY PHP</span>
@@ -1071,11 +1071,11 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                   </div>
                   {entries.map(([code, d], i) => (
                     <div key={code} style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr 1fr 1fr', padding: '7px 10px', borderTop: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                      <span style={{ ...M, fontSize: 11, fontWeight: 700, color: '#e2e6f0' }}>{code}</span>
-                      <span style={{ ...M, fontSize: 10, color: d.buyQty > 0 ? '#5b8cff' : 'var(--muted)', textAlign: 'right' }}>{d.buyQty > 0 ? fmtFx(d.buyQty, code, currencies) : '—'}</span>
-                      <span style={{ ...M, fontSize: 10, color: d.buyPhp > 0 ? '#5b8cff' : 'var(--muted)', textAlign: 'right' }}>{d.buyPhp > 0 ? php(d.buyPhp) : '—'}</span>
-                      <span style={{ ...M, fontSize: 10, color: d.sellQty > 0 ? '#f5a623' : 'var(--muted)', textAlign: 'right' }}>{d.sellQty > 0 ? fmtFx(d.sellQty, code, currencies) : '—'}</span>
-                      <span style={{ ...M, fontSize: 10, color: d.sellPhp > 0 ? '#f5a623' : 'var(--muted)', textAlign: 'right' }}>{d.sellPhp > 0 ? php(d.sellPhp) : '—'}</span>
+                      <span style={{ ...M, fontSize: 11, fontWeight: 700, color: 'var(--text-strong)' }}>{code}</span>
+                      <span style={{ ...M, fontSize: 10, color: d.buyQty > 0 ? 'var(--accent-sky)' : 'var(--text-muted)', textAlign: 'right' }}>{d.buyQty > 0 ? fmtFx(d.buyQty, code, currencies) : '—'}</span>
+                      <span style={{ ...M, fontSize: 10, color: d.buyPhp > 0 ? 'var(--accent-sky)' : 'var(--text-muted)', textAlign: 'right' }}>{d.buyPhp > 0 ? php(d.buyPhp) : '—'}</span>
+                      <span style={{ ...M, fontSize: 10, color: d.sellQty > 0 ? 'var(--accent-gold)' : 'var(--text-muted)', textAlign: 'right' }}>{d.sellQty > 0 ? fmtFx(d.sellQty, code, currencies) : '—'}</span>
+                      <span style={{ ...M, fontSize: 10, color: d.sellPhp > 0 ? 'var(--accent-gold)' : 'var(--text-muted)', textAlign: 'right' }}>{d.sellPhp > 0 ? php(d.sellPhp) : '—'}</span>
                     </div>
                   ))}
                 </div>
@@ -1093,16 +1093,16 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '10px 14px', marginTop: 12, borderRadius: 8,
-                  background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.3)',
+                  background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.3)',
                 }}>
-                  <span style={{ ...M, fontSize: 11, color: '#f5a623', letterSpacing: '0.1em' }}>EXPECTED CASH</span>
-                  <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: '#f5a623' }}>{php(expected)}</span>
+                  <span style={{ ...M, fontSize: 11, color: 'var(--accent-gold)', letterSpacing: '0.1em' }}>EXPECTED CASH</span>
+                  <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: 'var(--accent-gold)' }}>{php(expected)}</span>
                 </div>
               );
             })()}
 
             <div style={{ marginTop: 16 }}>
-              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
                 ACTUAL CLOSING CASH (PHP) — count your drawer
               </label>
               <input
@@ -1116,15 +1116,15 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 autoFocus
                 data-testid="closing-cash-input"
                 style={{
-                  width: '100%', background: 'var(--bg)', border: '1px solid rgba(245,166,35,0.4)',
-                  borderRadius: 8, padding: '14px 16px', color: '#f5a623',
+                  width: '100%', background: 'var(--bg)', border: '1px solid rgba(212,166,74,0.4)',
+                  borderRadius: 8, padding: '14px 16px', color: 'var(--accent-gold)',
                   ...M, fontSize: 22, outline: 'none', boxSizing: 'border-box',
                 }}
               />
             </div>
 
             {shiftError && (
-              <div style={{ ...M, fontSize: 11, color: '#ff5c5c', marginTop: 12 }}>✗ {shiftError}</div>
+              <div style={{ ...M, fontSize: 11, color: 'var(--accent-coral)', marginTop: 12 }}>✗ {shiftError}</div>
             )}
 
             <button
@@ -1132,8 +1132,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               disabled={shiftLoading || !closingCashInput.value}
               style={{
                 width: '100%', padding: '14px', borderRadius: 10, border: 'none', marginTop: 20,
-                background: shiftLoading || !closingCashInput.value ? 'var(--border)' : 'linear-gradient(135deg,#f5a623,#e09000)',
-                color: shiftLoading || !closingCashInput.value ? 'var(--muted)' : '#000',
+                background: shiftLoading || !closingCashInput.value ? 'var(--border-subtle)' : 'linear-gradient(135deg,#f5a623,#e09000)',
+                color: shiftLoading || !closingCashInput.value ? 'var(--text-muted)' : '#000',
                 ...Y, fontSize: 14, fontWeight: 800, cursor: shiftLoading || !closingCashInput.value ? 'not-allowed' : 'pointer',
               }}
             >
@@ -1160,16 +1160,16 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           <div style={{ ...cardStyle, maxWidth: 480 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
-                <div style={{ ...M, fontSize: 10, color: '#f5a623', letterSpacing: '0.2em', marginBottom: 4 }}>
+                <div style={{ ...M, fontSize: 10, color: 'var(--accent-gold)', letterSpacing: '0.2em', marginBottom: 4 }}>
                   {role === 'admin' ? 'EDIT TRANSACTION' : 'REQUEST EDIT'}
                 </div>
                 <div style={{ ...Y, fontSize: 18, fontWeight: 800 }}>{editTxn.id}</div>
-                <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
                   {editTxn.type} · {editTxn.currency} · {editTxn.time}
                 </div>
               </div>
               <button onClick={() => { setEditTxn(null); setEditDraft(null); setEditError(null); setEditSent(false); }}
-                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>
                 ✕
               </button>
             </div>
@@ -1177,68 +1177,68 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
             {editSent ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>⏳</div>
-                <div style={{ ...Y, fontSize: 16, fontWeight: 800, color: '#f5a623', marginBottom: 8 }}>Request Submitted</div>
-                <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 24 }}>
+                <div style={{ ...Y, fontSize: 16, fontWeight: 800, color: 'var(--accent-gold)', marginBottom: 8 }}>Request Submitted</div>
+                <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)', marginBottom: 24 }}>
                   Waiting for admin approval. The transaction will update once approved.
                 </div>
                 <button
                   onClick={() => { setEditTxn(null); setEditDraft(null); setEditSent(false); }}
-                  style={{ padding: '10px 28px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 12, cursor: 'pointer' }}
+                  style={{ padding: '10px 28px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 12, cursor: 'pointer' }}
                 >Close</button>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {role !== 'admin' && (
-                  <div style={{ ...M, fontSize: 10, color: 'var(--muted)', background: 'rgba(245,166,35,0.07)', border: '1px solid rgba(245,166,35,0.2)', borderRadius: 8, padding: '8px 14px' }}>
+                  <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', background: 'rgba(212,166,74,0.07)', border: '1px solid rgba(212,166,74,0.2)', borderRadius: 8, padding: '8px 14px' }}>
                     Changes won&apos;t apply until admin approves.
                   </div>
                 )}
 
                 <div>
-                  <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>CUSTOMER</label>
+                  <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>CUSTOMER</label>
                   <input
                     type="text"
                     value={editDraft.customer}
                     onChange={e => setEditDraft({ ...editDraft, customer: e.target.value })}
                     placeholder="Name or reference"
-                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>REFERRER <span style={{ opacity: 0.45 }}>(optional)</span></label>
+                  <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>REFERRER <span style={{ opacity: 0.45 }}>(optional)</span></label>
                   <input
                     type="text"
                     value={editDraft.referrer}
                     onChange={e => setEditDraft({ ...editDraft, referrer: e.target.value })}
                     placeholder="Tour guide or referral source"
-                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>PAYMENT MODE</label>
+                  <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>PAYMENT MODE</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {PAY_MODES.map(m => (
                       <button key={m} type="button" onClick={() => { setEditDraft({ ...editDraft, payment_mode: m }); if (!NEEDS_BANK.includes(m as PayMode)) setEditBankId(null); }} style={{
                         padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
-                        border: `1px solid ${editDraft.payment_mode === m ? 'rgba(0,212,170,0.5)' : 'var(--border)'}`,
-                        background: editDraft.payment_mode === m ? 'rgba(0,212,170,0.1)' : 'transparent',
-                        color: editDraft.payment_mode === m ? '#00d4aa' : 'var(--muted)',
+                        border: `1px solid ${editDraft.payment_mode === m ? 'rgba(61,199,173,0.5)' : 'var(--border-subtle)'}`,
+                        background: editDraft.payment_mode === m ? 'rgba(61,199,173,0.1)' : 'transparent',
+                        color: editDraft.payment_mode === m ? 'var(--teal-300)' : 'var(--text-muted)',
                         ...M, fontSize: 10,
                       }}>{m.replace('_', ' ')}</button>
                     ))}
                   </div>
                   {NEEDS_BANK.includes(editDraft.payment_mode as PayMode) && (
                     <div style={{ marginTop: 8 }}>
-                      <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>BANK</label>
+                      <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>BANK</label>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {banks.map(b => (
                           <button key={b.id} type="button" onClick={() => setEditBankId(b.id)} style={{
                             padding: '5px 10px', borderRadius: 6, cursor: 'pointer',
-                            border: `1px solid ${editBankId === b.id ? 'rgba(91,140,255,0.5)' : 'var(--border)'}`,
-                            background: editBankId === b.id ? 'rgba(91,140,255,0.1)' : 'transparent',
-                            color: editBankId === b.id ? '#5b8cff' : 'var(--muted)',
+                            border: `1px solid ${editBankId === b.id ? 'rgba(95,183,212,0.5)' : 'var(--border-subtle)'}`,
+                            background: editBankId === b.id ? 'rgba(95,183,212,0.1)' : 'transparent',
+                            color: editBankId === b.id ? 'var(--accent-sky)' : 'var(--text-muted)',
                             ...M, fontSize: 10,
                           }}>{b.code}</button>
                         ))}
@@ -1249,15 +1249,15 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
 
                 <div style={{
                   display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0,
-                  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 4,
+                  background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 4,
                 }}>
                   {(['BUY', 'SELL'] as const).map(t => (
                     <button key={t} type="button" onClick={() => setEditDraft({ ...editDraft, type: t })} style={{
                       padding: '10px', border: '1px solid',
-                      borderColor: editDraft.type === t ? (t === 'BUY' ? 'rgba(91,140,255,0.45)' : 'rgba(245,166,35,0.45)') : 'transparent',
+                      borderColor: editDraft.type === t ? (t === 'BUY' ? 'rgba(95,183,212,0.45)' : 'rgba(212,166,74,0.45)') : 'transparent',
                       borderRadius: 9, cursor: 'pointer',
-                      background: editDraft.type === t ? (t === 'BUY' ? 'rgba(91,140,255,0.14)' : 'rgba(245,166,35,0.14)') : 'transparent',
-                      color: editDraft.type === t ? (t === 'BUY' ? '#5b8cff' : '#f5a623') : 'var(--muted)',
+                      background: editDraft.type === t ? (t === 'BUY' ? 'rgba(95,183,212,0.14)' : 'rgba(212,166,74,0.14)') : 'transparent',
+                      color: editDraft.type === t ? (t === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)') : 'var(--text-muted)',
                       ...M, fontSize: 13, fontWeight: 800, letterSpacing: '0.05em', transition: 'all 0.15s',
                     }}>
                       {t === 'BUY' ? '↓ BUY' : '↑ SELL'}
@@ -1267,29 +1267,29 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>FOREIGN AMOUNT</label>
+                    <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>FOREIGN AMOUNT</label>
                     <input
                       type="text"
                       inputMode="decimal"
                       value={editDraft.foreign_amt}
                       onChange={e => setEditDraft({ ...editDraft, foreign_amt: e.target.value })}
-                      style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: '#e2e6f0', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                      style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div>
-                    <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>RATE</label>
+                    <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>RATE</label>
                     <input
                       type="text"
                       inputMode="decimal"
                       value={editDraft.rate}
                       onChange={e => setEditDraft({ ...editDraft, rate: e.target.value })}
-                      style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${editDraft.type === 'BUY' ? 'rgba(91,140,255,0.4)' : 'rgba(245,166,35,0.4)'}`, borderRadius: 8, padding: '10px 14px', color: editDraft.type === 'BUY' ? '#5b8cff' : '#f5a623', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                      style={{ width: '100%', background: 'var(--bg)', border: `1px solid ${editDraft.type === 'BUY' ? 'rgba(95,183,212,0.4)' : 'rgba(212,166,74,0.4)'}`, borderRadius: 8, padding: '10px 14px', color: editDraft.type === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
+                  <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
                     GUIDE RATE <span style={{ opacity: 0.45 }}>(optional)</span>
                   </label>
                   <input
@@ -1298,7 +1298,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                     value={editDraft.official_rate}
                     onChange={e => setEditDraft({ ...editDraft, official_rate: e.target.value })}
                     placeholder="e.g. 56.50"
-                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: '#e2e6f0', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
@@ -1307,8 +1307,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                   const a = parseFloat(editDraft.foreign_amt);
                   const preview = !isNaN(r) && !isNaN(a) && r > 0 && a > 0 ? r * a : null;
                   return preview != null ? (
-                    <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>
-                      PHP preview: <span style={{ color: '#00d4aa' }}>{php(preview)}</span>
+                    <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>
+                      PHP preview: <span style={{ color: 'var(--teal-300)' }}>{php(preview)}</span>
                     </div>
                   ) : null;
                 })()}
@@ -1326,17 +1326,17 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                   const refCut     = editDraft.referrer ? comm / 2 : 0;
                   return (
                     <div style={{
-                      background: comm > 0 ? 'rgba(0,212,170,0.05)' : 'rgba(255,92,92,0.05)',
-                      border: `1px solid ${comm > 0 ? 'rgba(0,212,170,0.2)' : 'rgba(255,92,92,0.2)'}`,
+                      background: comm > 0 ? 'rgba(61,199,173,0.05)' : 'rgba(238,108,90,0.05)',
+                      border: `1px solid ${comm > 0 ? 'rgba(61,199,173,0.2)' : 'rgba(238,108,90,0.2)'}`,
                       borderRadius: 10, padding: '10px 14px',
                     }}>
-                      <div style={{ ...M, fontSize: 9, color: comm > 0 ? '#00d4aa' : '#ff5c5c', letterSpacing: '0.12em', marginBottom: 6 }}>
+                      <div style={{ ...M, fontSize: 9, color: comm > 0 ? 'var(--teal-300)' : 'var(--accent-coral)', letterSpacing: '0.12em', marginBottom: 6 }}>
                         COMMISSION PREVIEW
                       </div>
-                      <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>
-                        Guide rate: <span style={{ color: '#e2e6f0' }}>{offRate}</span>
+                      <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
+                        Guide rate: <span style={{ color: 'var(--text-strong)' }}>{offRate}</span>
                       </div>
-                      <div style={{ ...M, fontSize: 12, color: comm > 0 ? '#00d4aa' : '#ff5c5c' }}>
+                      <div style={{ ...M, fontSize: 12, color: comm > 0 ? 'var(--teal-300)' : 'var(--accent-coral)' }}>
                         Total: {php(Math.abs(comm))}
                         {editDraft.referrer && <> · You: {php(Math.abs(cashierCut))} · {editDraft.referrer}: {php(Math.abs(refCut))}</>}
                       </div>
@@ -1345,7 +1345,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 })()}
 
                 <div>
-                  <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
+                  <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
                     REASON <span style={{ opacity: 0.45 }}>(optional)</span>
                   </label>
                   <input
@@ -1353,12 +1353,12 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                     value={editDraft.note}
                     onChange={e => setEditDraft({ ...editDraft, note: e.target.value })}
                     placeholder="e.g. wrong rate entered"
-                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: '#e2e6f0', ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)', ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
                   />
                 </div>
 
                 {editError && (
-                  <div style={{ ...M, fontSize: 11, color: '#ff5c5c', background: 'rgba(255,92,92,0.08)', border: '1px solid rgba(255,92,92,0.2)', borderRadius: 8, padding: '8px 14px' }}>
+                  <div style={{ ...M, fontSize: 11, color: 'var(--accent-coral)', background: 'rgba(238,108,90,0.08)', border: '1px solid rgba(238,108,90,0.2)', borderRadius: 8, padding: '8px 14px' }}>
                     ✗ {editError}
                   </div>
                 )}
@@ -1366,13 +1366,13 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
                   <button
                     onClick={() => { setEditTxn(null); setEditDraft(null); setEditError(null); }}
-                    style={{ padding: '12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 12, cursor: 'pointer' }}
+                    style={{ padding: '12px', borderRadius: 8, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 12, cursor: 'pointer' }}
                   >Cancel</button>
                   <button
                     onClick={role === 'admin' ? handleAdminEdit : handleEditRequest}
                     disabled={editLoading}
                     data-testid="edit-submit-btn"
-                    style={{ padding: '12px', borderRadius: 8, border: 'none', background: editLoading ? 'var(--border)' : 'linear-gradient(135deg,#f5a623,#e09000)', color: editLoading ? 'var(--muted)' : '#000', ...Y, fontSize: 13, fontWeight: 800, cursor: editLoading ? 'not-allowed' : 'pointer' }}
+                    style={{ padding: '12px', borderRadius: 8, border: 'none', background: editLoading ? 'var(--border-subtle)' : 'linear-gradient(135deg,#f5a623,#e09000)', color: editLoading ? 'var(--text-muted)' : '#000', ...Y, fontSize: 13, fontWeight: 800, cursor: editLoading ? 'not-allowed' : 'pointer' }}
                   >{editLoading ? (role === 'admin' ? 'SAVING...' : 'SUBMITTING...') : (role === 'admin' ? 'SAVE CHANGES' : 'SEND REQUEST')}</button>
                 </div>
               </div>
@@ -1385,21 +1385,21 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
       {noRatesAtAll && (
         <div style={{ ...overlayStyle, zIndex: 300 }}>
           <div style={cardStyle}>
-            <div style={{ ...M, fontSize: 10, color: '#f5a623', letterSpacing: '0.2em', marginBottom: 8 }}>
+            <div style={{ ...M, fontSize: 10, color: 'var(--accent-gold)', letterSpacing: '0.2em', marginBottom: 8 }}>
               SETUP REQUIRED
             </div>
             <div style={{ ...Y, fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
               Rates Not Set Yet
             </div>
-            <div style={{ ...M, fontSize: 12, color: 'var(--muted)', marginBottom: 28, lineHeight: 1.7 }}>
+            <div style={{ ...M, fontSize: 12, color: 'var(--text-muted)', marginBottom: 28, lineHeight: 1.7 }}>
               Today&apos;s buy/sell rates haven&apos;t been set. You cannot process transactions until admin sets them. Ask your admin or supervisor to go to{' '}
-              <span style={{ color: '#00d4aa' }}>/admin/rates</span> and set today&apos;s rates.
+              <span style={{ color: 'var(--teal-300)' }}>/admin/rates</span> and set today&apos;s rates.
             </div>
             <button
               onClick={() => window.location.reload()}
               style={{
-                width: '100%', padding: '14px', borderRadius: 10, border: '1px solid rgba(245,166,35,0.3)',
-                background: 'rgba(245,166,35,0.08)', color: '#f5a623',
+                width: '100%', padding: '14px', borderRadius: 10, border: '1px solid rgba(212,166,74,0.3)',
+                background: 'rgba(212,166,74,0.08)', color: 'var(--accent-gold)',
                 ...M, fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.1em',
               }}
             >
@@ -1412,11 +1412,11 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
       {/* ── PARTIAL RATES BANNER (some currencies missing rates) ── */}
       {!noRatesAtAll && ratesCount < currencies.length && (
         <div style={{
-          background: 'rgba(245,166,35,0.06)', borderBottom: '1px solid rgba(245,166,35,0.2)',
+          background: 'rgba(212,166,74,0.06)', borderBottom: '1px solid rgba(212,166,74,0.2)',
           padding: `10px ${px}px`, display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <span style={{ fontSize: 14 }}>ℹ️</span>
-          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, color: '#f5a623' }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent-gold)' }}>
             Rates set for {ratesCount} of {currencies.length} currencies today. Currencies without rates require manual rate entry.
           </span>
         </div>
@@ -1425,26 +1425,26 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
       {/* ── NAV ── */}
       <nav style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: `0 ${px}px`, height: '56px', borderBottom: '1px solid var(--border)',
-        background: 'var(--nav-bg)', backdropFilter: 'blur(12px)',
+        padding: `0 ${px}px`, height: '60px', borderBottom: '1px solid var(--border-subtle)',
+        background: 'var(--nav-bg)', backdropFilter: 'blur(16px)',
         position: 'sticky', top: 0, zIndex: 100,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
-            width: 28, height: 28, borderRadius: 8,
-            background: 'linear-gradient(135deg,#00d4aa,#00a884)',
+            width: 32, height: 32, borderRadius: 8,
+            background: 'linear-gradient(135deg,var(--teal-300),var(--teal-600))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, fontWeight: 800, color: '#000',
+            fontSize: 15, fontWeight: 700, color: 'var(--text-on-teal)', fontFamily: 'var(--font-display)',
           }}>K</div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e6f0', ...Y }}>Kedco FX</div>
-            <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginTop: -2 }}>Counter</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-strong)' }}>Kedco<span style={{ color: 'var(--teal-300)' }}>FX</span></div>
+            <div style={{ ...M, fontSize: 9, color: 'var(--text-faint)', marginTop: -1 }}>Counter · {terminal || 'Set device'}</div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
           {!isMobile && (
-            <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>
-              <span style={{ color: '#e2e6f0' }}>{username}</span>
+            <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>
+              <span style={{ color: 'var(--text-strong)' }}>{username}</span>
             </div>
           )}
           {shift && (<>
@@ -1452,9 +1452,9 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               onClick={() => { setReplenishError(null); replenishInput.setValue(''); setReplenishNote(''); setShowReplenishModal(true); }}
               style={{
                 padding: '5px 10px', borderRadius: 6,
-                border: '1px solid rgba(0,212,170,0.35)',
-                background: 'rgba(0,212,170,0.07)',
-                color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
+                border: '1px solid rgba(61,199,173,0.35)',
+                background: 'rgba(61,199,173,0.07)',
+                color: 'var(--teal-300)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
               }}
             >
               REPL
@@ -1463,33 +1463,33 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               onClick={() => { setShiftError(null); setShowEndModal(true); }}
               style={{
                 padding: '5px 14px', borderRadius: 6,
-                border: '1px solid rgba(245,166,35,0.4)',
-                background: 'rgba(245,166,35,0.08)',
-                color: '#f5a623', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
+                border: '1px solid rgba(212,166,74,0.4)',
+                background: 'rgba(212,166,74,0.08)',
+                color: 'var(--accent-gold)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
               }}
             >
               END SHIFT
             </button>
           </>)}
           {role === 'admin' && (<>
-            <a href="/" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
+            <a href="/" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
               DASHBOARD
             </a>
-            <a href="/admin" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
+            <a href="/admin" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
               ADMIN
             </a>
           </>)}
-          {!isMobile && <a href="/passbook" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.3)', background: 'transparent', color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
+          {!isMobile && <a href="/passbook" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(61,199,173,0.3)', background: 'transparent', color: 'var(--teal-300)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
             PASSBOOK
           </a>}
           <button
             onClick={() => { setBranchDraft(branch); setTerminalDraft(terminal); setDeviceStep(1); setShowDeviceModal(true); }}
             title="Change branch / terminal"
-            style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.2)', background: 'transparent', color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}
+            style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(61,199,173,0.2)', background: 'transparent', color: 'var(--teal-300)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}
           >
             {branch ? `${branch} · ${terminal || '?'}` : 'SET DEVICE'}
           </button>
-          <button onClick={handleLogout} style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}>
+          <button onClick={handleLogout} style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}>
             LOGOUT
           </button>
         </div>
@@ -1509,16 +1509,16 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
 
           {/* Header */}
           <div>
-            <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.2em', marginBottom: 2 }}>
+            <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.2em', marginBottom: 2 }}>
               NEW TRANSACTION
             </div>
-            <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{today.toUpperCase()}</div>
+            <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>{today.toUpperCase()}</div>
           </div>
 
           {/* BUY / SELL toggle */}
           <div style={{
             display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0,
-            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 4,
+            background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 4,
           }}>
             {(['BUY', 'SELL'] as const).map(t => (
               <button
@@ -1527,15 +1527,15 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 style={{
                   padding: '14px', border: '1px solid',
                   borderColor: type === t
-                    ? (t === 'BUY' ? 'rgba(91,140,255,0.45)' : 'rgba(245,166,35,0.45)')
+                    ? (t === 'BUY' ? 'rgba(95,183,212,0.45)' : 'rgba(212,166,74,0.45)')
                     : 'transparent',
                   borderRadius: 9, cursor: 'pointer',
                   background: type === t
-                    ? (t === 'BUY' ? 'rgba(91,140,255,0.14)' : 'rgba(245,166,35,0.14)')
+                    ? (t === 'BUY' ? 'rgba(95,183,212,0.14)' : 'rgba(212,166,74,0.14)')
                     : 'transparent',
                   color: type === t
-                    ? (t === 'BUY' ? '#5b8cff' : '#f5a623')
-                    : 'var(--muted)',
+                    ? (t === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)')
+                    : 'var(--text-muted)',
                   ...Y, fontSize: 15, fontWeight: 800, letterSpacing: '0.05em',
                   transition: 'all 0.15s',
                 }}
@@ -1547,7 +1547,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
 
           {/* Currency */}
           <div style={{ position: 'relative' }}>
-            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               CURRENCY
             </label>
             <input
@@ -1559,9 +1559,9 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               onBlur={() => setTimeout(() => setCcyOpen(false), 150)}
               onChange={e => setCcyQuery(e.target.value)}
               style={{
-                width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
+                width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
                 borderRadius: 8, padding: '12px 14px', boxSizing: 'border-box',
-                color: ccy && !ccyOpen ? '#e2e6f0' : 'var(--muted)',
+                color: ccy && !ccyOpen ? 'var(--text-strong)' : 'var(--text-muted)',
                 ...M, fontSize: 13, outline: 'none', cursor: 'text',
               }}
             />
@@ -1573,13 +1573,13 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               return (
                 <div style={{
                   position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
                   borderRadius: 8, marginTop: 4,
                   maxHeight: 220, overflowY: 'auto',
                   boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                 }}>
                   {filtered.length === 0 && (
-                    <div style={{ ...M, fontSize: 12, color: 'var(--muted)', padding: '10px 14px' }}>
+                    <div style={{ ...M, fontSize: 12, color: 'var(--text-muted)', padding: '10px 14px' }}>
                       No match
                     </div>
                   )}
@@ -1598,26 +1598,26 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
                     >
                       <span style={{ fontSize: 18 }}>{c.flag}</span>
-                      <span style={{ ...M, fontSize: 13, color: '#e2e6f0', fontWeight: 700 }}>{c.code}</span>
-                      <span style={{ ...M, fontSize: 11, color: 'var(--muted)', flex: 1 }}>{c.name}</span>
-                      {!c.rateSet && <span style={{ ...M, fontSize: 10, color: '#ff5c5c' }}>no rate</span>}
+                      <span style={{ ...M, fontSize: 13, color: 'var(--text-strong)', fontWeight: 700 }}>{c.code}</span>
+                      <span style={{ ...M, fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>{c.name}</span>
+                      {!c.rateSet && <span style={{ ...M, fontSize: 10, color: 'var(--accent-coral)' }}>no rate</span>}
                     </div>
                   ))}
                 </div>
               );
             })()}
             {ccy?.rateSet && (
-              <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 6 }}>
-                Rate board — B: <span style={{ color: '#5b8cff' }}>
+              <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>
+                Rate board — B: <span style={{ color: 'var(--accent-sky)' }}>
                   {ccy.todayBuyRate?.toFixed(ccy.decimalPlaces)}
                 </span>
-                &nbsp;·&nbsp;S: <span style={{ color: '#f5a623' }}>
+                &nbsp;·&nbsp;S: <span style={{ color: 'var(--accent-gold)' }}>
                   {ccy.todaySellRate?.toFixed(ccy.decimalPlaces)}
                 </span>
               </div>
             )}
             {ccy && !ccy.rateSet && (
-              <div style={{ ...M, fontSize: 10, color: '#f5a623', marginTop: 6 }}>
+              <div style={{ ...M, fontSize: 10, color: 'var(--accent-gold)', marginTop: 6 }}>
                 No rate set for today — enter the rate manually below.
               </div>
             )}
@@ -1625,7 +1625,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
 
           {/* Foreign Amount */}
           <div>
-            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               FOREIGN AMOUNT{ccy ? ` (${ccy.code})` : ''}
             </label>
             <input
@@ -1637,8 +1637,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               onFocus={amtInput.onFocus}
               placeholder="0.00"
               style={{
-                width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '12px 14px', color: '#e2e6f0',
+                width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '12px 14px', color: 'var(--text-strong)',
                 ...M, fontSize: 20, outline: 'none', boxSizing: 'border-box',
               }}
             />
@@ -1646,7 +1646,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
 
           {/* Rate */}
           <div>
-            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               RATE (PHP per {ccy?.code ?? 'unit'})
             </label>
             <input
@@ -1657,7 +1657,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               onChange={rateInput.onChange}
               onFocus={rateInput.onFocus}
               style={{
-                width: '100%', background: 'var(--surface)', border: `1px solid ${typeColor}44`,
+                width: '100%', background: 'var(--bg-card)', border: `1px solid ${typeColor}44`,
                 borderRadius: 8, padding: '12px 14px', color: typeColor,
                 ...M, fontSize: 16, outline: 'none', boxSizing: 'border-box',
               }}
@@ -1667,7 +1667,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           {/* Guide Rate — cashier/admin only */}
           {role !== 'supervisor' && (
             <div>
-              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
                 GUIDE RATE <span style={{ opacity: 0.45 }}>(your base — for commission)</span>
               </label>
               <input
@@ -1679,8 +1679,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 onFocus={guideRateInput.onFocus}
                 placeholder="e.g. 59.00"
                 style={{
-                  width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 8, padding: '10px 14px', color: 'var(--muted)',
+                  width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 14px', color: 'var(--text-muted)',
                   ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box',
                 }}
               />
@@ -1689,14 +1689,14 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
 
           {/* PHP Total */}
           <div style={{
-            background: 'var(--surface)',
-            border: `1px solid ${phpTotal != null ? 'rgba(0,212,170,0.35)' : 'var(--border)'}`,
+            background: 'var(--bg-card)',
+            border: `1px solid ${phpTotal != null ? 'rgba(61,199,173,0.35)' : 'var(--border-subtle)'}`,
             borderRadius: 12, padding: '18px 20px', transition: 'border-color 0.2s',
           }}>
-            <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>
+            <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', marginBottom: 8 }}>
               PHP TOTAL
             </div>
-            <div style={{ ...Y, fontSize: 34, fontWeight: 800, color: phpTotal != null ? '#00d4aa' : 'var(--muted)' }}>
+            <div style={{ ...Y, fontSize: 34, fontWeight: 800, color: phpTotal != null ? 'var(--teal-300)' : 'var(--text-muted)' }}>
               {phpTotal != null ? php(phpTotal) : '₱ —'}
             </div>
           </div>
@@ -1713,17 +1713,17 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
             const refCut = referrer ? commission / 2 : 0;
             return (
               <div style={{
-                background: commission > 0 ? 'rgba(0,212,170,0.05)' : 'rgba(255,92,92,0.05)',
-                border: `1px solid ${commission > 0 ? 'rgba(0,212,170,0.2)' : 'rgba(255,92,92,0.2)'}`,
+                background: commission > 0 ? 'rgba(61,199,173,0.05)' : 'rgba(238,108,90,0.05)',
+                border: `1px solid ${commission > 0 ? 'rgba(61,199,173,0.2)' : 'rgba(238,108,90,0.2)'}`,
                 borderRadius: 10, padding: '10px 14px',
               }}>
-                <div style={{ ...M, fontSize: 9, color: commission > 0 ? '#00d4aa' : '#ff5c5c', letterSpacing: '0.12em', marginBottom: 6 }}>
+                <div style={{ ...M, fontSize: 9, color: commission > 0 ? 'var(--teal-300)' : 'var(--accent-coral)', letterSpacing: '0.12em', marginBottom: 6 }}>
                   COMMISSION PREVIEW
                 </div>
-                <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>
-                  Spread: <span style={{ color: '#e2e6f0' }}>{commission > 0 ? '+' : '-'}{php(Math.abs(commission / +amtInput.raw))}</span> per unit
+                <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
+                  Spread: <span style={{ color: 'var(--text-strong)' }}>{commission > 0 ? '+' : '-'}{php(Math.abs(commission / +amtInput.raw))}</span> per unit
                 </div>
-                <div style={{ ...M, fontSize: 12, color: commission > 0 ? '#00d4aa' : '#ff5c5c' }}>
+                <div style={{ ...M, fontSize: 12, color: commission > 0 ? 'var(--teal-300)' : 'var(--accent-coral)' }}>
                   Total: {php(Math.abs(commission))}
                   {referrer && <> · You: {php(Math.abs(cashierCut))} · {referrer}: {php(Math.abs(refCut))}</>}
                 </div>
@@ -1734,7 +1734,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           {/* Customer / AMLA */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em' }}>
+              <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em' }}>
                 CUSTOMER / AMLA <span style={{ opacity: 0.45 }}>(optional)</span>
               </label>
               <button
@@ -1743,9 +1743,9 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5,
                   padding: '4px 10px', borderRadius: 6,
-                  border: '1px solid rgba(0,212,170,0.4)',
-                  background: 'rgba(0,212,170,0.07)',
-                  color: '#00d4aa', ...M, fontSize: 10, cursor: 'pointer',
+                  border: '1px solid rgba(61,199,173,0.4)',
+                  background: 'rgba(61,199,173,0.07)',
+                  color: 'var(--teal-300)', ...M, fontSize: 10, cursor: 'pointer',
                 }}
               >
                 📷 Scan ID
@@ -1757,8 +1757,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               onChange={e => setCust(e.target.value)}
               placeholder="Name or reference"
               style={{
-                width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '12px 14px', color: '#e2e6f0',
+                width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '12px 14px', color: 'var(--text-strong)',
                 ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box',
               }}
             />
@@ -1768,8 +1768,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               onChange={e => setIdNumber(e.target.value)}
               placeholder="ID number (PhilSys / DL / Passport)"
               style={{
-                width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
+                width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)',
                 ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
               }}
             />
@@ -1780,8 +1780,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 onChange={e => setReferrer(e.target.value)}
                 placeholder="Referrer / tour guide (optional)"
                 style={{
-                  width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
+                  width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)',
                   ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
                 }}
               />
@@ -1791,7 +1791,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           {/* Supervisor: reference date + advance/late tag */}
           {role === 'supervisor' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em' }}>
+              <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em' }}>
                 PAYMENT DATE <span style={{ opacity: 0.45 }}>(reference)</span>
               </label>
               <input
@@ -1799,8 +1799,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 value={referenceDate}
                 onChange={e => setReferenceDate(e.target.value)}
                 style={{
-                  width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 8, padding: '10px 14px', color: '#e2e6f0',
+                  width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)',
                   ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
                 }}
               />
@@ -1812,9 +1812,9 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                     onClick={() => setPaymentTag(tag)}
                     style={{
                       padding: '6px 14px', borderRadius: 6, cursor: 'pointer', ...M, fontSize: 10,
-                      border: `1px solid ${paymentTag === tag ? 'rgba(0,212,170,0.5)' : 'var(--border)'}`,
-                      background: paymentTag === tag ? 'rgba(0,212,170,0.1)' : 'transparent',
-                      color: paymentTag === tag ? '#00d4aa' : 'var(--muted)',
+                      border: `1px solid ${paymentTag === tag ? 'rgba(61,199,173,0.5)' : 'var(--border-subtle)'}`,
+                      background: paymentTag === tag ? 'rgba(61,199,173,0.1)' : 'transparent',
+                      color: paymentTag === tag ? 'var(--teal-300)' : 'var(--text-muted)',
                       letterSpacing: '0.05em',
                     }}
                   >
@@ -1827,7 +1827,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
 
           {/* Payment Mode */}
           <div>
-            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               PAYMENT MODE
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -1838,9 +1838,9 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                   onClick={() => setPayMode(m)}
                   style={{
                     padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
-                    border: `1px solid ${payMode === m ? 'rgba(0,212,170,0.5)' : 'var(--border)'}`,
-                    background: payMode === m ? 'rgba(0,212,170,0.1)' : 'transparent',
-                    color: payMode === m ? '#00d4aa' : 'var(--muted)',
+                    border: `1px solid ${payMode === m ? 'rgba(61,199,173,0.5)' : 'var(--border-subtle)'}`,
+                    background: payMode === m ? 'rgba(61,199,173,0.1)' : 'transparent',
+                    color: payMode === m ? 'var(--teal-300)' : 'var(--text-muted)',
                     ...M, fontSize: 10, letterSpacing: '0.05em',
                   }}
                 >
@@ -1850,17 +1850,17 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
             </div>
             {NEEDS_BANK.includes(payMode) && (
               <div style={{ marginTop: 10 }}>
-                <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
+                <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
                   {payMode === 'CHEQUE' ? 'BANK (CHEQUE)' : 'BANK'}
                 </label>
                 <select
                   value={bankId ?? ''}
                   onChange={e => setBankId(e.target.value ? +e.target.value : null)}
                   style={{
-                    width: '100%', background: 'var(--surface)',
-                    border: `1px solid ${bankId ? 'rgba(0,212,170,0.4)' : '#ff5c5c44'}`,
+                    width: '100%', background: 'var(--bg-card)',
+                    border: `1px solid ${bankId ? 'rgba(61,199,173,0.4)' : '#ff5c5c44'}`,
                     borderRadius: 8, padding: '10px 14px', boxSizing: 'border-box',
-                    color: bankId ? '#e2e6f0' : 'var(--muted)',
+                    color: bankId ? 'var(--text-strong)' : 'var(--text-muted)',
                     ...M, fontSize: 13, outline: 'none',
                   }}
                 >
@@ -1876,8 +1876,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           {/* Error */}
           {error && (
             <div style={{
-              ...M, fontSize: 11, color: '#ff5c5c',
-              background: 'rgba(255,92,92,0.08)', border: '1px solid rgba(255,92,92,0.2)',
+              ...M, fontSize: 11, color: 'var(--accent-coral)',
+              background: 'rgba(238,108,90,0.08)', border: '1px solid rgba(238,108,90,0.2)',
               borderRadius: 8, padding: '10px 14px',
             }}>
               ✗ {error}
@@ -1887,19 +1887,19 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           {/* Batch flash */}
           {batchFlash && batchFlash.length > 0 && (
             <div style={{
-              background: 'rgba(0,212,170,0.07)', border: '1px solid rgba(0,212,170,0.3)',
+              background: 'rgba(61,199,173,0.07)', border: '1px solid rgba(61,199,173,0.3)',
               borderRadius: 10, padding: '14px 18px',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{ ...Y, fontSize: 12, fontWeight: 700, color: '#00d4aa' }}>
+                <div style={{ ...Y, fontSize: 12, fontWeight: 700, color: 'var(--teal-300)' }}>
                   ✓ Batch saved — {batchFlash.length} items
                 </div>
                 <button
                   onClick={() => printBatchReceipt(batchFlash)}
                   style={{
                     padding: '5px 14px', borderRadius: 6,
-                    border: '1px solid rgba(0,212,170,0.4)',
-                    background: 'rgba(0,212,170,0.1)', color: '#00d4aa',
+                    border: '1px solid rgba(61,199,173,0.4)',
+                    background: 'rgba(61,199,173,0.1)', color: 'var(--teal-300)',
                     ...M, fontSize: 11, cursor: 'pointer',
                   }}
                 >
@@ -1909,15 +1909,15 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {batchFlash.map(t => (
                   <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>
+                    <div style={{ ...M, fontSize: 11, color: 'var(--text-strong)' }}>
                       {t.currency} &nbsp;{fmtFx(t.foreignAmt, t.currency, currencies)} @ {t.rate}
                     </div>
-                    <div style={{ ...M, fontSize: 11, color: '#00d4aa', fontWeight: 700 }}>{php(t.phpAmt)}</div>
+                    <div style={{ ...M, fontSize: 11, color: 'var(--teal-300)', fontWeight: 700 }}>{php(t.phpAmt)}</div>
                   </div>
                 ))}
-                <div style={{ borderTop: '1px solid rgba(0,212,170,0.2)', paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em' }}>TOTAL</span>
-                  <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#00d4aa' }}>
+                <div style={{ borderTop: '1px solid rgba(61,199,173,0.2)', paddingTop: 6, display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>TOTAL</span>
+                  <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: 'var(--teal-300)' }}>
                     {php(batchFlash.reduce((s, t) => s + t.phpAmt, 0))}
                   </span>
                 </div>
@@ -1928,19 +1928,19 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           {/* Single success flash */}
           {flash && (
             <div style={{
-              background: 'rgba(0,212,170,0.07)', border: '1px solid rgba(0,212,170,0.3)',
+              background: 'rgba(61,199,173,0.07)', border: '1px solid rgba(61,199,173,0.3)',
               borderRadius: 10, padding: '14px 18px',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <div style={{ ...Y, fontSize: 12, fontWeight: 700, color: '#00d4aa' }}>
+                <div style={{ ...Y, fontSize: 12, fontWeight: 700, color: 'var(--teal-300)' }}>
                   ✓ Saved — {flash.id}
                 </div>
                 <button
                   onClick={() => printReceipt(flash)}
                   style={{
                     padding: '5px 14px', borderRadius: 6,
-                    border: '1px solid rgba(0,212,170,0.4)',
-                    background: 'rgba(0,212,170,0.1)', color: '#00d4aa',
+                    border: '1px solid rgba(61,199,173,0.4)',
+                    background: 'rgba(61,199,173,0.1)', color: 'var(--teal-300)',
                     ...M, fontSize: 11, cursor: 'pointer',
                   }}
                 >
@@ -1956,8 +1956,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                   ['PHP',      php(flash.phpAmt)],
                 ].map(([k, v]) => (
                   <div key={k}>
-                    <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 2 }}>{k}</div>
-                    <div style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{v}</div>
+                    <div style={{ ...M, fontSize: 9, color: 'var(--text-muted)', marginBottom: 2 }}>{k}</div>
+                    <div style={{ ...M, fontSize: 11, color: 'var(--text-strong)' }}>{v}</div>
                   </div>
                 ))}
               </div>
@@ -1967,26 +1967,26 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           {/* Cart */}
           {cart.length > 0 && (
             <div style={{
-              background: 'var(--surface)', border: '1px solid var(--border)',
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
               borderRadius: 10, padding: '14px 18px',
             }}>
-              <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 10 }}>
+              <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', marginBottom: 10 }}>
                 CART — {cart.length} ITEM{cart.length > 1 ? 'S' : ''}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {cart.map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ flex: 1, ...M, fontSize: 12, color: '#e2e6f0' }}>
+                    <div style={{ flex: 1, ...M, fontSize: 12, color: 'var(--text-strong)' }}>
                       {item.ccy.flag} {item.ccy.code} &nbsp;
                       {fmtFx(item.foreign_amt, item.ccy.code, currencies)} @ {item.rate}
                     </div>
-                    <div style={{ ...M, fontSize: 12, color: '#00d4aa', fontWeight: 700, minWidth: 90, textAlign: 'right' }}>
+                    <div style={{ ...M, fontSize: 12, color: 'var(--teal-300)', fontWeight: 700, minWidth: 90, textAlign: 'right' }}>
                       {php(item.foreign_amt * item.rate)}
                     </div>
                     <button
                       onClick={() => setCart(prev => prev.filter((_, j) => j !== i))}
                       style={{
-                        background: 'transparent', border: 'none', color: 'var(--muted)',
+                        background: 'transparent', border: 'none', color: 'var(--text-muted)',
                         cursor: 'pointer', fontSize: 14, padding: '0 4px', lineHeight: 1,
                       }}
                     >
@@ -1996,8 +1996,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 ))}
               </div>
               <div style={{ borderTop: '1px solid var(--border)', marginTop: 10, paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em' }}>SUBTOTAL</span>
-                <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#e2e6f0' }}>
+                <span style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>SUBTOTAL</span>
+                <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: 'var(--text-strong)' }}>
                   {php(cart.reduce((s, item) => s + item.foreign_amt * item.rate, 0))}
                 </span>
               </div>
@@ -2013,11 +2013,11 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 style={{
                   flex: 1, padding: '16px', borderRadius: 10, border: 'none',
                   background: !canSubmit
-                    ? 'var(--border)'
+                    ? 'var(--border-subtle)'
                     : type === 'BUY'
                       ? 'linear-gradient(135deg,#5b8cff,#3a6fef)'
                       : 'linear-gradient(135deg,#f5a623,#e09000)',
-                  color: !canSubmit ? 'var(--muted)' : '#000',
+                  color: !canSubmit ? 'var(--text-muted)' : '#000',
                   ...Y, fontSize: 14, fontWeight: 800,
                   cursor: !canSubmit ? 'not-allowed' : 'pointer',
                   letterSpacing: '0.04em', transition: 'all 0.2s',
@@ -2031,8 +2031,8 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 title="Add to cart for multi-currency batch"
                 style={{
                   padding: '16px 18px', borderRadius: 10, border: '1px solid var(--border)',
-                  background: !canSubmit ? 'transparent' : 'var(--surface)',
-                  color: !canSubmit ? 'var(--muted)' : '#e2e6f0',
+                  background: !canSubmit ? 'transparent' : 'var(--bg-card)',
+                  color: !canSubmit ? 'var(--text-muted)' : 'var(--text-strong)',
                   ...Y, fontSize: 18, fontWeight: 700,
                   cursor: !canSubmit ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s',
@@ -2048,11 +2048,11 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 style={{
                   padding: '16px', borderRadius: 10, border: 'none',
                   background: loading
-                    ? 'var(--border)'
+                    ? 'var(--border-subtle)'
                     : type === 'BUY'
                       ? 'linear-gradient(135deg,#00d4aa,#009977)'
                       : 'linear-gradient(135deg,#b45cf5,#8a2be2)',
-                  color: loading ? 'var(--muted)' : '#000',
+                  color: loading ? 'var(--text-muted)' : '#000',
                   ...Y, fontSize: 14, fontWeight: 800,
                   cursor: loading ? 'not-allowed' : 'pointer',
                   letterSpacing: '0.04em', transition: 'all 0.2s',
@@ -2070,14 +2070,14 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: 12 }}>
             {[
-              { label: 'TOTAL BOUGHT', value: php(totalBought), color: '#5b8cff' },
-              { label: 'TOTAL SOLD',   value: php(totalSold),   color: '#f5a623' },
+              { label: 'TOTAL BOUGHT', value: php(totalBought), color: 'var(--accent-sky)' },
+              { label: 'TOTAL SOLD',   value: php(totalSold),   color: 'var(--accent-gold)' },
             ].map(s => (
               <div key={s.label} style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
                 borderRadius: 12, padding: '16px 20px',
               }}>
-                <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>
+                <div style={{ ...M, fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.12em', marginBottom: 8 }}>
                   {s.label}
                 </div>
                 <div style={{ ...Y, fontSize: 20, fontWeight: 800, color: s.color }}>
@@ -2086,14 +2086,14 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                 {s.label === 'TOTAL BOUGHT' && totalCommission !== 0 && (
                   <>
                     <div style={{ marginTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em' }}>COMM</span>
-                      <span style={{ ...M, fontSize: 11, fontWeight: 700, color: totalCommission > 0 ? '#00d4aa' : '#ff5c5c' }}>
+                      <span style={{ ...M, fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.12em' }}>COMM</span>
+                      <span style={{ ...M, fontSize: 11, fontWeight: 700, color: totalCommission > 0 ? 'var(--teal-300)' : 'var(--accent-coral)' }}>
                         {totalCommission > 0 ? '+' : ''}{php(totalCommission)}
                       </span>
                     </div>
                     <div style={{ borderTop: '1px solid var(--border)', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em' }}>TOTAL</span>
-                      <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#e2e6f0' }}>
+                      <span style={{ ...M, fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.12em' }}>TOTAL</span>
+                      <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: 'var(--text-strong)' }}>
                         {php(totalBought + totalCommission)}
                       </span>
                     </div>
@@ -2105,7 +2105,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
 
           {/* Transaction list */}
           <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
+            background: 'var(--bg-card)', border: '1px solid var(--border)',
             borderRadius: 14, overflow: 'hidden', flex: 1,
           }}>
             {/* List header */}
@@ -2113,19 +2113,19 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
               padding: '14px 20px', borderBottom: '1px solid var(--border)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
-              <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.15em' }}>
+              <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.15em' }}>
                 TODAY&apos;S TRANSACTIONS — {txns.length}
               </div>
               <button
                 onClick={fetchTxns}
-                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', ...M, fontSize: 11 }}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', ...M, fontSize: 11 }}
               >
                 ↺ refresh
               </button>
             </div>
 
             {txns.length === 0 ? (
-              <div style={{ padding: '48px 20px', textAlign: 'center', ...M, fontSize: 11, color: 'var(--muted)' }}>
+              <div style={{ padding: '48px 20px', textAlign: 'center', ...M, fontSize: 11, color: 'var(--text-muted)' }}>
                 No transactions yet today.
               </div>
             ) : (
@@ -2135,7 +2135,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                   display: 'grid',
                   gridTemplateColumns: '100px 48px 56px 64px 80px 100px 100px 120px 120px 48px',
                   padding: '8px 20px', borderBottom: '1px solid var(--border)',
-                  ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
+                  ...M, fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.1em',
                   whiteSpace: 'nowrap',
                 }}>
                   <span>RECEIPT</span>
@@ -2164,32 +2164,32 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.id}</span>
-                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.time}</span>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--text-muted)' }}>{t.id}</span>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--text-muted)' }}>{t.time}</span>
                       <span style={{
                         ...M, fontSize: 11, fontWeight: 700,
-                        color: t.type === 'BUY' ? '#5b8cff' : '#f5a623',
+                        color: t.type === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)',
                       }}>{t.type}</span>
-                      <span style={{ ...M, fontSize: 9, color: 'var(--muted)' }}>
+                      <span style={{ ...M, fontSize: 9, color: 'var(--text-muted)' }}>
                         {(t.paymentMode ?? 'CASH') === 'BANK_TRANSFER' ? 'BANK' : (t.paymentMode ?? 'CASH') === 'SHOPEEPAY' ? 'SHPAY' : (t.paymentMode ?? 'CASH')}
                       </span>
-                      <span style={{ ...M, fontSize: 13, color: '#e2e6f0' }}>{t.currency}</span>
-                      <span style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>
+                      <span style={{ ...M, fontSize: 13, color: 'var(--text-strong)' }}>{t.currency}</span>
+                      <span style={{ ...M, fontSize: 12, color: 'var(--text-strong)' }}>
                         {fmtFx(t.foreignAmt, t.currency, currencies)}
                       </span>
                       <span style={{
                         ...M, fontSize: 11,
-                        color: t.type === 'BUY' ? '#5b8cff' : '#f5a623',
+                        color: t.type === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)',
                       }}>{t.rate}</span>
-                      <span style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{php(t.phpAmt)}</span>
+                      <span style={{ ...M, fontSize: 11, color: 'var(--text-strong)' }}>{php(t.phpAmt)}</span>
                       {role === 'supervisor' ? (
                         t.paymentTag ? (
                           <span style={{
                             ...M, fontSize: 8, fontWeight: 700, letterSpacing: '0.06em',
                             padding: '2px 5px', borderRadius: 4,
-                            color: t.paymentTag === 'ADVANCE' ? '#00d4aa' : '#f5a623',
-                            background: t.paymentTag === 'ADVANCE' ? 'rgba(0,212,170,0.12)' : 'rgba(245,166,35,0.12)',
-                            border: `1px solid ${t.paymentTag === 'ADVANCE' ? 'rgba(0,212,170,0.3)' : 'rgba(245,166,35,0.3)'}`,
+                            color: t.paymentTag === 'ADVANCE' ? 'var(--teal-300)' : 'var(--accent-gold)',
+                            background: t.paymentTag === 'ADVANCE' ? 'rgba(61,199,173,0.12)' : 'rgba(212,166,74,0.12)',
+                            border: `1px solid ${t.paymentTag === 'ADVANCE' ? 'rgba(61,199,173,0.3)' : 'rgba(212,166,74,0.3)'}`,
                           }}>{t.paymentTag}</span>
                         ) : <span />
                       ) : (() => {
@@ -2199,16 +2199,16 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                           : (t.officialRate - t.rate) * t.foreignAmt;
                         if (comm === 0) return <span />;
                         return (
-                          <span style={{ ...M, fontSize: 10, color: comm > 0 ? '#00d4aa' : '#ff5c5c' }}>
+                          <span style={{ ...M, fontSize: 10, color: comm > 0 ? 'var(--teal-300)' : 'var(--accent-coral)' }}>
                             {comm > 0 ? '+' : '-'}{php(Math.abs(comm))}
                           </span>
                         );
                       })()}
                       {pendingEdits.has(t.id) ? (
                         <span title="Edit request pending admin approval" style={{
-                          ...M, fontSize: 9, color: '#f5a623',
-                          background: 'rgba(245,166,35,0.12)',
-                          border: '1px solid rgba(245,166,35,0.3)',
+                          ...M, fontSize: 9, color: 'var(--accent-gold)',
+                          background: 'rgba(212,166,74,0.12)',
+                          border: '1px solid rgba(212,166,74,0.3)',
                           borderRadius: 4, padding: '2px 5px', whiteSpace: 'nowrap',
                         }}>⏳</span>
                       ) : (
@@ -2218,7 +2218,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
                           data-testid={`edit-btn-${t.id}`}
                           style={{
                             background: 'none', border: '1px solid var(--border)',
-                            borderRadius: 4, color: 'var(--muted)', cursor: 'pointer',
+                            borderRadius: 4, color: 'var(--text-muted)', cursor: 'pointer',
                             ...M, fontSize: 10, padding: '2px 6px',
                           }}
                         >✎</button>
