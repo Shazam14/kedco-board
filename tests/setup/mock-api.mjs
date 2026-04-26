@@ -531,7 +531,7 @@ const server = createServer(async (req, res) => {
     return json(res, CURRENCIES.map(c => ({
       code: c.code, name: c.name, flag: c.flag, category: c.category,
       decimal_places: c.decimal_places,
-      carry_in_qty: 0, carry_in_rate: 0, position_set: false,
+      carry_in_qty: 0, carry_in_rate: 0, position_set: true,
     })));
   }
 
