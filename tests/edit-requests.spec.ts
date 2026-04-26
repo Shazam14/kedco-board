@@ -54,9 +54,9 @@ test.describe('Cashier — edit request flow', () => {
         opening_cash_php: 10000, closing_cash_php: null, expected_cash_php: null, cash_variance: null,
         txn_count: 0, total_sold_php: 0, total_bought_php: 0, total_than: 0,
       }) })
+    );
     await page.route('/api/counter/setup-status', route =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ratesSet: true, positionsSet: true }) })
-    );
     );
     // No pending edits on mount — so all edit buttons are visible
     await page.route('/api/counter/edit-requests', route =>
