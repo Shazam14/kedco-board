@@ -204,6 +204,9 @@ test.describe('Counter — no active shift (open shift overlay)', () => {
         await route.continue();
       }
     });
+    await page.route('/api/counter/setup-status', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ratesSet: true, positionsSet: true }) })
+    );
 
     await page.goto('/counter');
 

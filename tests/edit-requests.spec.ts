@@ -265,6 +265,9 @@ test.describe('Admin — edit requests page', () => {
     await page.route('/api/counter/edit-requests', route =>
       route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     );
+    await page.route('/api/counter/setup-status', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ratesSet: true, positionsSet: true }) })
+    );
     await page.goto('/counter');
     await page.locator('[data-testid^="edit-btn-OR-TESTAAAA"]').click();
     await expect(page.getByText('EDIT TRANSACTION')).toBeVisible();
