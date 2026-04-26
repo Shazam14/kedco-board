@@ -34,6 +34,9 @@ async function interceptNoShift(page: import('@playwright/test').Page) {
       await route.continue();
     }
   });
+  await page.route('/api/counter/setup-status', route =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ratesSet: true, positionsSet: true }) })
+  );
 }
 
 const MOCK_OPEN_SHIFT = {
