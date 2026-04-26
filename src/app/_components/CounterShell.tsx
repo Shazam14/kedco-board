@@ -1437,7 +1437,7 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
             fontSize: 15, fontWeight: 700, color: 'var(--text-on-teal)', fontFamily: 'var(--font-display)',
           }}>K</div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-strong)' }}>Kedco<span style={{ color: 'var(--teal-300)' }}>FX</span></div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-strong)' }}>Kedco <span style={{ color: 'var(--teal-300)' }}>FX</span></div>
             <div style={{ ...M, fontSize: 9, color: 'var(--text-faint)', marginTop: -1 }}>Counter · {terminal || 'Set device'}</div>
           </div>
         </div>

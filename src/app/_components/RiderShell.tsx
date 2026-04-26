@@ -269,8 +269,8 @@ export default function RiderShell({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg,var(--teal-300),var(--teal-600))', display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 700, color: 'var(--text-on-teal)', fontFamily: 'var(--font-display)' }}>K</div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-strong)' }}>Kedco<span style={{ color: 'var(--teal-300)' }}>FX</span> · Rider</div>
-            <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)' }}>{username}</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--teal-300)', ...Y }}>KEDCO FX</div>
+            <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)' }}>🏍️ {username}</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -390,7 +390,7 @@ export default function RiderShell({
                 background: type === t ? (t === 'BUY' ? 'var(--teal-400)' : 'var(--accent-coral)') : 'transparent',
                 color: type === t ? (t === 'BUY' ? 'var(--text-on-teal)' : '#fff') : 'var(--text-muted)',
                 fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer', transition: 'all 0.15s',
-              }}>{t === 'BUY' ? 'BUY FROM CUSTOMER' : 'SELL TO CUSTOMER'}</button>
+              }}>{t === 'BUY' ? 'BUY' : 'SELL'}</button>
             ))}
           </div>
 
