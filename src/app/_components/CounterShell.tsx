@@ -34,11 +34,15 @@ export default function CounterShell({
   banks,
   username,
   role = 'cashier',
+  ratesSet = false,
+  positionsSet = false,
 }: {
   currencies: CurrencyMeta[];
   banks: { id: number; name: string; code: string }[];
   username: string;
   role?: string;
+  ratesSet?: boolean;
+  positionsSet?: boolean;
 }) {
   const router = useRouter();
   useIdleTimeout(20);
@@ -725,6 +729,55 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
     background: 'var(--bg-card)', border: '1px solid var(--border)',
     borderRadius: 16, padding: 32, width: '100%', maxWidth: 440,
   };
+
+  // ── DAILY SETUP GUARD ─────────────────────────────────────────────────────
+  if (!ratesSet || !positionsSet) {
+    const checks = [
+      { label: "Today's rates set",        done: ratesSet,     hint: "Admin needs to set buy/sell rates for today." },
+      { label: "Opening positions set",    done: positionsSet, hint: "Admin needs to set carry-in stock for today." },
+    ];
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg-deep)', color: 'var(--text)' }}>
+        {/* nav */}
+        <nav style={{ display: 'flex', alignItems: 'center', padding: `0 ${px}px`, height: '60px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--nav-bg)', backdropFilter: 'blur(16px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,var(--teal-300),var(--teal-600))', display: 'grid', placeItems: 'center', fontSize: 15, fontWeight: 700, color: 'var(--text-on-teal)', fontFamily: 'var(--font-display)' }}>K</div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-strong)' }}>Kedco <span style={{ color: 'var(--teal-300)' }}>FX</span></div>
+              <div style={{ ...M, fontSize: 9, color: 'var(--text-faint)' }}>Counter · {username}</div>
+            </div>
+          </div>
+          <button onClick={handleLogout} style={{ marginLeft: 'auto', ...M, fontSize: 10, background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '5px 12px', color: 'var(--text-muted)', cursor: 'pointer' }}>LOGOUT</button>
+        </nav>
+        {/* guard card */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 'calc(100vh - 60px)', padding: 24 }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 20, padding: '36px 40px', width: '100%', maxWidth: 420, boxShadow: 'var(--shadow-pop)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(212,166,74,0.12)', border: '1px solid rgba(212,166,74,0.3)', display: 'grid', placeItems: 'center', fontSize: 22, flexShrink: 0 }}>⏳</div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-strong)', marginBottom: 3 }}>Not ready yet</div>
+                <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>Admin needs to complete daily setup before you can start.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+              {checks.map(c => (
+                <div key={c.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 12, background: c.done ? 'rgba(61,199,173,0.06)' : 'rgba(238,108,90,0.06)', border: `1px solid ${c.done ? 'rgba(61,199,173,0.2)' : 'rgba(238,108,90,0.2)'}` }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: c.done ? 'rgba(61,199,173,0.15)' : 'rgba(238,108,90,0.12)', color: c.done ? 'var(--teal-300)' : 'var(--accent-coral)', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>{c.done ? '✓' : '!'}</div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: c.done ? 'var(--teal-300)' : 'var(--text-strong)', marginBottom: 2 }}>{c.label}</div>
+                    {!c.done && <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>{c.hint}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => window.location.reload()} style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 12, cursor: 'pointer', letterSpacing: '0.08em' }}>
+              REFRESH
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-strong)' }}>
