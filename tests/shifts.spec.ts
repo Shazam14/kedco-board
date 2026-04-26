@@ -63,6 +63,9 @@ test.describe('Counter — shift already open', () => {
     await page.route('/api/counter/edit-requests', route =>
       route.fulfill({ status: 200, contentType: 'application/json', body: '[]' })
     );
+    await page.route('/api/counter/setup-status', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ratesSet: true, positionsSet: true }) })
+    );
     await page.goto('/counter');
   });
 

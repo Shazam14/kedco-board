@@ -718,15 +718,16 @@ ${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referr
   const noRatesAtAll = currencies.every(c => !c.rateSet);
   const ratesCount   = currencies.filter(c => c.rateSet).length;
 
-  // Client-side positions check (so it doesn't block initial server render)
+  // Client-side positions check via Next.js proxy route
   const [positionsSet, setPositionsSet] = useState<boolean | null>(null);
   useEffect(() => {
-    fetch('/api/v1/positions/today')
-      .then(r => r.ok ? r.json() : [])
-      .then((data: Array<{ position_set?: boolean }>) => {
-        setPositionsSet(Array.isArray(data) && data.some(p => p.position_set));
+    fetch('/api/counter/setup-status')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { positionsSet?: boolean } | null) => {
+        if (data != null) setPositionsSet(data.positionsSet ?? false);
+        // If fetch fails or returns null, leave positionsSet as null (don't block)
       })
-      .catch(() => setPositionsSet(false));
+      .catch(() => { /* leave as null — don't block if check unavailable */ });
   }, []);
 
   const overlayStyle: React.CSSProperties = {
