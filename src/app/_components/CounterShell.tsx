@@ -950,7 +950,7 @@ export default function CounterShell({
                 ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),   'var(--accent-gold)'],
                 ['Total Bought (PHP)', php(shiftClosed.total_bought_php ?? 0), 'var(--accent-sky)'],
                 ['Total THAN',         php(shiftClosed.total_than ?? 0),       'var(--teal-300)'],
-                ...(comm !== 0 ? [['Commission', (comm > 0 ? '-' : '+') + php(Math.abs(comm)), 'var(--accent-coral)'] as [string, string, string]] : []),
+                ...(comm !== 0 ? [['Commission', (comm > 0 ? '+' : '-') + php(Math.abs(comm)), comm > 0 ? 'var(--teal-300)' : 'var(--accent-coral)'] as [string, string, string]] : []),
                 ...(repl !== 0 ? [['Replenishment', '+' + php(repl), 'var(--teal-300)'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shiftClosed.opening_cash_php)],
                 ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
@@ -1097,7 +1097,7 @@ export default function CounterShell({
                 ['Transactions',       String(shift.txn_count ?? txns.length)],
                 ['Total Sold (PHP)',   php(shift.total_sold_php ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
                 ['Total Bought (PHP)', php(shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0))],
-                ...(comm !== 0 ? [['Commission', (comm > 0 ? '-' : '+') + php(Math.abs(comm)), 'var(--accent-coral)'] as [string, string, string]] : []),
+                ...(comm !== 0 ? [['Commission', (comm > 0 ? '+' : '-') + php(Math.abs(comm)), comm > 0 ? 'var(--teal-300)' : 'var(--accent-coral)'] as [string, string, string]] : []),
                 ...((shift.total_replenishment_php ?? 0) !== 0 ? [['Replenishment', '+' + php(shift.total_replenishment_php ?? 0), 'var(--teal-300)'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shift.opening_cash_php)],
               ];
