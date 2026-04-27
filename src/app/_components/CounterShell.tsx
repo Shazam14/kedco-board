@@ -385,7 +385,6 @@ export default function CounterShell({
 <div class="field">ID NO &nbsp;&nbsp;&nbsp;&nbsp;: ${txn.idNumber ?? ''}</div>
 <div class="field">BUSINESS STY :</div>
 <div class="field">SIGNATURE &nbsp;:</div>
-${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div>` : ''}
 
 <div class="dot"></div>
 
@@ -511,7 +510,6 @@ ${txn.referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txn.referrer}</div
 <div class="field">ID NO &nbsp;&nbsp;&nbsp;&nbsp;:</div>
 <div class="field">BUSINESS STY :</div>
 <div class="field">SIGNATURE &nbsp;:</div>
-${txns[0].referrer ? `<div class="field">REFERRER &nbsp;&nbsp;: ${txns[0].referrer}</div>` : ''}
 <div class="dot"></div>
 <div class="center">Thank you.</div>
 <div class="center">This is not an official receipt.</div>

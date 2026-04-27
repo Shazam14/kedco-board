@@ -80,6 +80,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     color: '#00d4aa',
   },
   {
+    href:  '/admin/commissions',
+    icon:  '💸',
+    title: 'Commission Log',
+    desc:  'All guide and cashier commissions across every transaction. Filter by date range.',
+    color: '#00d4aa',
+  },
+  {
     href:  '/admin/audit',
     icon:  '🔍',
     title: 'Audit Trail',
