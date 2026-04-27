@@ -1,6 +1,7 @@
 'use client';
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useNumberInput } from '@/hooks/useNumberInput';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -28,34 +29,54 @@ interface RiderTxn {
 
 type LineItem = { currency: string; amount: string };
 
+// One row — own useNumberInput instance so commas/dots work correctly
+function NumberItemRow({ currencies, item, onChange, onRemove, showRemove }: {
+  currencies: string[];
+  item: LineItem;
+  onChange: (item: LineItem) => void;
+  onRemove: () => void;
+  showRemove: boolean;
+}) {
+  const amtInput = useNumberInput(item.amount, 2);
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <select value={item.currency} onChange={e => onChange({ ...item, currency: e.target.value })}
+        style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', width: 100 }}>
+        {currencies.map(c => <option key={c} value={c}>{c}</option>)}
+      </select>
+      <input
+        type="text" inputMode="decimal" placeholder="Amount"
+        ref={amtInput.ref} value={amtInput.value}
+        onChange={e => { amtInput.onChange(e); onChange({ ...item, amount: e.target.value.replace(/[^0-9.]/g, '') }); }}
+        onFocus={amtInput.onFocus}
+        style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }} />
+      {showRemove && (
+        <button onClick={onRemove}
+          style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>✕</button>
+      )}
+    </div>
+  );
+}
+
 function ItemsEditor({ currencies, items, onChange }: {
   currencies: string[];
   items: LineItem[];
   onChange: (items: LineItem[]) => void;
 }) {
-  function update(i: number, field: keyof LineItem, val: string) {
-    const next = items.map((it, idx) => idx === i ? { ...it, [field]: val } : it);
-    onChange(next);
-  }
   function add() { onChange([...items, { currency: currencies[0] ?? 'PHP', amount: '' }]); }
   function remove(i: number) { onChange(items.filter((_, idx) => idx !== i)); }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {items.map((it, i) => (
-        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <select value={it.currency} onChange={e => update(i, 'currency', e.target.value)}
-            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', width: 100 }}>
-            {currencies.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <input value={it.amount} onChange={e => update(i, 'amount', e.target.value)}
-            placeholder="Amount"
-            style={{ flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }} />
-          {items.length > 1 && (
-            <button onClick={() => remove(i)}
-              style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>✕</button>
-          )}
-        </div>
+        <NumberItemRow
+          key={i}
+          currencies={currencies}
+          item={it}
+          onChange={item => onChange(items.map((x, idx) => idx === i ? item : x))}
+          onRemove={() => remove(i)}
+          showRemove={items.length > 1}
+        />
       ))}
       <button onClick={add}
         style={{ ...M, fontSize: 11, padding: '6px 0', borderRadius: 6, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer' }}>
