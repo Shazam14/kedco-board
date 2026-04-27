@@ -1563,7 +1563,9 @@ export default function CounterShell({
         display: 'grid',
         gridTemplateColumns: isMobile || isTablet ? '1fr' : '400px 1fr',
         gap: 24,
-        maxWidth: 1280,
+        maxWidth: 1600,
+        margin: '0 auto',
+        width: '100%',
       }}>
 
         {/* ── LEFT: FORM ── */}
@@ -2195,7 +2197,7 @@ export default function CounterShell({
                 {/* Column labels */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '100px 48px 56px 64px 80px 100px 100px 120px 120px 48px',
+                  gridTemplateColumns: '80px 44px 52px 56px 68px 90px 88px 106px 92px 44px',
                   padding: '8px 20px', borderBottom: '1px solid var(--border)',
                   ...M, fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.1em',
                   whiteSpace: 'nowrap',
@@ -2218,7 +2220,7 @@ export default function CounterShell({
                       key={t.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '100px 48px 56px 64px 80px 100px 100px 120px 120px 48px',
+                        gridTemplateColumns: '80px 44px 52px 56px 68px 90px 88px 106px 92px 44px',
                         padding: '10px 20px',
                         borderBottom: '1px solid var(--border)',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
