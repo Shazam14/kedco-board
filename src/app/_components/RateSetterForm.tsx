@@ -104,7 +104,8 @@ function CategoryBlock({
 
 export default function RateSetterForm({ currencies }: { currencies: CurrencyMeta[] }) {
   const router = useRouter();
-  const [saving, setSaving] = useState(false);
+  const [saving,       setSaving]       = useState(false);
+  const [carryInBusy, setCarryInBusy]  = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   // Initialize form values from existing rates
@@ -121,6 +122,19 @@ export default function RateSetterForm({ currencies }: { currencies: CurrencyMet
 
   function handleChange(code: string, field: 'buy' | 'sell', val: string) {
     setValues(prev => ({ ...prev, [code]: { ...prev[code], [field]: val } }));
+  }
+
+  async function handleCarryIn() {
+    setCarryInBusy(true);
+    setResult(null);
+    try {
+      const res = await fetch('/api/admin/rates/from-carry-in', { method: 'POST' });
+      const data = await res.json();
+      setResult({ ok: res.ok, message: data.message ?? data.detail ?? data.error ?? 'Done' });
+      if (res.ok) router.refresh();
+    } finally {
+      setCarryInBusy(false);
+    }
   }
 
   async function handleSave() {
@@ -184,6 +198,13 @@ export default function RateSetterForm({ currencies }: { currencies: CurrencyMet
               {result.ok ? '✓ ' : '✗ '}{result.message}
             </div>
           )}
+          <button
+            onClick={handleCarryIn}
+            disabled={carryInBusy}
+            style={{ padding:'10px 20px', borderRadius:8, border:'1px solid rgba(91,140,255,0.4)', background: carryInBusy ? 'var(--border)' : 'rgba(91,140,255,0.1)', color: carryInBusy ? 'var(--muted)' : '#5b8cff', fontFamily:"'Syne',sans-serif", fontSize:13, fontWeight:700, cursor: carryInBusy ? 'not-allowed' : 'pointer', letterSpacing:'0.02em' }}
+          >
+            {carryInBusy ? 'LOADING...' : 'USE YESTERDAY\'S RATES'}
+          </button>
           <button
             onClick={handleSave}
             disabled={saving}
