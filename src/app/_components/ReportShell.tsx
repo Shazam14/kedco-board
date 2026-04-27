@@ -84,7 +84,7 @@ function printReport(report: Report) {
       than:       rows.reduce((s, r) => s + r.than,       0),
     };
     return `
-      <tr style="background:#f0f0f0"><td colspan="9" style="padding:6px 8px;font-weight:700;font-size:11px;letter-spacing:0.1em">${CATEGORY_LABEL[cat] ?? cat}</td></tr>
+      <tr style="background:#f0f0f0"><td colspan="8" style="padding:6px 8px;font-weight:700;font-size:11px;letter-spacing:0.1em">${CATEGORY_LABEL[cat] ?? cat}</td></tr>
       ${rows.map((r, i) => `
         <tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
           <td style="padding:7px 8px;font-weight:700">${r.flag} ${r.code}</td>
@@ -95,7 +95,6 @@ function printReport(report: Report) {
           <td style="text-align:right;color:#c47000">${r.sell_count || '—'}</td>
           <td style="text-align:right;color:#c47000">${r.sell_qty > 0 ? r.sell_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}</td>
           <td style="text-align:right;color:#c47000;font-weight:600">${r.sell_php > 0 ? php(r.sell_php) : '—'}</td>
-          <td style="text-align:right;color:${r.than > 0 ? '#007a55' : '#999'};font-weight:600">${r.than > 0 ? php(r.than) : '—'}</td>
         </tr>
       `).join('')}
       <tr style="background:#e8e8e8;font-weight:700">
@@ -106,7 +105,6 @@ function printReport(report: Report) {
         <td style="text-align:right;color:#c47000">${tot.sell_count}</td>
         <td></td>
         <td style="text-align:right;color:#c47000">${php(tot.sell_php)}</td>
-        <td style="text-align:right;color:#007a55">${tot.than > 0 ? php(tot.than) : '—'}</td>
       </tr>`;
   }).join('');
 
@@ -118,7 +116,6 @@ function printReport(report: Report) {
       <td style="text-align:right;color:#2255cc;font-weight:600">${php(r.buy_php)}</td>
       <td style="text-align:right;color:#c47000">${r.sell_count}</td>
       <td style="text-align:right;color:#c47000;font-weight:600">${php(r.sell_php)}</td>
-      <td style="text-align:right;color:${r.than > 0 ? '#007a55' : '#999'};font-weight:700">${r.than > 0 ? php(r.than) : '—'}</td>
       ${hasComm ? `<td style="text-align:right;color:${r.commission !== 0 ? '#007a55' : '#999'};font-weight:700">${r.commission !== 0 ? (r.commission > 0 ? '+' : '') + php(r.commission) : '—'}</td>` : ''}
     </tr>`).join('');
 
@@ -132,7 +129,6 @@ function printReport(report: Report) {
       <td style="text-align:right">${fmtFx(t.foreign_amt, t.currency)}</td>
       <td style="text-align:right;color:${t.type === 'BUY' ? '#2255cc' : '#c47000'}">${t.rate}</td>
       <td style="text-align:right;font-weight:600">${php(t.php_amt)}</td>
-      <td style="text-align:right;color:${t.than > 0 ? '#007a55' : '#999'}">${t.than > 0 ? php(t.than) : '—'}</td>
       <td style="font-size:10px;color:#555">${t.cashier}</td>
       <td style="font-size:10px;color:#555">${t.customer ?? '—'}</td>
     </tr>`).join('');
@@ -195,7 +191,6 @@ function printReport(report: Report) {
       <div class="summary-box"><div class="label">OPENING STOCK</div><div class="value" style="color:#555">${php(openingStockPhp)}</div></div>
       <div class="summary-box"><div class="label">TOTAL BOUGHT</div><div class="value" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
       <div class="summary-box"><div class="label">TOTAL SOLD</div><div class="value" style="color:#c47000">${php(report.total_sold_php)}</div></div>
-      <div class="summary-box"><div class="label">TOTAL THAN (MARGIN)</div><div class="value" style="color:#007a55">${php(report.total_than)}</div></div>
       ${hasComm ? `<div class="summary-box"><div class="label">TOTAL COMM</div><div class="value" style="color:#007a55">${report.total_commission > 0 ? '+' : ''}${php(report.total_commission)}</div></div>` : ''}
     </div>
     <div class="flow">
@@ -259,7 +254,7 @@ function printReport(report: Report) {
     <h2>CURRENCY BREAKDOWN</h2>
     <table>
       <thead><tr>
-        ${th('CURRENCY')}${th('NAME')}${th('BUY #','right')}${th('BUY QTY','right')}${th('BUY PHP','right')}${th('SELL #','right')}${th('SELL QTY','right')}${th('SELL PHP','right')}${th('THAN','right')}
+        ${th('CURRENCY')}${th('NAME')}${th('BUY #','right')}${th('BUY QTY','right')}${th('BUY PHP','right')}${th('SELL #','right')}${th('SELL QTY','right')}${th('SELL PHP','right')}
       </tr></thead>
       <tbody>${currencyRows}</tbody>
       <tfoot><tr style="background:#111;color:#fff;font-weight:900">
@@ -268,19 +263,18 @@ function printReport(report: Report) {
         <td style="text-align:right;padding:8px;font-size:13px">${php(report.total_bought_php)}</td>
         <td></td><td></td>
         <td style="text-align:right;padding:8px;font-size:13px">${php(report.total_sold_php)}</td>
-        <td style="text-align:right;padding:8px;font-size:13px;color:#4ade80">${php(report.total_than)}</td>
       </tr></tfoot>
     </table>
 
     <h2>PER-CASHIER SUMMARY</h2>
     <table>
-      <thead><tr>${th('CASHIER')}${th('BUY TXN','right')}${th('BOUGHT (PHP)','right')}${th('SELL TXN','right')}${th('SOLD (PHP)','right')}${th('THAN','right')}${hasComm ? th('COMM','right') : ''}</tr></thead>
+      <thead><tr>${th('CASHIER')}${th('BUY TXN','right')}${th('BOUGHT (PHP)','right')}${th('SELL TXN','right')}${th('SOLD (PHP)','right')}${hasComm ? th('COMM','right') : ''}</tr></thead>
       <tbody>${cashierRows}</tbody>
     </table>
 
     <h2>TRANSACTION LOG</h2>
     <table>
-      <thead><tr>${th('RECEIPT')}${th('TIME')}${th('TYPE')}${th('SRC')}${th('CCY')}${th('FOREIGN','right')}${th('RATE','right')}${th('PHP','right')}${th('THAN','right')}${th('CASHIER')}${th('CUST')}</tr></thead>
+      <thead><tr>${th('RECEIPT')}${th('TIME')}${th('TYPE')}${th('SRC')}${th('CCY')}${th('FOREIGN','right')}${th('RATE','right')}${th('PHP','right')}${th('CASHIER')}${th('CUST')}</tr></thead>
       <tbody>${txnRows}</tbody>
     </table>
 
@@ -302,7 +296,7 @@ export default function ReportShell({
   selectedDate: string;
 }) {
   const router  = useRouter();
-  const [date, setDate] = useState(selectedDate);
+  const [date, setDate] = useState(selectedDate || report?.date || '');
   const [isPending, startTransition] = useTransition();
 
   function goToDate(d: string) {
