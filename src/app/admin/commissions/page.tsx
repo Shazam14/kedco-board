@@ -40,10 +40,6 @@ function fmtDate(d: string) {
   return dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export default function CommissionLogPage() {
   const router = useRouter();
   const [rows, setRows]       = useState<CommissionRow[]>([]);
@@ -59,15 +55,10 @@ export default function CommissionLogPage() {
     if (to)   qs.set('date_to', to);
     const qStr = qs.toString() ? `?${qs}` : '';
 
-    // payouts default to today when no date filter set
-    const pqs = new URLSearchParams();
-    pqs.set('date_from', from || today());
-    pqs.set('date_to',   to   || today());
-
     Promise.all([
       fetch(`/api/admin/commissions${qStr}`, { cache: 'no-store' })
         .then(r => { if (r.status === 403) router.push('/login'); return r.json(); }),
-      fetch(`/api/admin/commission-payouts?${pqs}`, { cache: 'no-store' })
+      fetch(`/api/admin/commission-payouts${qStr}`, { cache: 'no-store' })
         .then(r => r.ok ? r.json() : []),
     ]).then(([txns, pays]) => {
       if (Array.isArray(txns)) setRows(txns);
@@ -194,7 +185,7 @@ export default function CommissionLogPage() {
         {!loading && referrerSummary.length > 0 && (
           <div style={{ marginBottom: 28 }}>
             <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.15em', marginBottom: 10 }}>
-              GUIDE / REFERRER PAYOUTS {!dateFrom && !dateTo ? `— today ${today()}` : ''}
+              GUIDE / REFERRER SUMMARY {dateFrom || dateTo ? `— filtered` : '— all time'}
             </div>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
