@@ -927,6 +927,17 @@ export default function CounterShell({
             >
               {shiftLoading ? 'OPENING...' : 'OPEN SHIFT'}
             </button>
+
+            <button
+              onClick={handleLogout}
+              style={{
+                marginTop: 16, width: '100%', padding: '10px', borderRadius: 10, border: '1px solid var(--border)',
+                background: 'transparent', color: 'var(--text-muted)',
+                ...M, fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              Log out
+            </button>
           </div>
         </div>
       )}
