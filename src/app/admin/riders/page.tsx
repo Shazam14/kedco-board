@@ -33,9 +33,7 @@ export default async function RidersPage() {
   const riders = (users as { username: string; full_name: string; role: string }[])
     .filter(u => u.role === 'rider');
 
-  const activeCurrencies = (currencies as { code: string; name: string; is_active: string }[])
-    .filter(c => c.is_active === 'Y')
-    .map(c => c.code);
+  const activeCurrencies = ['PHP', ...(currencies as { code: string }[]).map(c => c.code)];
 
   return <RidersAdminShell dispatches={dispatches} riders={riders} currencies={activeCurrencies} />;
 }
