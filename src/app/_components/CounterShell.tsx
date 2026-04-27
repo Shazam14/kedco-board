@@ -615,11 +615,12 @@ export default function CounterShell({
     }
   }
 
-  // Running totals
-  const totalBought     = txns.filter(t => t.type === 'BUY').reduce((s, t) => s + t.phpAmt, 0);
-  const totalSold       = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
-  const totalThan       = txns.reduce((s, t) => s + t.than, 0);
-  const totalCommission = txns.reduce((s, t) => {
+  // Running totals — supervisor sees only their own transactions in the counter panel
+  const myTxns          = role === 'supervisor' ? txns.filter(t => t.cashier === username) : txns;
+  const totalBought     = myTxns.filter(t => t.type === 'BUY').reduce((s, t) => s + t.phpAmt, 0);
+  const totalSold       = myTxns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
+  const totalThan       = myTxns.reduce((s, t) => s + t.than, 0);
+  const totalCommission = myTxns.reduce((s, t) => {
     if (!t.officialRate) return s;
     const c = t.type === 'SELL'
       ? (t.rate - t.officialRate) * t.foreignAmt
@@ -636,7 +637,7 @@ export default function CounterShell({
 
     // Per-currency breakdown from local txns
     const byCcy: Record<string, { buyQty: number; buyPhp: number; sellQty: number; sellPhp: number }> = {};
-    for (const t of txns) {
+    for (const t of myTxns) {
       if (!byCcy[t.currency]) byCcy[t.currency] = { buyQty: 0, buyPhp: 0, sellQty: 0, sellPhp: 0 };
       if (t.type === 'BUY') { byCcy[t.currency].buyQty += t.foreignAmt; byCcy[t.currency].buyPhp += t.phpAmt; }
       else                  { byCcy[t.currency].sellQty += t.foreignAmt; byCcy[t.currency].sellPhp += t.phpAmt; }
@@ -686,7 +687,7 @@ export default function CounterShell({
         <div style="font-size:11px;color:#888;margin-top:2px">${s.cashier_name} (@${s.cashier})</div>
       </div>
 
-      <div class="row"><span class="label">Transactions</span><span class="val">${s.txn_count ?? txns.length}</span></div>
+      <div class="row"><span class="label">Transactions</span><span class="val">${s.txn_count ?? myTxns.length}</span></div>
       <div class="row"><span class="label">Total Sold (PHP)</span><span class="val" style="color:#c47000">${phpFmt(s.total_sold_php ?? 0)}</span></div>
       <div class="row"><span class="label">Total Bought (PHP)</span><span class="val" style="color:#2255cc">${phpFmt(s.total_bought_php ?? 0)}</span></div>
       <div class="row"><span class="label">Total THAN</span><span class="val" style="color:#007a55">${phpFmt(s.total_than ?? 0)}</span></div>
@@ -1103,10 +1104,10 @@ export default function CounterShell({
             {/* Shift summary so far */}
             {(() => {
               const comm      = shift.total_commission ?? totalCommission;
-              const boughtRaw = shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
+              const boughtRaw = shift.total_bought_php ?? myTxns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
               const rows: [string, string, string?][] = [
-                ['Transactions',       String(shift.txn_count ?? txns.length)],
-                ['Total Sold (PHP)',   php(shift.total_sold_php ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
+                ['Transactions',       String(shift.txn_count ?? myTxns.length)],
+                ['Total Sold (PHP)',   php(shift.total_sold_php ?? myTxns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
                 ['Total Bought (PHP)', php(boughtRaw + comm)],
                 ...((shift.total_replenishment_php ?? 0) !== 0 ? [['Replenishment', '+' + php(shift.total_replenishment_php ?? 0), 'var(--teal-300)'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shift.opening_cash_php)],
@@ -1125,7 +1126,7 @@ export default function CounterShell({
             {/* Per-currency breakdown */}
             {(() => {
               const byCcy: Record<string, { buyQty: number; buyPhp: number; sellQty: number; sellPhp: number }> = {};
-              for (const t of txns) {
+              for (const t of myTxns) {
                 if (!byCcy[t.currency]) byCcy[t.currency] = { buyQty: 0, buyPhp: 0, sellQty: 0, sellPhp: 0 };
                 if (t.type === 'BUY') { byCcy[t.currency].buyQty += t.foreignAmt; byCcy[t.currency].buyPhp += t.phpAmt; }
                 else                  { byCcy[t.currency].sellQty += t.foreignAmt; byCcy[t.currency].sellPhp += t.phpAmt; }
@@ -1158,8 +1159,8 @@ export default function CounterShell({
             {(() => {
               const comm      = shift.total_commission ?? totalCommission;
               const repl      = shift.total_replenishment_php ?? 0;
-              const soldAmt   = shift.total_sold_php   ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0);
-              const boughtAmt = shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
+              const soldAmt   = shift.total_sold_php   ?? myTxns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0);
+              const boughtAmt = shift.total_bought_php ?? myTxns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
               const expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt - comm + repl;
               return (
                 <div style={{
@@ -1549,6 +1550,14 @@ export default function CounterShell({
             </a>
             <a href="/admin" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
               ADMIN
+            </a>
+          </>)}
+          {role === 'supervisor' && (<>
+            <a href="/supervisor/transactions" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
+              CASHIER TXNS
+            </a>
+            <a href="/admin/riders" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
+              RIDERS
             </a>
           </>)}
           {!isMobile && <a href="/passbook" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(61,199,173,0.3)', background: 'transparent', color: 'var(--teal-300)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
@@ -2188,7 +2197,7 @@ export default function CounterShell({
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
               <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.15em' }}>
-                TODAY&apos;S TRANSACTIONS — {txns.length}
+                TODAY&apos;S TRANSACTIONS — {myTxns.length}
               </div>
               <button
                 onClick={fetchTxns}
@@ -2198,7 +2207,7 @@ export default function CounterShell({
               </button>
             </div>
 
-            {txns.length === 0 ? (
+            {myTxns.length === 0 ? (
               <div style={{ padding: '48px 20px', textAlign: 'center', ...M, fontSize: 11, color: 'var(--text-muted)' }}>
                 No transactions yet today.
               </div>
@@ -2225,7 +2234,7 @@ export default function CounterShell({
                 </div>
 
                 <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 300px)' }}>
-                  {txns.map((t, i) => (
+                  {myTxns.map((t, i) => (
                     <div
                       key={t.id}
                       style={{

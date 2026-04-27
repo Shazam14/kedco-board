@@ -135,9 +135,33 @@ test.describe('Supervisor counter', () => {
     await expect(page.getByRole('link', { name: 'ADMIN' })).not.toBeVisible();
   });
 
+  test('supervisor nav shows CASHIER TXNS and RIDERS links', async ({ page }) => {
+    await expect(page.getByRole('link', { name: 'CASHIER TXNS' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'RIDERS' })).toBeVisible();
+  });
+
   test('supervisor counter shows username and logout', async ({ page }) => {
     await expect(page.getByText('supervisor1')).toBeVisible();
     await expect(page.getByRole('button', { name: 'LOGOUT' })).toBeVisible();
+  });
+
+  test('supervisor counter shows only own transactions, not other cashiers', async ({ page }) => {
+    await page.route('/api/counter/transactions', route =>
+      route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify([
+          { id: 'OR-SUP00001', time: '09:00 AM', type: 'BUY', source: 'COUNTER',
+            currency: 'USD', foreignAmt: 100, rate: 56, phpAmt: 5600, than: 0,
+            cashier: 'supervisor1', paymentMode: 'CASH' },
+          { id: 'OR-CSH00002', time: '09:30 AM', type: 'SELL', source: 'COUNTER',
+            currency: 'EUR', foreignAmt: 50, rate: 62, phpAmt: 3100, than: 50,
+            cashier: 'cashier1', paymentMode: 'CASH' },
+        ]),
+      })
+    );
+    await page.reload();
+    await expect(page.getByText('OR-SUP00001')).toBeVisible();
+    await expect(page.getByText('OR-CSH00002')).not.toBeVisible();
   });
 
   test('supervisor edit button submits a request, not direct save', async ({ page }) => {
@@ -147,7 +171,7 @@ test.describe('Supervisor counter', () => {
         body: JSON.stringify([{
           id: 'OR-AABBCC11', time: '10:00 AM', type: 'BUY', source: 'COUNTER',
           currency: 'USD', foreignAmt: 100, rate: 56, phpAmt: 5600, than: 0,
-          cashier: 'cashier1', paymentMode: 'CASH',
+          cashier: 'supervisor1', paymentMode: 'CASH',
         }]),
       })
     );
@@ -158,5 +182,41 @@ test.describe('Supervisor counter', () => {
     await page.getByTestId('edit-btn-OR-AABBCC11').click();
     await expect(page.getByText('REQUEST EDIT')).toBeVisible();
     await expect(page.getByTestId('edit-submit-btn')).toHaveText('SEND REQUEST');
+  });
+});
+
+const SUP_TXNS = [
+  { id: 'OR-SUP00001', time: '09:00 AM', type: 'BUY', source: 'COUNTER',
+    currency: 'USD', foreignAmt: 100, rate: 56, phpAmt: 5600, than: 0,
+    cashier: 'supervisor1', paymentMode: 'CASH' },
+  { id: 'OR-CSH00002', time: '09:30 AM', type: 'SELL', source: 'COUNTER',
+    currency: 'EUR', foreignAmt: 50, rate: 62, phpAmt: 3100, than: 50,
+    cashier: 'cashier1', paymentMode: 'CASH' },
+];
+
+test.describe('Supervisor transactions page', () => {
+  test.use({ storageState: path.join('tests', '.auth', 'supervisor.json') });
+
+  test.beforeEach(async ({ page }) => {
+    await page.route('/api/counter/transactions', route =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SUP_TXNS) })
+    );
+    await page.goto('/supervisor/transactions');
+  });
+
+  test('shows all cashier transactions from all cashiers', async ({ page }) => {
+    await expect(page.getByText('OR-SUP00001')).toBeVisible();
+    await expect(page.getByText('OR-CSH00002')).toBeVisible();
+  });
+
+  test('cashier filter narrows to selected cashier', async ({ page }) => {
+    await page.selectOption('select', 'cashier1');
+    await expect(page.getByText('OR-CSH00002')).toBeVisible();
+    await expect(page.getByText('OR-SUP00001')).not.toBeVisible();
+  });
+
+  test('nav has COUNTER back link and RIDERS link', async ({ page }) => {
+    await expect(page.getByRole('link', { name: '← COUNTER' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'RIDERS' })).toBeVisible();
   });
 });
