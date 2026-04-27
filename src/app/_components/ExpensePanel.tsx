@@ -54,18 +54,25 @@ export default function ExpensePanel({ username }: { username: string }) {
     setSaving(true); setError(null);
     const url    = editId ? `/api/counter/expenses/${editId}` : '/api/counter/expenses';
     const method = editId ? 'PATCH' : 'POST';
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount_php: +amountInput.raw, category, description: desc || undefined }),
-    });
-    const data = await res.json();
-    if (!res.ok) { setError(data.detail ?? 'Failed'); }
-    else {
-      setExpenses(prev => editId ? prev.map(e => e.id === editId ? data : e) : [data, ...prev]);
-      setShowForm(false); setEditId(null); amountInput.setValue(''); setDesc(''); setCategory('OFFICE_SUPPLIES');
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount_php: +amountInput.raw, category, description: desc || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = typeof data.detail === 'string' ? data.detail : (data.error ?? 'Failed to save expense');
+        setError(msg);
+      } else {
+        setExpenses(prev => editId ? prev.map(e => e.id === editId ? data : e) : [data, ...prev]);
+        setShowForm(false); setEditId(null); amountInput.setValue(''); setDesc(''); setCategory('OFFICE_SUPPLIES');
+      }
+    } catch {
+      setError('Network error — please try again');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   function startEdit(e: Expense) {
