@@ -21,6 +21,14 @@ type CommissionRow = {
   referrer?: string;
 };
 
+type PayoutRow = {
+  id: string;
+  date: string;
+  amount_php: number;
+  referrer?: string;
+  recorded_by: string;
+};
+
 function calcCommission(row: CommissionRow): number {
   return row.type === 'SELL'
     ? (row.rate - row.official_rate) * row.foreign_amt
@@ -32,9 +40,14 @@ function fmtDate(d: string) {
   return dt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function CommissionLogPage() {
   const router = useRouter();
-  const [rows, setRows] = useState<CommissionRow[]>([]);
+  const [rows, setRows]       = useState<CommissionRow[]>([]);
+  const [payouts, setPayouts] = useState<PayoutRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
@@ -44,15 +57,46 @@ export default function CommissionLogPage() {
     const qs = new URLSearchParams();
     if (from) qs.set('date_from', from);
     if (to)   qs.set('date_to', to);
-    fetch(`/api/admin/commissions${qs.toString() ? `?${qs}` : ''}`, { cache: 'no-store' })
-      .then(r => { if (r.status === 403) router.push('/login'); return r.json(); })
-      .then(data => { if (Array.isArray(data)) setRows(data); })
-      .finally(() => setLoading(false));
+    const qStr = qs.toString() ? `?${qs}` : '';
+
+    // payouts default to today when no date filter set
+    const pqs = new URLSearchParams();
+    pqs.set('date_from', from || today());
+    pqs.set('date_to',   to   || today());
+
+    Promise.all([
+      fetch(`/api/admin/commissions${qStr}`, { cache: 'no-store' })
+        .then(r => { if (r.status === 403) router.push('/login'); return r.json(); }),
+      fetch(`/api/admin/commission-payouts?${pqs}`, { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : []),
+    ]).then(([txns, pays]) => {
+      if (Array.isArray(txns)) setRows(txns);
+      if (Array.isArray(pays)) setPayouts(pays);
+    }).finally(() => setLoading(false));
   }
 
   useEffect(() => { load(); }, []);
 
   const totalComm = rows.reduce((s, r) => s + calcCommission(r), 0);
+
+  // per-referrer summary: earned from transactions vs paid out from expenses
+  const referrerMap = new Map<string, { earned: number; paid: number }>();
+  for (const r of rows) {
+    if (!r.referrer) continue;
+    const key = r.referrer;
+    const cur = referrerMap.get(key) ?? { earned: 0, paid: 0 };
+    cur.earned += calcCommission(r) / 2; // guide gets half
+    referrerMap.set(key, cur);
+  }
+  for (const p of payouts) {
+    if (!p.referrer) continue;
+    const key = p.referrer;
+    const cur = referrerMap.get(key) ?? { earned: 0, paid: 0 };
+    cur.paid += p.amount_php;
+    referrerMap.set(key, cur);
+  }
+  const referrerSummary = Array.from(referrerMap.entries())
+    .sort((a, b) => b[1].earned - a[1].earned);
 
   const th: React.CSSProperties = {
     ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em',
@@ -142,6 +186,42 @@ export default function CommissionLogPage() {
             <div style={{ background: 'var(--surface)', border: '1px solid rgba(0,212,170,0.3)', borderRadius: 10, padding: '14px 20px' }}>
               <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 4 }}>TOTAL COMMISSION</div>
               <div style={{ ...Y, fontSize: 18, fontWeight: 700, color: 'var(--teal-300)' }}>{php(totalComm)}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Per-referrer payout summary */}
+        {!loading && referrerSummary.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.15em', marginBottom: 10 }}>
+              GUIDE / REFERRER PAYOUTS {!dateFrom && !dateTo ? `— today ${today()}` : ''}
+            </div>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={th}>REFERRER</th>
+                    <th style={{ ...th, textAlign: 'right' }}>GUIDE EARNED</th>
+                    <th style={{ ...th, textAlign: 'right' }}>PAID OUT</th>
+                    <th style={{ ...th, textAlign: 'right' }}>BALANCE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referrerSummary.map(([name, { earned, paid }]) => {
+                    const balance = earned - paid;
+                    return (
+                      <tr key={name}>
+                        <td style={td}>{name}</td>
+                        <td style={{ ...td, textAlign: 'right', color: 'var(--teal-300)' }}>{php(earned)}</td>
+                        <td style={{ ...td, textAlign: 'right' }}>{paid > 0 ? php(paid) : '—'}</td>
+                        <td style={{ ...td, textAlign: 'right', fontWeight: 700, color: balance > 0.005 ? '#ee6c5a' : 'var(--teal-300)' }}>
+                          {php(balance)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

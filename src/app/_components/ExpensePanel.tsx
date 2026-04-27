@@ -7,18 +7,19 @@ const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
 
 const CATEGORIES = [
   'OFFICE_SUPPLIES', 'UTILITIES', 'TRANSPORTATION', 'MEALS',
-  'MAINTENANCE', 'SALARY_ADVANCE', 'BANK_CHARGES', 'OTHERS',
+  'MAINTENANCE', 'SALARY_ADVANCE', 'BANK_CHARGES', 'COMMISSION_PAYOUT', 'OTHERS',
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
-  OFFICE_SUPPLIES: 'Office Supplies',
-  UTILITIES:       'Utilities',
-  TRANSPORTATION:  'Transportation',
-  MEALS:           'Meals',
-  MAINTENANCE:     'Maintenance',
-  SALARY_ADVANCE:  'Salary Advance',
-  BANK_CHARGES:    'Bank Charges',
-  OTHERS:          'Others',
+  OFFICE_SUPPLIES:   'Office Supplies',
+  UTILITIES:         'Utilities',
+  TRANSPORTATION:    'Transportation',
+  MEALS:             'Meals',
+  MAINTENANCE:       'Maintenance',
+  SALARY_ADVANCE:    'Salary Advance',
+  BANK_CHARGES:      'Bank Charges',
+  COMMISSION_PAYOUT: 'Commission Payout',
+  OTHERS:            'Others',
 };
 
 interface Expense {
@@ -26,6 +27,7 @@ interface Expense {
   amount_php: number;
   category: string;
   description?: string;
+  referrer?: string;
   recorded_by: string;
 }
 
@@ -36,6 +38,7 @@ export default function ExpensePanel({ username }: { username: string }) {
   const [showForm, setShowForm] = useState(false);
   const [category, setCategory] = useState('OFFICE_SUPPLIES');
   const [desc, setDesc]         = useState('');
+  const [referrer, setReferrer] = useState('');
   const amountInput             = useNumberInput('', 2);
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState<string | null>(null);
@@ -51,6 +54,7 @@ export default function ExpensePanel({ username }: { username: string }) {
   async function submit() {
     if (!amountInput.raw || +amountInput.raw <= 0) { setError('Enter a valid amount'); return; }
     if (category === 'OTHERS' && !desc.trim()) { setError('Description required for Others'); return; }
+    if (category === 'COMMISSION_PAYOUT' && !referrer.trim()) { setError('Referrer / tour guide name required'); return; }
     setSaving(true); setError(null);
     const url    = editId ? `/api/counter/expenses/${editId}` : '/api/counter/expenses';
     const method = editId ? 'PATCH' : 'POST';
@@ -58,7 +62,12 @@ export default function ExpensePanel({ username }: { username: string }) {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_php: +amountInput.raw, category, description: desc || undefined }),
+        body: JSON.stringify({
+          amount_php: +amountInput.raw,
+          category,
+          description: desc || undefined,
+          referrer: referrer.trim() || undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -66,7 +75,7 @@ export default function ExpensePanel({ username }: { username: string }) {
         setError(msg);
       } else {
         setExpenses(prev => editId ? prev.map(e => e.id === editId ? data : e) : [data, ...prev]);
-        setShowForm(false); setEditId(null); amountInput.setValue(''); setDesc(''); setCategory('OFFICE_SUPPLIES');
+        setShowForm(false); setEditId(null); amountInput.setValue(''); setDesc(''); setReferrer(''); setCategory('OFFICE_SUPPLIES');
       }
     } catch {
       setError('Network error — please try again');
@@ -77,6 +86,7 @@ export default function ExpensePanel({ username }: { username: string }) {
 
   function startEdit(e: Expense) {
     setEditId(e.id); setCategory(e.category); setDesc(e.description ?? '');
+    setReferrer(e.referrer ?? '');
     amountInput.setValue(String(e.amount_php)); setShowForm(true); setError(null);
   }
 
@@ -90,7 +100,7 @@ export default function ExpensePanel({ username }: { username: string }) {
           <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: '#ff5c5c' }}>{php(total)}</span>
         </div>
         <button
-          onClick={() => { setShowForm(v => !v); setEditId(null); setError(null); amountInput.setValue(''); setDesc(''); setCategory('OFFICE_SUPPLIES'); }}
+          onClick={() => { setShowForm(v => !v); setEditId(null); setError(null); amountInput.setValue(''); setDesc(''); setReferrer(''); setCategory('OFFICE_SUPPLIES'); }}
           style={{ ...M, fontSize: 11, padding: '7px 16px', borderRadius: 8, cursor: 'pointer', border: 'none', background: showForm ? 'var(--surface2)' : 'rgba(255,92,92,0.15)', color: showForm ? 'var(--muted)' : '#ff5c5c' }}
         >
           {showForm ? 'Cancel' : '+ Expense'}
@@ -110,6 +120,16 @@ export default function ExpensePanel({ username }: { username: string }) {
             >
               {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
             </select>
+
+            {category === 'COMMISSION_PAYOUT' && (
+              <input
+                type="text"
+                placeholder="Referrer / Tour Guide name (required)"
+                value={referrer}
+                onChange={e => setReferrer(e.target.value)}
+                style={{ background: 'var(--surface)', border: `1px solid ${!referrer.trim() ? 'rgba(255,92,92,0.5)' : 'var(--border)'}`, borderRadius: 8, padding: '9px 12px', color: '#e2e6f0', ...M, fontSize: 12, outline: 'none' }}
+              />
+            )}
 
             <input
               type="text"
@@ -148,6 +168,7 @@ export default function ExpensePanel({ username }: { username: string }) {
             <div key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ ...M, fontSize: 11, color: '#e2e6f0' }}>{CATEGORY_LABELS[e.category] ?? e.category}</div>
+                {e.referrer && <div style={{ ...M, fontSize: 10, color: 'var(--teal-300)', marginTop: 2 }}>→ {e.referrer}</div>}
                 {e.description && <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>{e.description}</div>}
                 <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginTop: 2 }}>by {e.recorded_by}</div>
               </div>
