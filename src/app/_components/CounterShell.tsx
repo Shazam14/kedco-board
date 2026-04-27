@@ -947,10 +947,9 @@ export default function CounterShell({
               const variance = shiftClosed.cash_variance ?? 0;
               const rows: [string, string, string?, number?][] = [
                 ['Transactions',      String(shiftClosed.txn_count ?? 0)],
-                ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),   'var(--accent-gold)'],
-                ['Total Bought (PHP)', php(shiftClosed.total_bought_php ?? 0), 'var(--accent-sky)'],
-                ['Total THAN',         php(shiftClosed.total_than ?? 0),       'var(--teal-300)'],
-                ...(comm !== 0 ? [['Commission', (comm > 0 ? '+' : '-') + php(Math.abs(comm)), comm > 0 ? 'var(--teal-300)' : 'var(--accent-coral)'] as [string, string, string]] : []),
+                ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),              'var(--accent-gold)'],
+                ['Total Bought (PHP)', php((shiftClosed.total_bought_php ?? 0) + comm),   'var(--accent-sky)'],
+                ['Total THAN',         php(shiftClosed.total_than ?? 0),                  'var(--teal-300)'],
                 ...(repl !== 0 ? [['Replenishment', '+' + php(repl), 'var(--teal-300)'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shiftClosed.opening_cash_php)],
                 ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
@@ -1092,12 +1091,12 @@ export default function CounterShell({
 
             {/* Shift summary so far */}
             {(() => {
-              const comm = shift.total_commission ?? totalCommission;
+              const comm      = shift.total_commission ?? totalCommission;
+              const boughtRaw = shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
               const rows: [string, string, string?][] = [
                 ['Transactions',       String(shift.txn_count ?? txns.length)],
                 ['Total Sold (PHP)',   php(shift.total_sold_php ?? txns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
-                ['Total Bought (PHP)', php(shift.total_bought_php ?? txns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0))],
-                ...(comm !== 0 ? [['Commission', (comm > 0 ? '+' : '-') + php(Math.abs(comm)), comm > 0 ? 'var(--teal-300)' : 'var(--accent-coral)'] as [string, string, string]] : []),
+                ['Total Bought (PHP)', php(boughtRaw + comm)],
                 ...((shift.total_replenishment_php ?? 0) !== 0 ? [['Replenishment', '+' + php(shift.total_replenishment_php ?? 0), 'var(--teal-300)'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shift.opening_cash_php)],
               ];
