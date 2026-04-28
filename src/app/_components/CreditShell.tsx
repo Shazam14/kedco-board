@@ -13,7 +13,7 @@ const inp: React.CSSProperties = {
 };
 const label: React.CSSProperties = { fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'var(--muted)', marginBottom: 4, display: 'block', letterSpacing: '0.08em' };
 
-interface Installment { id: string; installment_no: number; due_date: string; amount: number; paid_at: string | null; received_by: string | null; }
+interface Installment { id: string; installment_no: number; due_date: string | null; amount: number; paid_at: string | null; received_by: string | null; }
 interface Draw        { id: string; amount: number; notes: string | null; created_by: string; created_at: string; }
 interface Credit      { id: string; customer_name: string; currency_code: string; principal: number; interest: number; credit_type: string; status: string; disbursed_date: string; notes: string | null; created_by: string; installments: Installment[]; draws: Draw[]; }
 interface DrawRules   { interval_minutes: number; max_per_day: number; max_amount: number; }
@@ -84,10 +84,9 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
 
   async function submitCredit() {
     if (!fName.trim() || !fPrincipalInput.raw || !fInterestRateInput.raw || !fDate) { setError('Fill in all required fields.'); return; }
-    if (fDates.some(d => !d)) { setError('Set all due dates.'); return; }
 
     setSaving(true); setError(null);
-    const installments = fDates.map((due_date) => ({ due_date, amount: amountPerInstallment }));
+    const installments = fDates.map((due_date) => ({ due_date: due_date || null, amount: amountPerInstallment }));
     const res = await fetch('/api/admin/credits', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -182,6 +181,15 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
 
   const filtered = credits.filter(c => filter === 'ALL' || c.status === filter);
 
+  const activeCredits = credits.filter(c => c.status === 'ACTIVE');
+  const totalPrincipal   = activeCredits.reduce((s, c) => s + c.principal, 0);
+  const totalThan        = credits.reduce((s, c) => s + c.interest, 0);
+  const totalRepaid      = credits.reduce((s, c) => s + c.installments.filter(i => i.paid_at).reduce((a, i) => a + i.amount, 0), 0);
+  const totalOutstanding = activeCredits.reduce((s, c) => {
+    const unpaid = c.installments.filter(i => !i.paid_at).reduce((a, i) => a + i.amount, 0);
+    return s + (unpaid > 0 ? unpaid : c.principal);
+  }, 0);
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
       {/* Nav */}
@@ -210,6 +218,21 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
               {showForm ? 'Cancel' : '+ New Credit'}
             </button>
           </div>
+        </div>
+
+        {/* ── Summary cards ───────────────────────────────────────────── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+          {[
+            { label: 'CAPITAL OUT (ACTIVE)', value: php(totalPrincipal), color: '#f5a623' },
+            { label: 'TOTAL THAN EARNED', value: php(totalThan), color: '#00d4aa' },
+            { label: 'TOTAL REPAID', value: php(totalRepaid), color: '#a78bfa' },
+            { label: 'STILL OUTSTANDING', value: php(totalOutstanding), color: '#ff5c5c' },
+          ].map(card => (
+            <div key={card.label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
+              <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>{card.label}</div>
+              <div style={{ ...M, fontSize: 16, fontWeight: 700, color: card.color }}>{card.value}</div>
+            </div>
+          ))}
         </div>
 
         {/* ── Draw rules settings ─────────────────────────────────────── */}
@@ -325,7 +348,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
                   {fDates.map((d, i) => (
                     <div key={i}>
-                      <span style={label}>PAYMENT {i + 1} DATE *</span>
+                      <span style={label}>PAYMENT {i + 1} DATE (optional)</span>
                       <input type="date" value={d} onChange={e => setFDates(prev => { const n = [...prev]; n[i] = e.target.value; return n; })} style={{ ...inp, width: 160 }} />
                     </div>
                   ))}
@@ -333,10 +356,10 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
               </div>
             )}
 
-            {/* UPFRONT: single due date */}
+            {/* UPFRONT: single due date (optional) */}
             {fType === 'UPFRONT' && (
               <div style={{ marginBottom: 14 }}>
-                <span style={label}>PAYBACK DUE DATE *</span>
+                <span style={label}>PAYBACK DUE DATE (optional)</span>
                 <input type="date" value={fDates[0] ?? ''} onChange={e => setFDates([e.target.value])} style={{ ...inp, width: 200 }} />
               </div>
             )}
@@ -377,7 +400,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
           const isOpen   = expanded === credit.id;
           const paid     = credit.installments.filter(i => i.paid_at).length;
           const total    = credit.installments.length;
-          const overdue  = credit.installments.filter(i => !i.paid_at && i.due_date < todayPHT());
+          const overdue  = credit.installments.filter(i => !i.paid_at && i.due_date && i.due_date < todayPHT());
 
           return (
             <div key={credit.id} style={{ background: 'var(--surface)', border: `1px solid ${overdue.length && credit.status === 'ACTIVE' ? 'rgba(255,92,92,0.3)' : 'var(--border)'}`, borderRadius: 14, marginBottom: 12, overflow: 'hidden' }}>
@@ -414,13 +437,13 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
 
                   <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: 10 }}>PAYMENT SCHEDULE</div>
                   {credit.installments.map(inst => {
-                    const isOverdue = !inst.paid_at && inst.due_date < todayPHT();
+                    const isOverdue = !inst.paid_at && !!inst.due_date && inst.due_date < todayPHT();
                     return (
                       <div key={inst.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                           <span style={{ ...M, fontSize: 11, color: 'var(--muted)', minWidth: 60 }}>#{inst.installment_no}</span>
                           <span style={{ ...M, fontSize: 12, color: isOverdue ? '#ff5c5c' : inst.paid_at ? 'var(--muted)' : '#e2e6f0' }}>
-                            Due {fmtDate(inst.due_date)}
+                            {inst.due_date ? <>Due {fmtDate(inst.due_date)}</> : <span style={{ color: 'var(--muted)' }}>No due date</span>}
                             {isOverdue && <span style={{ color: '#ff5c5c', marginLeft: 8 }}>OVERDUE</span>}
                           </span>
                           <span style={{ ...M, fontSize: 12, color: '#e2e6f0', fontWeight: 700 }}>{php(inst.amount, credit.currency_code)}</span>
