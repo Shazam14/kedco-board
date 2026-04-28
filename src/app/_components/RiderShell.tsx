@@ -329,7 +329,7 @@ export default function RiderShell({
             </button>
           )}
           <button onClick={handleLogout} style={{ ...M, fontSize: 11, background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 12px', color: 'var(--text-muted)', cursor: 'pointer' }}>
-            OUT
+            LOGOUT
           </button>
         </div>
       </div>
