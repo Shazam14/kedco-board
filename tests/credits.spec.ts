@@ -17,6 +17,10 @@ async function resetMockState(request: import('@playwright/test').APIRequestCont
   await request.post(`${MOCK_API}/api/v1/test/reset`);
 }
 
+async function suppressTour(page: import('@playwright/test').Page) {
+  await page.addInitScript(() => localStorage.setItem('kedco_credits_tour_done', '1'));
+}
+
 test.use({ storageState: path.join('tests', '.auth', 'admin.json') });
 
 async function waitForHydration(page: import('@playwright/test').Page) {
@@ -26,6 +30,7 @@ async function waitForHydration(page: import('@playwright/test').Page) {
 test.describe('Special Credits page', () => {
   test.beforeEach(async ({ page, request }) => {
     await resetMockState(request);
+    await suppressTour(page);
     await page.goto('/admin/credits');
     await page.waitForLoadState('networkidle');
     await waitForHydration(page);
@@ -60,6 +65,7 @@ test.describe('Special Credits page', () => {
 
 test('expand/collapse credit row', async ({ page, request }) => {
   await request.post(`${MOCK_API}/api/v1/test/reset`);
+  await suppressTour(page);
   await page.goto('/admin/credits');
   await page.waitForLoadState('networkidle');
   await waitForHydration(page);
@@ -73,6 +79,7 @@ test('expand/collapse credit row', async ({ page, request }) => {
 test.describe('Create UPFRONT credit (Option A)', () => {
   test('fills and submits the form', async ({ page, request }) => {
     await resetMockState(request);
+    await suppressTour(page);
     await page.goto('/admin/credits');
     await page.waitForLoadState('networkidle');
     await waitForHydration(page);
@@ -104,6 +111,7 @@ test.describe('Create UPFRONT credit (Option A)', () => {
 test.describe('Create INSTALLMENT credit (Option B)', () => {
   test('fills installment form with two payments', async ({ page, request }) => {
     await resetMockState(request);
+    await suppressTour(page);
     await page.goto('/admin/credits');
     await page.waitForLoadState('networkidle');
     await waitForHydration(page);
@@ -136,6 +144,7 @@ test.describe('Create INSTALLMENT credit (Option B)', () => {
 test.describe('Credit actions', () => {
   test('mark installment as paid', async ({ page, request }) => {
     await resetMockState(request);
+    await suppressTour(page);
     await page.goto('/admin/credits');
     await page.waitForLoadState('networkidle');
     await waitForHydration(page);
@@ -156,6 +165,7 @@ test.describe('Credit actions', () => {
   });
 
   test('cancel a credit shows confirmation and updates status', async ({ page }) => {
+    await suppressTour(page);
     // Use page.route() to isolate this test from the shared mock server.
     // Other parallel workers calling resetMockState would wipe state created mid-test.
     const CANCEL_CREDIT = {
