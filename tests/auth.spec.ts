@@ -48,9 +48,9 @@ test.describe('Role-based redirects after login', () => {
     expect(page.url()).toContain('/dashboard');
   });
 
-  test('supervisor → /counter', async ({ page }) => {
+  test('supervisor → /supervisor', async ({ page }) => {
     await loginAs(page, 'supervisor1');
-    expect(page.url()).toContain('/counter');
+    expect(page.url()).toContain('/supervisor');
   });
 
   test('cashier → /counter', async ({ page }) => {

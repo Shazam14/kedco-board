@@ -215,8 +215,7 @@ test.describe('Supervisor transactions page', () => {
     await expect(page.getByText('OR-SUP00001')).not.toBeVisible();
   });
 
-  test('nav has COUNTER back link and RIDERS link', async ({ page }) => {
-    await expect(page.getByRole('link', { name: '← COUNTER' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'RIDERS' })).toBeVisible();
+  test('nav has OPERATIONS back link', async ({ page }) => {
+    await expect(page.getByRole('link', { name: '← OPERATIONS' })).toBeVisible();
   });
 });
