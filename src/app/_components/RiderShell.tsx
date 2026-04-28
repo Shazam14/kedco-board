@@ -47,11 +47,12 @@ const BRANCHES = [
 ] as const;
 
 export default function RiderShell({
-  currencies, banks, username,
+  currencies, banks, username, fullName,
 }: {
   currencies: CurrencyMeta[];
   banks: Bank[];
   username: string;
+  fullName: string;
 }) {
   const router = useRouter();
 
@@ -311,7 +312,7 @@ export default function RiderShell({
           <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg,var(--teal-300),var(--teal-600))', display: 'grid', placeItems: 'center', fontSize: 14, fontWeight: 700, color: 'var(--text-on-teal)', fontFamily: 'var(--font-display)' }}>K</div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--teal-300)', ...Y }}>KEDCO FX</div>
-            <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)' }}>🏍️ {username}</div>
+            <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)' }}>🏍️ {fullName}</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>

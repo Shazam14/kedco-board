@@ -53,5 +53,5 @@ export default async function RiderPage() {
     getBanks(),
   ]);
 
-  return <RiderShell currencies={currencies} banks={banks} username={payload.sub} />;
+  return <RiderShell currencies={currencies} banks={banks} username={payload.sub} fullName={payload.full_name || payload.sub} />;
 }
