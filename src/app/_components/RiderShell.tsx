@@ -231,10 +231,11 @@ export default function RiderShell({
   const todayThan   = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.than, 0);
 
   // Balance card calculations
-  const phpSpent    = txns.filter(t => t.type === 'BUY').reduce((s, t)  => s + t.phpAmt, 0);
-  const phpReceived = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
-  const borrowed    = borrows.filter(b => b.is_returned === 'N').reduce((s, b) => s + b.amount_php, 0);
-  const remaining   = dispatch ? dispatch.cash_php + borrowed - phpSpent + phpReceived : null;
+  const phpSpent   = txns.filter(t => t.type === 'BUY').reduce((s, t)  => s + t.phpAmt, 0);
+  const fxProceeds = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
+  const borrowed   = borrows.filter(b => b.is_returned === 'N').reduce((s, b) => s + b.amount_php, 0);
+  const carry      = dispatch ? dispatch.cash_php + borrowed - phpSpent : null;
+  const remaining  = carry != null ? carry + fxProceeds : null;
 
   // Forex holdings: BUY adds stock, SELL reduces it
   const forexMap = txns.reduce((acc, t) => {
@@ -338,31 +339,36 @@ export default function RiderShell({
       {dispatch ? (
         <div style={{ margin: '12px 16px 0', background: 'var(--surface)', border: '1px solid rgba(95,183,212,0.3)', borderRadius: 14, padding: '14px 16px' }}>
           <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', letterSpacing: '0.12em', marginBottom: 10 }}>PHP BALANCE</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+          {/* Row 1: Starting / Spent / Carry */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
             <div>
               <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 3 }}>STARTING</div>
               <div style={{ ...M, fontSize: 13, color: 'var(--text-strong)' }}>{php(dispatch.cash_php)}</div>
+              {borrowed > 0 && <div style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', marginTop: 2 }}>+{php(borrowed)} borrow</div>}
             </div>
             <div>
-              <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 3 }}>SPENT</div>
+              <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 3 }}>SPENT (BUYS)</div>
               <div style={{ ...M, fontSize: 13, color: phpSpent > 0 ? 'var(--accent-coral)' : 'var(--muted)' }}>
                 {phpSpent > 0 ? `−${php(phpSpent)}` : '—'}
               </div>
             </div>
             <div>
-              <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 3 }}>RECEIVED</div>
-              <div style={{ ...M, fontSize: 13, color: phpReceived > 0 ? 'var(--teal-300)' : 'var(--muted)' }}>
-                {phpReceived > 0 ? `+${php(phpReceived)}` : '—'}
+              <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 3 }}>CARRY</div>
+              <div style={{ ...M, fontSize: 13, color: carry != null && carry < 0 ? 'var(--accent-coral)' : 'var(--text-strong)' }}>
+                {carry != null ? php(carry) : '—'}
               </div>
             </div>
           </div>
-          {borrowed > 0 && (
-            <div style={{ ...M, fontSize: 11, color: 'var(--accent-gold)', marginBottom: 8 }}>
-              + {php(borrowed)} borrowed
+          {/* Row 2: FX Proceeds — only if rider has sells */}
+          {fxProceeds > 0 && (
+            <div style={{ background: 'rgba(61,199,173,0.06)', border: '1px solid rgba(61,199,173,0.15)', borderRadius: 8, padding: '8px 12px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ ...M, fontSize: 9, color: 'var(--teal-300)' }}>FX PROCEEDS (from sells)</div>
+              <div style={{ ...M, fontSize: 13, color: 'var(--teal-300)', fontWeight: 700 }}>+{php(fxProceeds)}</div>
             </div>
           )}
+          {/* Total PHP in hand */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', letterSpacing: '0.1em' }}>REMAINING</div>
+            <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', letterSpacing: '0.1em' }}>TOTAL PHP IN HAND</div>
             <div style={{ ...Y, fontSize: 26, fontWeight: 800, color: remaining != null && remaining < 0 ? 'var(--accent-coral)' : 'var(--accent-sky)' }}>
               {remaining != null ? php(remaining) : '—'}
             </div>
@@ -456,7 +462,12 @@ export default function RiderShell({
 
               {/* PHP remaining */}
               <div style={{ background: 'var(--surface)', border: '1px solid rgba(95,183,212,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 10 }}>
-                <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', marginBottom: 6 }}>PHP CASH RETURNING</div>
+                <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', marginBottom: 2 }}>PHP CASH RETURNING</div>
+                {fxProceeds > 0 && (
+                  <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 6 }}>
+                    carry {php(carry ?? 0)} + FX proceeds {php(fxProceeds)}
+                  </div>
+                )}
                 <input
                   type="text" inputMode="decimal"
                   value={remitPhpOverride !== '' ? remitPhpOverride : String(Math.max(0, remaining ?? 0).toFixed(2))}
