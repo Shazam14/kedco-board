@@ -19,6 +19,15 @@ function LoginForm() {
     if (searchParams.get('reason') === 'idle') setIdleMsg(true);
   }, [searchParams]);
 
+  useEffect(() => {
+    return () => {
+      if (widgetIdRef.current && (window as any).turnstile) {
+        (window as any).turnstile.remove(widgetIdRef.current);
+        widgetIdRef.current = null;
+      }
+    };
+  }, []);
+
   function renderTurnstile() {
     if (turnstileRef.current && !(widgetIdRef.current)) {
       widgetIdRef.current = (window as any).turnstile.render(turnstileRef.current, {
