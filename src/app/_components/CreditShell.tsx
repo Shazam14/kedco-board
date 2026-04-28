@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNumberInput } from '@/hooks/useNumberInput';
 import { fmtDate, fmtDateTime, todayPHT } from '@/lib/pht';
 
@@ -27,6 +27,9 @@ const STATUS_COLOR: Record<string, string> = { ACTIVE: '#f5a623', COMPLETED: '#0
 
 
 export default function CreditShell({ credits: initial }: { credits: Credit[] }) {
+  const [hydrated, setHydrated]        = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
+
   const [credits, setCredits]         = useState<Credit[]>(initial);
   const [filter, setFilter]           = useState<'ALL' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED'>('ACTIVE');
   const [showForm, setShowForm]       = useState(false);
@@ -191,7 +194,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
   }, 0);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }} data-hydrated={hydrated ? 'true' : undefined}>
       {/* Nav */}
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '56px', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg)', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

@@ -19,11 +19,16 @@ async function resetMockState(request: import('@playwright/test').APIRequestCont
 
 test.use({ storageState: path.join('tests', '.auth', 'admin.json') });
 
+async function waitForHydration(page: import('@playwright/test').Page) {
+  await page.locator('[data-hydrated="true"]').waitFor({ timeout: 10_000 });
+}
+
 test.describe('Special Credits page', () => {
   test.beforeEach(async ({ page, request }) => {
     await resetMockState(request);
     await page.goto('/admin/credits');
     await page.waitForLoadState('networkidle');
+    await waitForHydration(page);
   });
 
   test('loads with correct heading and existing credit', async ({ page }) => {
@@ -57,6 +62,7 @@ test('expand/collapse credit row', async ({ page, request }) => {
   await request.post(`${MOCK_API}/api/v1/test/reset`);
   await page.goto('/admin/credits');
   await page.waitForLoadState('networkidle');
+  await waitForHydration(page);
   await expect(page.getByText('Sample Customer')).toBeVisible();
   await page.getByText('Sample Customer').click();
   await expect(page.getByText('PAYMENT SCHEDULE')).toBeVisible();
@@ -69,6 +75,7 @@ test.describe('Create UPFRONT credit (Option A)', () => {
     await resetMockState(request);
     await page.goto('/admin/credits');
     await page.waitForLoadState('networkidle');
+    await waitForHydration(page);
     await page.getByRole('button', { name: '+ New Credit' }).click();
 
     // Fill in details
@@ -99,6 +106,7 @@ test.describe('Create INSTALLMENT credit (Option B)', () => {
     await resetMockState(request);
     await page.goto('/admin/credits');
     await page.waitForLoadState('networkidle');
+    await waitForHydration(page);
     await page.getByRole('button', { name: '+ New Credit' }).click();
 
     await page.getByPlaceholder('e.g. Juan Dela Cruz').fill('Difficult Customer B');
@@ -130,6 +138,7 @@ test.describe('Credit actions', () => {
     await resetMockState(request);
     await page.goto('/admin/credits');
     await page.waitForLoadState('networkidle');
+    await waitForHydration(page);
 
     // Expand the existing credit
     await page.getByText('Sample Customer').click();
@@ -174,6 +183,7 @@ test.describe('Credit actions', () => {
 
     await page.goto('/admin/credits');
     await page.waitForLoadState('networkidle');
+    await waitForHydration(page);
 
     // Create a fresh credit to cancel
     await page.getByRole('button', { name: '+ New Credit' }).click();
