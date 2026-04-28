@@ -64,9 +64,9 @@ test.describe('Special Credits page', () => {
   });
 
   test('expand/collapse credit row', async ({ page }) => {
-    await page.getByText('Sample Customer').first().click();
+    await page.getByText('▼').click();
     await expect(page.getByText('PAYMENT SCHEDULE')).toBeVisible();
-    await page.getByText('Sample Customer').first().click();
+    await page.getByText('▲').click();
     await expect(page.getByText('PAYMENT SCHEDULE')).not.toBeVisible();
   });
 });
