@@ -44,18 +44,39 @@ test.describe('Special Credits page', () => {
   });
 
   test('Cancel button closes form', async ({ page }) => {
+    await page.route('**/api/admin/credits', async route => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{
+          id: 'credit-cancel-form-test', customer_name: 'Sample Customer', currency_code: 'PHP',
+          principal: 50000, interest: 2500, credit_type: 'UPFRONT', status: 'ACTIVE',
+          disbursed_date: '2026-05-15', notes: null, created_by: 'admin',
+          installments: [{ id: 'inst-001', installment_no: 1, due_date: null, amount: 50000, paid_at: null, received_by: null }],
+          draws: [],
+        }]) });
+      } else { await route.continue(); }
+    });
+    await page.goto('/admin/credits');
     await page.getByRole('button', { name: '+ New Credit' }).click();
     await expect(page.getByText('NEW CREDIT', { exact: true })).toBeVisible();
-    // The toggle button changes to 'Cancel' — click it to close the form
     await page.getByRole('button', { name: 'Cancel' }).first().click();
     await expect(page.getByText('NEW CREDIT', { exact: true })).not.toBeVisible();
   });
 
   test('expand/collapse credit row', async ({ page }) => {
-    // Click the credit row to expand
+    await page.route('**/api/admin/credits', async route => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{
+          id: 'credit-expand-test', customer_name: 'Sample Customer', currency_code: 'PHP',
+          principal: 50000, interest: 2500, credit_type: 'UPFRONT', status: 'ACTIVE',
+          disbursed_date: '2026-05-15', notes: null, created_by: 'admin',
+          installments: [{ id: 'inst-001', installment_no: 1, due_date: null, amount: 50000, paid_at: null, received_by: null }],
+          draws: [],
+        }]) });
+      } else { await route.continue(); }
+    });
+    await page.goto('/admin/credits');
     await page.getByText('Sample Customer').click();
     await expect(page.getByText('PAYMENT SCHEDULE')).toBeVisible();
-    // Click again to collapse
     await page.getByText('Sample Customer').click();
     await expect(page.getByText('PAYMENT SCHEDULE')).not.toBeVisible();
   });

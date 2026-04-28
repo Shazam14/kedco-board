@@ -184,9 +184,9 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
   const activeCredits = credits.filter(c => c.status === 'ACTIVE');
   const totalPrincipal   = activeCredits.reduce((s, c) => s + c.principal, 0);
   const totalThan        = credits.reduce((s, c) => s + c.interest, 0);
-  const totalRepaid      = credits.reduce((s, c) => s + c.installments.filter(i => i.paid_at).reduce((a, i) => a + i.amount, 0), 0);
+  const totalRepaid      = credits.reduce((s, c) => s + (c.installments ?? []).filter(i => i.paid_at).reduce((a, i) => a + i.amount, 0), 0);
   const totalOutstanding = activeCredits.reduce((s, c) => {
-    const unpaid = c.installments.filter(i => !i.paid_at).reduce((a, i) => a + i.amount, 0);
+    const unpaid = (c.installments ?? []).filter(i => !i.paid_at).reduce((a, i) => a + i.amount, 0);
     return s + (unpaid > 0 ? unpaid : c.principal);
   }, 0);
 
