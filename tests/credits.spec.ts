@@ -69,12 +69,10 @@ test('expand/collapse credit row', async ({ page, request }) => {
   await request.post(`${MOCK_API}/api/v1/test/reset`);
   await page.goto('/admin/credits');
   await page.waitForLoadState('networkidle');
-  // Click the credit row header div (the [cursor:pointer] div containing the customer name)
-  const creditRow = page.locator('[style*="cursor: pointer"]').filter({ hasText: 'Sample Customer' }).first();
-  await creditRow.waitFor({ state: 'visible' });
-  await creditRow.click();
+  await expect(page.getByText('Sample Customer')).toBeVisible();
+  await page.getByText('Sample Customer').click();
   await expect(page.getByText('PAYMENT SCHEDULE')).toBeVisible();
-  await creditRow.click();
+  await page.getByText('Sample Customer').click();
   await expect(page.getByText('PAYMENT SCHEDULE')).not.toBeVisible();
 });
 
