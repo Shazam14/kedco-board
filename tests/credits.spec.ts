@@ -23,6 +23,7 @@ test.describe('Special Credits page', () => {
   test.beforeEach(async ({ page, request }) => {
     await resetMockState(request);
     await page.goto('/admin/credits');
+    await page.waitForLoadState('networkidle');
   });
 
   test('loads with correct heading and existing credit', async ({ page }) => {
@@ -63,21 +64,9 @@ test.describe('Special Credits page', () => {
   });
 
   test('expand/collapse credit row', async ({ page }) => {
-    await page.route('**/api/admin/credits', async route => {
-      if (route.request().method() === 'GET') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{
-          id: 'credit-expand-test', customer_name: 'Sample Customer', currency_code: 'PHP',
-          principal: 50000, interest: 2500, credit_type: 'UPFRONT', status: 'ACTIVE',
-          disbursed_date: '2026-05-15', notes: null, created_by: 'admin',
-          installments: [{ id: 'inst-001', installment_no: 1, due_date: null, amount: 50000, paid_at: null, received_by: null }],
-          draws: [],
-        }]) });
-      } else { await route.continue(); }
-    });
-    await page.goto('/admin/credits');
-    await page.getByText('Sample Customer').click();
+    await page.getByText('Sample Customer').first().click();
     await expect(page.getByText('PAYMENT SCHEDULE')).toBeVisible();
-    await page.getByText('Sample Customer').click();
+    await page.getByText('Sample Customer').first().click();
     await expect(page.getByText('PAYMENT SCHEDULE')).not.toBeVisible();
   });
 });
@@ -86,6 +75,7 @@ test.describe('Create UPFRONT credit (Option A)', () => {
   test('fills and submits the form', async ({ page, request }) => {
     await resetMockState(request);
     await page.goto('/admin/credits');
+    await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: '+ New Credit' }).click();
 
     // Fill in details
@@ -115,6 +105,7 @@ test.describe('Create INSTALLMENT credit (Option B)', () => {
   test('fills installment form with two payments', async ({ page, request }) => {
     await resetMockState(request);
     await page.goto('/admin/credits');
+    await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: '+ New Credit' }).click();
 
     await page.getByPlaceholder('e.g. Juan Dela Cruz').fill('Difficult Customer B');
@@ -145,6 +136,7 @@ test.describe('Credit actions', () => {
   test('mark installment as paid', async ({ page, request }) => {
     await resetMockState(request);
     await page.goto('/admin/credits');
+    await page.waitForLoadState('networkidle');
 
     // Expand the existing credit
     await page.getByText('Sample Customer').click();
@@ -188,6 +180,7 @@ test.describe('Credit actions', () => {
     });
 
     await page.goto('/admin/credits');
+    await page.waitForLoadState('networkidle');
 
     // Create a fresh credit to cancel
     await page.getByRole('button', { name: '+ New Credit' }).click();
