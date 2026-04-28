@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNumberInput } from '@/hooks/useNumberInput';
 import { fmtDate, fmtDateTime, todayPHT } from '@/lib/pht';
+import { CreditTourButton, CreditTourAutoStart } from '@/app/admin/credits/_components/CreditTour';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -204,19 +205,23 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
             <div style={{ ...M, fontSize: 9, color: 'var(--muted)' }}>Special Credits</div>
           </div>
         </div>
-        <a href="/admin" style={{ ...M, fontSize: 11, padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', color: 'var(--muted)', textDecoration: 'none' }}>← Admin</a>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <CreditTourButton />
+          <a href="/admin" style={{ ...M, fontSize: 11, padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', color: 'var(--muted)', textDecoration: 'none' }}>← Admin</a>
+        </div>
       </nav>
+      <CreditTourAutoStart />
 
       <div style={{ padding: '28px 32px', maxWidth: 860 }}>
         <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.2em', marginBottom: 4 }}>ADMIN · SPECIAL CREDITS</div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
           <div style={{ ...Y, fontSize: 24, fontWeight: 800 }}>Special Customer Credits</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => { setShowSettings(v => !v); if (!rules) loadRules(); }}
+            <button data-tour="btn-rules" onClick={() => { setShowSettings(v => !v); if (!rules) loadRules(); }}
               style={{ ...M, fontSize: 11, padding: '7px 16px', borderRadius: 8, border: '1px solid var(--border)', background: showSettings ? 'var(--surface2)' : 'transparent', color: 'var(--muted)', cursor: 'pointer' }}>
               ⚙ Rules
             </button>
-            <button onClick={() => { setShowForm(v => !v); setError(null); }}
+            <button data-tour="btn-new-credit" onClick={() => { setShowForm(v => !v); setError(null); }}
               style={{ ...Y, fontSize: 12, fontWeight: 800, padding: '8px 20px', borderRadius: 8, border: 'none', background: showForm ? 'var(--surface2)' : 'linear-gradient(135deg,#00d4aa,#00a884)', color: showForm ? 'var(--muted)' : '#000', cursor: 'pointer' }}>
               {showForm ? 'Cancel' : '+ New Credit'}
             </button>
@@ -224,7 +229,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
         </div>
 
         {/* ── Summary cards ───────────────────────────────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+        <div data-tour="credits-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
           {[
             { label: 'CAPITAL OUT (ACTIVE)', value: php(totalPrincipal), color: '#f5a623' },
             { label: 'TOTAL THAN EARNED', value: php(totalThan), color: '#00d4aa' },
@@ -383,7 +388,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
         )}
 
         {/* ── Filter tabs ──────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        <div data-tour="credits-filter" style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
           {(['ACTIVE', 'COMPLETED', 'CANCELLED', 'ALL'] as const).map(s => (
             <button key={s} onClick={() => setFilter(s)}
               style={{ ...M, fontSize: 10, padding: '5px 14px', borderRadius: 6, border: `1px solid ${filter === s ? STATUS_COLOR[s] ?? '#00d4aa' : 'var(--border)'}`, background: filter === s ? `${STATUS_COLOR[s] ?? '#00d4aa'}18` : 'transparent', color: filter === s ? STATUS_COLOR[s] ?? '#00d4aa' : 'var(--muted)', cursor: 'pointer', letterSpacing: '0.08em' }}>
@@ -393,6 +398,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
         </div>
 
         {/* ── Credit list ──────────────────────────────────────────────── */}
+        <div data-tour="credits-list">
         {filtered.length === 0 && (
           <div style={{ ...M, fontSize: 12, color: 'var(--muted)', padding: '32px 0', textAlign: 'center' }}>
             No {filter.toLowerCase()} credits.
@@ -509,6 +515,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
             </div>
           );
         })}
+        </div>{/* end credits-list */}
       </div>
 
       {/* ── Add Draw Modal ── */}
