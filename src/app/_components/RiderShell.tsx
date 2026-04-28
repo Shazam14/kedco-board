@@ -16,6 +16,8 @@ function fmtFx(amt: number, code: string, currencies: { code: string; decimalPla
 }
 
 
+type Tab = 'form' | 'log' | 'holdings' | 'endday';
+
 interface Bank     { id: number; name: string; code: string; }
 interface Dispatch { id: string; cash_php: number; status: string; dispatch_time: string | null; }
 interface Borrow   { id: string; amount_php: number; is_returned: string; }
@@ -88,8 +90,14 @@ export default function RiderShell({
   const [txns,        setTxns]        = useState<Transaction[]>([]);
   const [payPending,  setPayPending]  = useState(false);   // mark payment as pending/advance
   const [showPicker,  setShowPicker]  = useState(false);
-  const [showLog,     setShowLog]     = useState(false);
+  const [tab,         setTab]         = useState<Tab>('form');
   const [showBorrow,  setShowBorrow]  = useState(false);
+
+  // End day / remit
+  const [remitting,        setRemitting]        = useState(false);
+  const [remitOk,          setRemitOk]          = useState(false);
+  const [remitAdjust,      setRemitAdjust]      = useState<Record<string, string>>({});
+  const [remitPhpOverride, setRemitPhpOverride] = useState('');
 
   // Dispatch + borrows (for balance card)
   const [dispatch,     setDispatch]     = useState<Dispatch | null>(null);
@@ -228,6 +236,38 @@ export default function RiderShell({
   const borrowed    = borrows.filter(b => b.is_returned === 'N').reduce((s, b) => s + b.amount_php, 0);
   const remaining   = dispatch ? dispatch.cash_php + borrowed - phpSpent + phpReceived : null;
 
+  // Forex holdings: BUY adds stock, SELL reduces it
+  const forexMap = txns.reduce((acc, t) => {
+    const delta = t.type === 'BUY' ? t.foreignAmt : -t.foreignAmt;
+    acc[t.currency] = (acc[t.currency] ?? 0) + delta;
+    return acc;
+  }, {} as Record<string, number>);
+  const holdingsList = Object.entries(forexMap)
+    .filter(([, amt]) => amt > 0.0001)
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  async function handleRemit() {
+    if (!dispatchId) return;
+    setRemitting(true);
+    const items = holdingsList
+      .map(([currency, amount]) => ({
+        currency,
+        amount: remitAdjust[currency] !== undefined ? +remitAdjust[currency] : amount,
+      }))
+      .filter(i => i.amount > 0);
+    const cash_php_remaining = remitPhpOverride !== '' ? +remitPhpOverride : (remaining ?? 0);
+    const res = await fetch('/api/rider/remit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dispatch_id: dispatchId, cash_php_remaining, items }),
+    });
+    if (res.ok) {
+      setRemitOk(true);
+      setDispatch(prev => prev ? { ...prev, status: 'REMITTED' } : prev);
+    }
+    setRemitting(false);
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text-strong)', maxWidth: 480, margin: '0 auto', paddingBottom: 32 }}>
 
@@ -273,25 +313,23 @@ export default function RiderShell({
             <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)' }}>🏍️ {username}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button
             onClick={() => { setBranchDraft(branch); setShowBranchModal(true); }}
-            title="Change branch"
             style={{ ...M, fontSize: 10, background: 'transparent', border: '1px solid rgba(61,199,173,0.2)', borderRadius: 8, padding: '6px 10px', color: 'var(--teal-300)', cursor: 'pointer' }}
-          >
-            {branch || 'SET BRANCH'}
-          </button>
-          <button
-            onClick={() => setShowLog(v => !v)}
-            style={{ ...M, fontSize: 11, background: showLog ? 'rgba(61,199,173,0.12)' : 'rgba(255,255,255,0.05)', border: `1px solid ${showLog ? 'rgba(61,199,173,0.3)' : 'var(--border-subtle)'}`, borderRadius: 8, padding: '6px 14px', color: showLog ? 'var(--teal-300)' : 'var(--text-muted)', cursor: 'pointer' }}
-          >
-            {showLog ? '← Form' : `Log (${txns.length})`}
-          </button>
-          <button
-            onClick={handleLogout}
-            style={{ ...M, fontSize: 11, background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 14px', color: 'var(--text-muted)', cursor: 'pointer' }}
-          >
-            LOGOUT
+          >{branch || 'SET BRANCH'}</button>
+          {(['form', 'log', 'holdings'] as Tab[]).map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{ ...M, fontSize: 11, background: tab === t ? 'rgba(61,199,173,0.12)' : 'rgba(255,255,255,0.05)', border: `1px solid ${tab === t ? 'rgba(61,199,173,0.3)' : 'var(--border-subtle)'}`, borderRadius: 8, padding: '6px 12px', color: tab === t ? 'var(--teal-300)' : 'var(--text-muted)', cursor: 'pointer' }}>
+              {t === 'form' ? 'Form' : t === 'log' ? `Log (${txns.length})` : 'Holdings'}
+            </button>
+          ))}
+          {dispatch && dispatch.status === 'IN_FIELD' && (
+            <button onClick={() => { setTab('endday'); setRemitAdjust({}); setRemitPhpOverride(''); }} style={{ ...M, fontSize: 11, background: tab === 'endday' ? 'rgba(212,166,74,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${tab === 'endday' ? 'rgba(212,166,74,0.4)' : 'var(--border-subtle)'}`, borderRadius: 8, padding: '6px 12px', color: tab === 'endday' ? 'var(--accent-gold)' : 'var(--text-muted)', cursor: 'pointer' }}>
+              End Day
+            </button>
+          )}
+          <button onClick={handleLogout} style={{ ...M, fontSize: 11, background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 12px', color: 'var(--text-muted)', cursor: 'pointer' }}>
+            OUT
           </button>
         </div>
       </div>
@@ -336,23 +374,14 @@ export default function RiderShell({
         </div>
       )}
 
-      {showLog ? (
-        /* ── LOG VIEW ── */
-        <div style={{ padding: '16px 16px' }}>
+      {/* ── LOG TAB ── */}
+      {tab === 'log' && (
+        <div style={{ padding: '16px' }}>
           <div style={{ ...Y, fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Today&apos;s Transactions</div>
-
-          {/* Totals */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10, marginBottom: 16 }}>
-            {[
-              { label: 'TOTAL PHP', val: php(todayTotal), color: 'var(--text-strong)' },
-            ].map(({ label, val, color }) => (
-              <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
-                <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 4 }}>{label}</div>
-                <div style={{ ...Y, fontSize: 16, fontWeight: 800, color }}>{val}</div>
-              </div>
-            ))}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
+            <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 4 }}>TOTAL PHP</div>
+            <div style={{ ...Y, fontSize: 16, fontWeight: 800 }}>{php(todayTotal)}</div>
           </div>
-
           {txns.length === 0 ? (
             <div style={{ ...M, fontSize: 12, color: 'var(--muted)', textAlign: 'center', padding: '32px 0' }}>No transactions yet today.</div>
           ) : (
@@ -368,9 +397,7 @@ export default function RiderShell({
                       <span style={{ ...M, fontSize: 13, fontWeight: 700, color: t.type === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)', marginRight: 8 }}>{t.type}</span>
                       <span style={{ ...M, fontSize: 13, color: 'var(--text-strong)' }}>{fmtFx(t.foreignAmt, t.currency, currencies)} {t.currency}</span>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ ...M, fontSize: 13, fontWeight: 700, color: 'var(--text-strong)' }}>{php(t.phpAmt)}</div>
-                    </div>
+                    <div style={{ ...M, fontSize: 13, fontWeight: 700 }}>{php(t.phpAmt)}</div>
                   </div>
                   {t.customer && <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{t.customer}</div>}
                 </div>
@@ -378,8 +405,105 @@ export default function RiderShell({
             </div>
           )}
         </div>
-      ) : (
-        /* ── TRANSACTION FORM ── */
+      )}
+
+      {/* ── HOLDINGS TAB ── */}
+      {tab === 'holdings' && (
+        <div style={{ padding: '16px' }}>
+          <div style={{ ...Y, fontSize: 14, fontWeight: 800, marginBottom: 12 }}>Forex Holdings</div>
+          {holdingsList.length === 0 ? (
+            <div style={{ ...M, fontSize: 12, color: 'var(--muted)', textAlign: 'center', padding: '32px 0' }}>No forex held — all sold or no buys yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {holdingsList.map(([code, amt]) => {
+                const meta = currencies.find(c => c.code === code);
+                const dp   = meta?.decimalPlaces ?? 2;
+                return (
+                  <div key={code} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 20 }}>{meta?.flag ?? '🏳️'}</span>
+                      <div>
+                        <div style={{ ...M, fontSize: 13, fontWeight: 700, color: 'var(--text-strong)' }}>{code}</div>
+                        <div style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{meta?.name ?? ''}</div>
+                      </div>
+                    </div>
+                    <div style={{ ...M, fontSize: 18, fontWeight: 700, color: 'var(--accent-sky)' }}>
+                      {amt.toLocaleString('en-PH', { minimumFractionDigits: dp, maximumFractionDigits: dp })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── END DAY TAB ── */}
+      {tab === 'endday' && (
+        <div style={{ padding: '16px' }}>
+          {remitOk ? (
+            <div style={{ background: 'rgba(61,199,173,0.08)', border: '1px solid rgba(61,199,173,0.3)', borderRadius: 14, padding: '28px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>✓</div>
+              <div style={{ ...Y, fontSize: 18, fontWeight: 800, color: 'var(--teal-300)', marginBottom: 8 }}>Remittance Submitted</div>
+              <div style={{ ...M, fontSize: 12, color: 'var(--muted)' }}>Waiting for treasurer to confirm.</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ ...Y, fontSize: 14, fontWeight: 800, marginBottom: 4 }}>End of Day — Remit</div>
+              <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 16 }}>
+                Review your holdings below. Adjust any amount if it differs from your physical count, then confirm.
+              </div>
+
+              {/* PHP remaining */}
+              <div style={{ background: 'var(--surface)', border: '1px solid rgba(95,183,212,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 10 }}>
+                <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', marginBottom: 6 }}>PHP CASH RETURNING</div>
+                <input
+                  type="text" inputMode="decimal"
+                  value={remitPhpOverride !== '' ? remitPhpOverride : String(Math.max(0, remaining ?? 0).toFixed(2))}
+                  onChange={e => setRemitPhpOverride(e.target.value)}
+                  style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', ...M, fontSize: 22, fontWeight: 700, color: 'var(--accent-sky)', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Forex items */}
+              {holdingsList.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {holdingsList.map(([code, amt]) => {
+                    const meta = currencies.find(c => c.code === code);
+                    const dp   = meta?.decimalPlaces ?? 2;
+                    const val  = remitAdjust[code] !== undefined ? remitAdjust[code] : amt.toFixed(dp);
+                    return (
+                      <div key={code} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 18 }}>{meta?.flag ?? '🏳️'}</span>
+                          <span style={{ ...M, fontSize: 13, fontWeight: 700 }}>{code}</span>
+                        </div>
+                        <input
+                          type="text" inputMode="decimal"
+                          value={val}
+                          onChange={e => setRemitAdjust(prev => ({ ...prev, [code]: e.target.value }))}
+                          style={{ background: 'transparent', border: 'none', outline: 'none', ...M, fontSize: 16, fontWeight: 700, color: 'var(--text-strong)', textAlign: 'right', width: 120 }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <button
+                onClick={handleRemit}
+                disabled={remitting || !dispatchId}
+                style={{ width: '100%', padding: '18px', borderRadius: 12, border: 'none', background: remitting ? 'var(--border)' : 'var(--accent-gold)', color: remitting ? 'var(--muted)' : '#000', ...Y, fontSize: 15, fontWeight: 800, cursor: remitting ? 'not-allowed' : 'pointer' }}
+              >
+                {remitting ? 'Submitting…' : 'Confirm & Remit'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── FORM TAB ── */}
+      {tab === 'form' && (
         <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* BUY / SELL toggle */}
@@ -628,3 +752,4 @@ export default function RiderShell({
     </div>
   );
 }
+
