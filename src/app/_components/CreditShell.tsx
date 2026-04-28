@@ -398,9 +398,11 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
 
         {filtered.map(credit => {
           const isOpen   = expanded === credit.id;
-          const paid     = credit.installments.filter(i => i.paid_at).length;
-          const total    = credit.installments.length;
-          const overdue  = credit.installments.filter(i => !i.paid_at && i.due_date && i.due_date < todayPHT());
+          const insts    = credit.installments ?? [];
+          const draws    = credit.draws ?? [];
+          const paid     = insts.filter(i => i.paid_at).length;
+          const total    = insts.length;
+          const overdue  = insts.filter(i => !i.paid_at && i.due_date && i.due_date < todayPHT());
 
           return (
             <div key={credit.id} style={{ background: 'var(--surface)', border: `1px solid ${overdue.length && credit.status === 'ACTIVE' ? 'rgba(255,92,92,0.3)' : 'var(--border)'}`, borderRadius: 14, marginBottom: 12, overflow: 'hidden' }}>
@@ -436,7 +438,7 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
                   )}
 
                   <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: 10 }}>PAYMENT SCHEDULE</div>
-                  {credit.installments.map(inst => {
+                  {insts.map(inst => {
                     const isOverdue = !inst.paid_at && !!inst.due_date && inst.due_date < todayPHT();
                     return (
                       <div key={inst.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
@@ -467,10 +469,10 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
                   })}
 
                   {/* Draw history */}
-                  {credit.draws.length > 0 && (
+                  {draws.length > 0 && (
                     <div style={{ marginTop: 16 }}>
                       <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: 8 }}>ADDITIONAL DRAWS</div>
-                      {credit.draws.map((d, i) => (
+                      {draws.map((d, i) => (
                         <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                           <div>
                             <span style={{ ...M, fontSize: 11, color: '#f5a623', fontWeight: 700 }}>{php(d.amount, credit.currency_code)}</span>
