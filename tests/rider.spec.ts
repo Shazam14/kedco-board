@@ -72,7 +72,7 @@ test.describe('Rider screen', () => {
     await page.getByRole('button', { name: /Log/ }).click();
     await expect(page.getByText("Today's Transactions")).toBeVisible();
     // Switch back to form
-    await page.getByRole('button', { name: '← Form' }).click();
+    await page.getByRole('button', { name: 'Form' }).click();
     await expect(page.getByText('Select currency…')).toBeVisible();
   });
 
