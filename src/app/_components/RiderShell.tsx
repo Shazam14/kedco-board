@@ -155,7 +155,7 @@ export default function RiderShell({
   const phpTotal = ccy && amtInput.raw && rateInput.raw && +amtInput.raw > 0 && +rateInput.raw > 0
     ? +amtInput.raw * +rateInput.raw : null;
 
-  const canSubmit = !!ccy?.rateSet && !!amtInput.raw && +amtInput.raw > 0
+  const canSubmit = !!ccy && !!amtInput.raw && +amtInput.raw > 0
     && !!rateInput.raw && +rateInput.raw > 0
     && (!NEEDS_BANK.includes(payMode) || bankId !== null)
     && !loading;
@@ -547,7 +547,7 @@ export default function RiderShell({
 
             {showPicker && (
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginTop: 4, maxHeight: 260, overflowY: 'auto' }}>
-                {currencies.filter(c => c.rateSet).map(c => (
+                {currencies.map(c => (
                   <button key={c.code} onClick={() => { setCcy(c); setShowPicker(false); }} style={{
                     width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid var(--border)',
                     padding: '12px 16px', color: 'var(--text-strong)', ...M, fontSize: 13, textAlign: 'left', cursor: 'pointer',
@@ -555,13 +555,12 @@ export default function RiderShell({
                   }}>
                     <span>{c.flag} <strong>{c.code}</strong> — {c.name}</span>
                     <span style={{ color: 'var(--muted)', fontSize: 11 }}>
-                      B:{c.todayBuyRate?.toFixed(c.decimalPlaces)} · S:{c.todaySellRate?.toFixed(c.decimalPlaces)}
+                      {c.rateSet
+                        ? `B:${c.todayBuyRate?.toFixed(c.decimalPlaces)} · S:${c.todaySellRate?.toFixed(c.decimalPlaces)}`
+                        : '—'}
                     </span>
                   </button>
                 ))}
-                {currencies.every(c => !c.rateSet) && (
-                  <div style={{ ...M, fontSize: 11, color: 'var(--accent-gold)', padding: '14px 16px' }}>No rates set today.</div>
-                )}
               </div>
             )}
           </div>
