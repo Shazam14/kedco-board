@@ -120,12 +120,28 @@ export default function CounterShell({
   const [replenishNote,      setReplenishNote]      = useState('');
   const [replenishLoading,   setReplenishLoading]   = useState(false);
   const [replenishError,     setReplenishError]     = useState<string | null>(null);
+  const [floatHint,          setFloatHint]          = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/counter/shift', { cache: 'no-store' })
       .then(r => r.json())
-      .then(data => setShift(data.status === 'OPEN' ? data : null))
+      .then(data => {
+        const openShift = data.status === 'OPEN' ? data : null;
+        setShift(openShift);
+        if (!openShift) {
+          fetch('/api/counter/pending-float', { cache: 'no-store' })
+            .then(r => r.json())
+            .then(f => {
+              if (f && f.amount_php) {
+                openingCashInput.setValue(String(f.amount_php));
+                setFloatHint(`Float from ${f.treasurer_name}`);
+              }
+            })
+            .catch(() => {});
+        }
+      })
       .catch(() => setShift(null));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleOpenShift() {
@@ -894,6 +910,11 @@ export default function CounterShell({
 
             <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               OPENING CASH (PHP)
+              {floatHint && (
+                <span style={{ marginLeft: 10, color: 'var(--teal-300)', fontSize: 9, letterSpacing: '0.05em' }}>
+                  ↑ {floatHint}
+                </span>
+              )}
             </label>
             <input
               type="text"

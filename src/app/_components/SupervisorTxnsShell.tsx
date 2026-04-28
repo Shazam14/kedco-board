@@ -72,7 +72,7 @@ export default function SupervisorTxnsShell({
               Kedco <span style={{ color: 'var(--teal-300)' }}>FX</span>
             </div>
             <div style={{ ...M, fontSize: 9, color: 'var(--text-faint)', marginTop: -1 }}>
-              Supervisor · Cashier Transactions
+              Treasurer · Cashier Transactions
             </div>
           </div>
         </div>
@@ -80,19 +80,12 @@ export default function SupervisorTxnsShell({
           <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>
             <span style={{ color: 'var(--text-strong)' }}>{username}</span>
           </div>
-          <a href="/counter" style={{
+          <a href="/supervisor" style={{
             padding: '5px 14px', borderRadius: 6,
             border: '1px solid rgba(61,199,173,0.35)', background: 'rgba(61,199,173,0.07)',
             color: 'var(--teal-300)', ...M, fontSize: 10, letterSpacing: '0.05em', textDecoration: 'none',
           }}>
-            ← COUNTER
-          </a>
-          <a href="/admin/riders" style={{
-            padding: '5px 14px', borderRadius: 6,
-            border: '1px solid var(--border-subtle)', background: 'transparent',
-            color: 'var(--text-muted)', ...M, fontSize: 10, letterSpacing: '0.05em', textDecoration: 'none',
-          }}>
-            RIDERS
+            ← OPERATIONS
           </a>
           <button onClick={handleLogout} style={{
             padding: '5px 14px', borderRadius: 6,

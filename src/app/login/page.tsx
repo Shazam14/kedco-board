@@ -53,7 +53,9 @@ function LoginForm() {
         setError(data.error ?? 'Login failed');
         return;
       }
-      if (data.role === 'cashier' || data.role === 'supervisor') {
+      if (data.role === 'supervisor') {
+        router.push('/supervisor');
+      } else if (data.role === 'cashier') {
         router.push('/counter');
       } else if (data.role === 'rider') {
         router.push('/rider');
