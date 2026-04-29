@@ -93,6 +93,10 @@ export default function RiderShell({
   const [error,       setError]       = useState<string | null>(null);
   const [flash,       setFlash]       = useState<(Transaction & { paymentLabel: string }) | null>(null);
   const [txns,        setTxns]        = useState<Transaction[]>([]);
+  const [linkingTxnId,    setLinkingTxnId]    = useState<string | null>(null);
+  const [linkPickerName,  setLinkPickerName]  = useState('');
+  const [linkPickerCustId,setLinkPickerCustId]= useState<string | null>(null);
+  const [linkSaving,      setLinkSaving]      = useState(false);
   const [payPending,  setPayPending]  = useState(false);   // mark payment as pending/advance
   const [showPicker,  setShowPicker]  = useState(false);
   const [tab,         setTab]         = useState<Tab>('form');
@@ -134,6 +138,39 @@ export default function RiderShell({
     const res = await fetch('/api/rider/transactions');
     if (res.ok) setTxns(await res.json());
   }, []);
+
+  function startLinking(t: Transaction) {
+    setLinkingTxnId(t.id);
+    setLinkPickerName(t.customer ?? '');
+    setLinkPickerCustId(t.customerId ?? null);
+  }
+
+  function cancelLinking() {
+    setLinkingTxnId(null);
+    setLinkPickerName('');
+    setLinkPickerCustId(null);
+  }
+
+  async function saveLinking() {
+    if (!linkingTxnId || !linkPickerCustId) return;
+    setLinkSaving(true);
+    try {
+      const res = await fetch(`/api/transactions/${linkingTxnId}/customer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_id: linkPickerCustId }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTxns(prev => prev.map(t => t.id === linkingTxnId
+          ? { ...t, customer: updated.customer ?? t.customer, customerId: updated.customer_id ?? linkPickerCustId }
+          : t));
+        cancelLinking();
+      }
+    } finally {
+      setLinkSaving(false);
+    }
+  }
 
   useEffect(() => { fetchTxns(); }, [fetchTxns]);
 
@@ -253,7 +290,7 @@ export default function RiderShell({
   const carry      = dispatch ? dispatch.cash_php + borrowed - phpSpent : null;
   const remaining  = carry != null ? carry + fxProceeds : null;
 
-  // Forex holdings: BUY adds stock, SELL reduces it
+  // In-hand FCY (Holdings tab): BUY adds stock, SELL reduces it.
   const forexMap = txns.reduce((acc, t) => {
     const delta = t.type === 'BUY' ? t.foreignAmt : -t.foreignAmt;
     acc[t.currency] = (acc[t.currency] ?? 0) + delta;
@@ -263,13 +300,31 @@ export default function RiderShell({
     .filter(([, amt]) => amt > 0.0001)
     .sort(([a], [b]) => a.localeCompare(b));
 
+  // End Day FCY rows: gross BOUGHT today (per Ken — sells tracked separately,
+  // already in txn log; same pattern as PHP CASH carry-only / fxProceeds split).
+  const fcyBought = txns.filter(t => t.type === 'BUY').reduce((acc, t) => {
+    acc[t.currency] = (acc[t.currency] ?? 0) + t.foreignAmt;
+    return acc;
+  }, {} as Record<string, number>);
+  const fcySold = txns.filter(t => t.type === 'SELL').reduce((acc, t) => {
+    acc[t.currency] = (acc[t.currency] ?? 0) + t.foreignAmt;
+    return acc;
+  }, {} as Record<string, number>);
+  const endDayList = Object.entries(fcyBought)
+    .filter(([, amt]) => amt > 0.0001)
+    .sort(([a], [b]) => a.localeCompare(b));
+
   async function handleRemit() {
     if (!dispatchId) return;
     setRemitting(true);
-    const items = holdingsList
+    // Items default to gross BOUGHT — rider can override to physical count.
+    // Sells are reconciled separately against the txn log, not deducted here.
+    const items = endDayList
       .map(([currency, amount]) => ({
         currency,
-        amount: remitAdjust[currency] !== undefined ? +remitAdjust[currency] : amount,
+        amount: remitAdjust[currency] !== undefined
+          ? +remitAdjust[currency].replace(/,/g, '')
+          : amount,
       }))
       .filter(i => i.amount > 0);
     // PHP returned = unspent dispatch float only (carry). FX proceeds from
@@ -473,6 +528,8 @@ export default function RiderShell({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {txns.map(t => {
                 const pending = t.paymentStatus === 'PENDING';
+                const isLinking = linkingTxnId === t.id;
+                const canLink = t.type === 'SELL' && !t.customerId;
                 return (
                   <div key={t.id} style={{ background: 'var(--surface)', border: `1px solid ${pending ? 'rgba(212,166,74,0.3)' : 'var(--border)'}`, borderRadius: 10, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -486,14 +543,57 @@ export default function RiderShell({
                       </div>
                       <div style={{ ...M, fontSize: 13, fontWeight: 700 }}>{php(t.phpAmt)}</div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.customer ?? ''}</span>
-                      {pending && (
-                        <span style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', background: 'rgba(212,166,74,0.12)', border: '1px solid rgba(212,166,74,0.3)', padding: '2px 8px', borderRadius: 10, letterSpacing: '0.08em' }}>
-                          PENDING
-                        </span>
-                      )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, gap: 8 }}>
+                      <span style={{ ...M, fontSize: 10, color: t.customerId ? 'var(--teal-300)' : 'var(--muted)' }}>
+                        {t.customerId && <span style={{ marginRight: 4 }}>★</span>}
+                        {t.customer ?? ''}
+                      </span>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {pending && (
+                          <span style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', background: 'rgba(212,166,74,0.12)', border: '1px solid rgba(212,166,74,0.3)', padding: '2px 8px', borderRadius: 10, letterSpacing: '0.08em' }}>
+                            PENDING
+                          </span>
+                        )}
+                        {canLink && !isLinking && (
+                          <button
+                            data-testid={`link-customer-${t.id}`}
+                            onClick={() => startLinking(t)}
+                            style={{ ...M, fontSize: 9, color: 'var(--teal-300)', background: 'rgba(61,199,173,0.10)', border: '1px solid rgba(61,199,173,0.3)', borderRadius: 10, padding: '2px 8px', cursor: 'pointer', letterSpacing: '0.06em' }}
+                          >
+                            👤 LINK CUSTOMER
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    {isLinking && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed var(--border)' }} data-testid={`link-picker-${t.id}`}>
+                        <div style={{ ...M, fontSize: 9, color: 'var(--teal-300)', letterSpacing: '0.12em', marginBottom: 6 }}>LINK A CUSTOMER</div>
+                        <CustomerPicker
+                          variant="rider"
+                          value={linkPickerName}
+                          customerId={linkPickerCustId}
+                          onChange={(name, id) => { setLinkPickerName(name); setLinkPickerCustId(id); }}
+                          placeholder="search by name…"
+                        />
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                          <button
+                            onClick={cancelLinking}
+                            disabled={linkSaving}
+                            style={{ flex: 1, ...M, fontSize: 11, background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, padding: '8px', color: 'var(--muted)', cursor: linkSaving ? 'not-allowed' : 'pointer' }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            data-testid={`link-save-${t.id}`}
+                            onClick={saveLinking}
+                            disabled={linkSaving || !linkPickerCustId}
+                            style={{ flex: 2, ...M, fontSize: 11, fontWeight: 700, background: linkSaving ? 'var(--border)' : 'linear-gradient(135deg,var(--teal-300),var(--teal-600))', border: 'none', borderRadius: 8, padding: '8px', color: linkSaving ? 'var(--muted)' : '#000', cursor: linkSaving ? 'wait' : 'pointer' }}
+                          >
+                            {linkSaving ? 'Saving…' : 'SAVE LINK'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -573,25 +673,41 @@ export default function RiderShell({
                 </div>
               )}
 
-              {/* Forex items */}
-              {holdingsList.length > 0 && (
+              {/* Forex items — defaults to GROSS BOUGHT (sells tracked separately below) */}
+              {endDayList.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                  {holdingsList.map(([code, amt]) => {
+                  {endDayList.map(([code, bought]) => {
                     const meta = currencies.find(c => c.code === code);
                     const dp   = meta?.decimalPlaces ?? 2;
-                    const val  = remitAdjust[code] !== undefined ? remitAdjust[code] : amt.toFixed(dp);
+                    const sold = fcySold[code] ?? 0;
+                    const val  = remitAdjust[code] !== undefined
+                      ? remitAdjust[code]
+                      : bought.toLocaleString('en-PH', { minimumFractionDigits: dp, maximumFractionDigits: dp });
                     return (
-                      <div key={code} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 18 }}>{meta?.flag ?? '🏳️'}</span>
-                          <span style={{ ...M, fontSize: 13, fontWeight: 700 }}>{code}</span>
+                      <div key={code} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 18 }}>{meta?.flag ?? '🏳️'}</span>
+                            <span style={{ ...M, fontSize: 13, fontWeight: 700 }}>{code}</span>
+                          </div>
+                          <input
+                            type="text" inputMode="decimal"
+                            value={val}
+                            data-testid={`endday-fcy-${code}`}
+                            onChange={e => setRemitAdjust(prev => ({ ...prev, [code]: e.target.value }))}
+                            style={{ background: 'transparent', border: 'none', outline: 'none', ...M, fontSize: 16, fontWeight: 700, color: 'var(--text-strong)', textAlign: 'right', width: 140 }}
+                          />
                         </div>
-                        <input
-                          type="text" inputMode="decimal"
-                          value={val}
-                          onChange={e => setRemitAdjust(prev => ({ ...prev, [code]: e.target.value }))}
-                          style={{ background: 'transparent', border: 'none', outline: 'none', ...M, fontSize: 16, fontWeight: 700, color: 'var(--text-strong)', textAlign: 'right', width: 120 }}
-                        />
+                        {sold > 0.0001 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, paddingTop: 6, borderTop: '1px dashed var(--border)' }}>
+                            <span style={{ ...M, fontSize: 9, color: 'var(--accent-gold)' }}>
+                              SOLD TO CUSTOMERS (already in txn log)
+                            </span>
+                            <span style={{ ...M, fontSize: 11, fontWeight: 700, color: 'var(--accent-gold)' }}>
+                              −{sold.toLocaleString('en-PH', { minimumFractionDigits: dp, maximumFractionDigits: dp })}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

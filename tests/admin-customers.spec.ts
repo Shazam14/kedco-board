@@ -61,6 +61,15 @@ test.describe('Admin Customers list page (/admin/customers)', () => {
       ]);
     });
 
+    test('row shows currency mix chips for top currencies the customer touched', async ({ page }) => {
+      await page.goto('/admin/customers');
+      const hannahMix = page.getByTestId('customer-mix-cust-hannah-wu');
+      await expect(hannahMix).toContainText('USD');
+      await expect(hannahMix).toContainText('JPY');
+      const pedroMix = page.getByTestId('customer-mix-cust-pedro-cruz');
+      await expect(pedroMix).toContainText('EUR');
+    });
+
     test('search box filters by name', async ({ page }) => {
       await page.goto('/admin/customers');
       await page.getByTestId('customers-search').fill('pedro');

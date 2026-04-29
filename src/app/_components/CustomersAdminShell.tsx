@@ -18,6 +18,7 @@ interface CustomerRow {
   txn_count: number;
   total_volume_php: number;
   last_txn_date: string | null;
+  top_currencies?: string[];
 }
 
 type SortKey = 'volume' | 'name' | 'count' | 'last';
@@ -252,7 +253,7 @@ export default function CustomersAdminShell({ canMerge = false, canAdd = false }
               <thead>
                 <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border)' }}>
                   {canMerge && <th style={{ width: 36 }}></th>}
-                  {['Name', 'Phone', 'Txns', 'Volume', 'Last seen', 'Status'].map(h => (
+                  {['Name', 'Phone', 'Currencies', 'Txns', 'Volume', 'Last seen', 'Status'].map(h => (
                     <th key={h} style={{ textAlign: h === 'Volume' || h === 'Txns' ? 'right' : 'left', padding: '10px 16px', fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', fontWeight: 600 }}>{h.toUpperCase()}</th>
                   ))}
                 </tr>
@@ -282,6 +283,20 @@ export default function CustomersAdminShell({ canMerge = false, canAdd = false }
                       </a>
                     </td>
                     <td style={{ padding: '12px 16px', color: 'var(--muted)' }}>{r.phone ?? '—'}</td>
+                    <td style={{ padding: '12px 16px' }} data-testid={`customer-mix-${r.id}`}>
+                      {(r.top_currencies ?? []).length === 0 ? (
+                        <span style={{ color: 'var(--muted)', fontSize: 10 }}>—</span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', gap: 4 }}>
+                          {(r.top_currencies ?? []).map(c => (
+                            <span key={c}
+                                  style={{ fontSize: 9, padding: '3px 7px', borderRadius: 4, background: 'rgba(95,140,255,0.10)', color: '#9bb3ff', letterSpacing: '0.05em', fontWeight: 700 }}>
+                              {c}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', color: '#e2e6f0' }}>{r.txn_count.toLocaleString('en-PH')}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', color: r.total_volume_php > 0 ? '#f5a623' : 'var(--muted)' }}>{php(r.total_volume_php)}</td>
                     <td style={{ padding: '12px 16px', color: 'var(--muted)' }}>{r.last_txn_date ?? '—'}</td>

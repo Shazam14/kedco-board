@@ -32,6 +32,7 @@ export async function GET() {
       currency: t.currency, foreignAmt: t.foreign_amt,
       rate: t.rate, phpAmt: t.php_amt, than: t.than,
       cashier: t.cashier, customer: t.customer ?? undefined,
+      customerId: (t.customer_id as string | undefined) ?? undefined,
       paymentMode: t.payment_mode, bankId: t.bank_id,
       paymentStatus: t.payment_status ?? 'RECEIVED',
       branchId: (t.branch_id as string | undefined) ?? undefined,

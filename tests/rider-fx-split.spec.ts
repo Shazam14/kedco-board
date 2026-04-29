@@ -78,6 +78,24 @@ test.describe('Rider FX-proceeds split', () => {
     await expect(fxRow).toContainText('+₱29,000.00');
   });
 
+  test('End Day FCY row defaults to GROSS BOUGHT — sells shown separately, not deducted', async ({ page }) => {
+    // Per Ken: End Day FCY should show what was sourced today (gross BUYS).
+    // Sells are reconciled against the txn log, not deducted from the FCY input.
+    // Mirrors the PHP CASH split.
+    await expect(page.getByText('TOTAL PHP IN HAND')).toBeVisible();
+    await page.getByRole('button', { name: 'End Day' }).click();
+
+    const modal = page.getByText('End of Day — Remit').locator('..');
+
+    // USD input defaults to 350.00 (the gross BOUGHT), not -150 (350 - 500 sold).
+    await expect(modal.getByTestId('endday-fcy-USD')).toHaveValue('350.00');
+
+    // The SOLD-to-customers breakdown row appears below the input for transparency.
+    await expect(modal.getByText('SOLD TO CUSTOMERS (already in txn log)')).toBeVisible();
+    const soldRow = modal.getByText('SOLD TO CUSTOMERS (already in txn log)').locator('..');
+    await expect(soldRow).toContainText('−500.00');
+  });
+
   test('End Day input pre-fills with carry only (with commas) — FX proceeds shown as a separate row', async ({ page }) => {
     await expect(page.getByText('TOTAL PHP IN HAND')).toBeVisible();
     await page.getByRole('button', { name: 'End Day' }).click();

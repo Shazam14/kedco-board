@@ -128,14 +128,17 @@ function makeInitialCustomers() {
   return [
     { id: 'cust-hannah-wu', name: 'Hannah Wu',  phone: '09171234567', notes: null,
       is_active: true, merged_into_id: null, created_by: 'admintest', created_at: now,
-      txn_count: 12, total_volume_php: 480000, last_txn_date: '2026-04-29' },
+      txn_count: 12, total_volume_php: 480000, last_txn_date: '2026-04-29',
+      top_currencies: ['USD', 'JPY'] },
     { id: 'cust-pedro-cruz', name: 'Pedro Cruz', phone: null,         notes: null,
       is_active: true, merged_into_id: null, created_by: 'admintest', created_at: now,
-      txn_count: 3, total_volume_php: 95000, last_txn_date: '2026-04-25' },
+      txn_count: 3, total_volume_php: 95000, last_txn_date: '2026-04-25',
+      top_currencies: ['EUR'] },
     // Suspected dupe of Hannah Wu — used by merge tests
     { id: 'cust-hanna-wuu', name: 'Hanna Wuu',  phone: null, notes: null,
       is_active: true, merged_into_id: null, created_by: 'admintest', created_at: now,
-      txn_count: 2, total_volume_php: 18000, last_txn_date: '2026-04-22' },
+      txn_count: 2, total_volume_php: 18000, last_txn_date: '2026-04-22',
+      top_currencies: ['USD'] },
   ];
 }
 let CUSTOMERS = makeInitialCustomers();
@@ -491,6 +494,7 @@ const server = createServer(async (req, res) => {
       txn_count: c.txn_count ?? 0,
       total_volume_php: c.total_volume_php ?? 0,
       last_txn_date: c.last_txn_date ?? null,
+      top_currencies: c.top_currencies ?? [],
     }));
     enriched.sort((a, b) => b.total_volume_php - a.total_volume_php);
     return json(res, enriched.slice(0, limit));
@@ -645,6 +649,23 @@ const server = createServer(async (req, res) => {
     return json(res, { status: 'rejected' });
   }
 
+  // Link customer to txn — same-day, owner-or-admin
+  if (method === 'POST' && /^\/api\/v1\/transactions\/[^/]+\/customer$/.test(url)) {
+    const id  = url.split('/').slice(-2)[0];
+    const txn = TODAY_TRANSACTIONS.find(t => t.id === id);
+    if (!txn) return json(res, { detail: 'Transaction not found' }, 404);
+    const body = JSON.parse(await readBody(req));
+    if (body.customer_id) {
+      const c = CUSTOMERS.find(x => x.id === body.customer_id && x.is_active);
+      if (!c) return json(res, { detail: 'Unknown customer' }, 400);
+      txn.customer_id = c.id;
+      txn.customer = c.name;
+    } else {
+      txn.customer_id = null;
+    }
+    return json(res, { id: txn.id, time: txn.time, type: txn.type, source: txn.source, currency: txn.currency_code, foreign_amt: txn.foreign_amt, rate: txn.rate, php_amt: txn.php_amt, than: txn.than, cashier: txn.cashier, customer: txn.customer, customer_id: txn.customer_id ?? null, payment_mode: txn.payment_mode, bank_id: null, payment_status: txn.payment_status ?? 'RECEIVED', branch_id: txn.branch_id ?? null });
+  }
+
   // Admin: direct PATCH transaction
   if (method === 'PATCH' && /^\/api\/v1\/transactions\/[^/]+$/.test(url)) {
     const id  = url.split('/').pop();
@@ -660,7 +681,7 @@ const server = createServer(async (req, res) => {
   }
 
   // Transactions today (counter and rider)
-  if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, payment_mode: t.payment_mode, bank_id: null, payment_status: t.payment_status ?? 'RECEIVED', branch_id: t.branch_id ?? null })));
+  if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, customer_id: t.customer_id ?? null, payment_mode: t.payment_mode, bank_id: null, payment_status: t.payment_status ?? 'RECEIVED', branch_id: t.branch_id ?? null })));
   if (method === 'GET' && /transactions/.test(url)) return json(res, []);
 
   // Submit batch counter transaction
