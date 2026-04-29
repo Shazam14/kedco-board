@@ -1,17 +1,19 @@
 /**
  * Regression guard for the rider FX-proceeds split.
  *
- * The big "TOTAL PHP IN HAND" card on the rider balance view must show the
- * **float position only** (carry = dispatch + borrow − BUY spend), NOT the
- * inflated number that includes FX proceeds from sells.
+ * Two surfaces, same principle:
+ *   • Balance card "TOTAL PHP IN HAND" = carry only (float you haven't spent
+ *     on buys). FX proceeds shown as their own line, NOT summed in.
+ *   • End Day "PHP CASH RETURNING" input default = carry only too.
+ *     FX proceeds appear as a separate row on the modal — they're already
+ *     in the txn log and reconciled there, not folded back into the
+ *     cash-handover number. Flipped 2026-04-29 after rider feedback that
+ *     the carry+FX sum was confusing the cash count.
  *
- * Why: the rider's PHP-on-hand decision (when to ask for a top-up, whether
- * they're running low) depends on float-only. FX proceeds collapse back to
- * PHP at remit; mixing them into the headline number masks float depletion.
- *
- * The end-of-day remit screen is the one place where FX proceeds *do* fold
- * back in — the input pre-fills with `remaining = carry + fxProceeds`, with
- * the breakdown spelled out above it.
+ * Why: a rider needs one clean number for "how much float am I returning?"
+ * Mixing in FX proceeds (which are PHP collected from selling foreign
+ * currency) inflates the cash-return figure and makes physical-count
+ * reconciliation harder, not easier.
  */
 import { test, expect } from '@playwright/test';
 import path from 'path';
@@ -22,8 +24,7 @@ test.use({ storageState: path.join('tests', '.auth', 'rider.json') });
 //   dispatch.cash_php = 50,000   borrow = 0
 //   BUY  ₱20,000  (RECEIVED)     → phpSpent
 //   SELL ₱29,000  (RECEIVED)     → fxProceeds
-//   carry     = 50000 + 0 − 20000           = 30,000  ← TOTAL PHP IN HAND
-//   remaining = carry + 29000 (fxProceeds)  = 59,000  ← only on remit screen
+//   carry = 50000 + 0 − 20000 = 30,000  ← used by BOTH balance card & End Day input
 const DISPATCH = {
   dispatch: {
     id: 'DISP-FX-001',
@@ -77,15 +78,25 @@ test.describe('Rider FX-proceeds split', () => {
     await expect(fxRow).toContainText('+₱29,000.00');
   });
 
-  test('End Day breakdown spells out carry + FX proceeds, input pre-fills with remaining', async ({ page }) => {
+  test('End Day input pre-fills with carry only (with commas) — FX proceeds shown as a separate row', async ({ page }) => {
     await expect(page.getByText('TOTAL PHP IN HAND')).toBeVisible();
     await page.getByRole('button', { name: 'End Day' }).click();
 
-    // Breakdown line: "carry ₱30,000.00 + FX proceeds ₱29,000.00"
-    await expect(page.getByText(/carry ₱30,000\.00 \+ FX proceeds ₱29,000\.00/)).toBeVisible();
+    // Scope to the End Day modal — same labels exist on the balance card too.
+    const modal = page.getByText('End of Day — Remit').locator('..');
 
-    // Input pre-fills with remaining = 59000.00 (toFixed format — no commas, no ₱)
-    const phpReturnSection = page.getByText('PHP CASH RETURNING').locator('..');
-    await expect(phpReturnSection.locator('input')).toHaveValue('59000.00');
+    // Input pre-fills with carry = 30,000.00 (comma-formatted, no ₱)
+    const phpReturnSection = modal.getByText('PHP CASH RETURNING').locator('..');
+    await expect(phpReturnSection.locator('input')).toHaveValue('30,000.00');
+
+    // FX proceeds row appears INSIDE the modal as its own card, NOT folded
+    // into the input. The modal's row also exposes the "tracked separately"
+    // helper so reconciliation intent is obvious to the rider.
+    await expect(modal.getByText('tracked separately — already in the txn log')).toBeVisible();
+    const fxRow = modal.getByText('tracked separately — already in the txn log').locator('../..');
+    await expect(fxRow).toContainText('+₱29,000.00');
+
+    // The old "carry + FX proceeds" inline-sum line must NOT come back
+    await expect(page.getByText(/carry ₱30,000\.00 \+ FX proceeds/)).toHaveCount(0);
   });
 });

@@ -272,7 +272,11 @@ export default function RiderShell({
         amount: remitAdjust[currency] !== undefined ? +remitAdjust[currency] : amount,
       }))
       .filter(i => i.amount > 0);
-    const cash_php_remaining = remitPhpOverride !== '' ? +remitPhpOverride : (remaining ?? 0);
+    // PHP returned = unspent dispatch float only (carry). FX proceeds from
+    // selling foreign currency are reconciled separately against the txn log,
+    // not folded back into the cash-handover number.
+    const overrideRaw = remitPhpOverride.replace(/,/g, '');
+    const cash_php_remaining = overrideRaw !== '' ? +overrideRaw : (carry ?? 0);
     const res = await fetch('/api/rider/remit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -545,21 +549,29 @@ export default function RiderShell({
                 Review your holdings below. Adjust any amount if it differs from your physical count, then confirm.
               </div>
 
-              {/* PHP remaining */}
+              {/* PHP remaining — carry only. FX proceeds shown separately below. */}
               <div style={{ background: 'var(--surface)', border: '1px solid rgba(95,183,212,0.3)', borderRadius: 10, padding: '14px 16px', marginBottom: 10 }}>
                 <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', marginBottom: 2 }}>PHP CASH RETURNING</div>
-                {fxProceeds > 0 && (
-                  <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 6 }}>
-                    carry {php(carry ?? 0)} + FX proceeds {php(fxProceeds)}
-                  </div>
-                )}
+                <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 6 }}>
+                  unspent float you didn&rsquo;t use on buys
+                </div>
                 <input
                   type="text" inputMode="decimal"
-                  value={remitPhpOverride !== '' ? remitPhpOverride : String(Math.max(0, remaining ?? 0).toFixed(2))}
+                  value={remitPhpOverride !== '' ? remitPhpOverride : Math.max(0, carry ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   onChange={e => setRemitPhpOverride(e.target.value)}
                   style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', ...M, fontSize: 22, fontWeight: 700, color: 'var(--accent-sky)', boxSizing: 'border-box' }}
                 />
               </div>
+
+              {fxProceeds > 0 && (
+                <div style={{ background: 'var(--surface)', border: '1px solid rgba(61,199,173,0.25)', borderRadius: 10, padding: '12px 16px', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ ...M, fontSize: 9, color: 'var(--teal-300)' }}>FX PROCEEDS (from sells)</div>
+                    <div style={{ ...M, fontSize: 8, color: 'var(--muted)', marginTop: 2 }}>tracked separately — already in the txn log</div>
+                  </div>
+                  <div style={{ ...M, fontSize: 16, fontWeight: 700, color: 'var(--teal-300)' }}>+{php(fxProceeds)}</div>
+                </div>
+              )}
 
               {/* Forex items */}
               {holdingsList.length > 0 && (
