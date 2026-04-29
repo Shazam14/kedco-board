@@ -383,6 +383,58 @@ const server = createServer(async (req, res) => {
     if (!c) return json(res, { detail: 'Customer not found' }, 404);
     return json(res, c);
   }
+  // Admin per-customer detail — GET /api/v1/admin/customers/{id}/detail
+  {
+    const m = url.match(/^\/api\/v1\/admin\/customers\/([^/]+)\/detail$/);
+    if (method === 'GET' && m) {
+      const id = m[1];
+      const c = CUSTOMERS.find(x => x.id === id);
+      if (!c) return json(res, { detail: 'Customer not found' }, 404);
+      const today = new Date().toISOString().slice(0, 10);
+      // Simple deterministic mock: synthesize a single bucket / a couple of mock txns
+      // when the customer has a non-zero txn_count, so the detail page renders.
+      const has = (c.txn_count ?? 0) > 0;
+      return json(res, {
+        customer: {
+          id: c.id, name: c.name, phone: c.phone, notes: c.notes,
+          is_active: c.is_active, created_by: c.created_by, created_at: c.created_at,
+        },
+        stats: {
+          txn_count: c.txn_count ?? 0,
+          total_volume_php: c.total_volume_php ?? 0,
+          last_txn_date: c.last_txn_date ?? null,
+          first_txn_date: has ? '2026-04-01' : null,
+        },
+        currency_mix: has
+          ? [
+              { currency: 'USD', txn_count: Math.ceil((c.txn_count ?? 0) * 0.6), total_foreign: 4500, total_php: (c.total_volume_php ?? 0) * 0.7 },
+              { currency: 'JPY', txn_count: Math.floor((c.txn_count ?? 0) * 0.4), total_foreign: 250000, total_php: (c.total_volume_php ?? 0) * 0.3 },
+            ]
+          : [],
+        weekly: has
+          ? [
+              { period: today + 'T00:00:00', txn_count: c.txn_count ?? 0, total_php: c.total_volume_php ?? 0 },
+            ]
+          : [],
+        annual: has
+          ? [
+              { period: '2026-01-01T00:00:00', txn_count: c.txn_count ?? 0, total_php: c.total_volume_php ?? 0 },
+            ]
+          : [],
+        recent_transactions: has
+          ? [
+              { id: 'OR-DETAIL-1', date: c.last_txn_date ?? today, time: '10:15 AM',
+                type: 'SELL', source: 'COUNTER', currency: 'USD', foreign_amt: 100, rate: 58, php_amt: 5800,
+                than: 50, cashier: 'cashier1', payment_status: 'RECEIVED' },
+              { id: 'OR-DETAIL-2', date: c.last_txn_date ?? today, time: '11:30 AM',
+                type: 'BUY',  source: 'RIDER',   currency: 'JPY', foreign_amt: 50000, rate: 0.37, php_amt: 18500,
+                than: 0, cashier: 'rider01',  payment_status: 'RECEIVED' },
+            ]
+          : [],
+      });
+    }
+  }
+
   // Admin merge — POST /api/v1/admin/customers/{canonical_id}/merge
   {
     const m = url.match(/^\/api\/v1\/admin\/customers\/([^/]+)\/merge$/);

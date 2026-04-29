@@ -221,7 +221,13 @@ export default function CustomersAdminShell({ canMerge = false }: { canMerge?: b
                         />
                       </td>
                     )}
-                    <td style={{ padding: '12px 16px', color: '#e2e6f0', fontWeight: 600 }}>{r.name}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 600 }}>
+                      <a href={`/admin/customers/${r.id}`}
+                         data-testid={`customer-name-link-${r.id}`}
+                         style={{ color: '#e2e6f0', textDecoration: 'none', borderBottom: '1px dotted var(--border)' }}>
+                        {r.name}
+                      </a>
+                    </td>
                     <td style={{ padding: '12px 16px', color: 'var(--muted)' }}>{r.phone ?? '—'}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', color: '#e2e6f0' }}>{r.txn_count.toLocaleString('en-PH')}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', color: r.total_volume_php > 0 ? '#f5a623' : 'var(--muted)' }}>{php(r.total_volume_php)}</td>
