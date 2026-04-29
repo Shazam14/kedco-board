@@ -119,6 +119,14 @@ const BANKS = [
   { id: 3, name: 'Metrobank', code: 'MBK', is_active: true, sort_order: 3 },
 ];
 
+// ── Customers (loyal-customer master list) ───────────────────────────────────
+let CUSTOMERS = [
+  { id: 'cust-hannah-wu', name: 'Hannah Wu',  phone: '09171234567', notes: null,
+    is_active: true, created_by: 'admintest', created_at: new Date().toISOString() },
+  { id: 'cust-pedro-cruz', name: 'Pedro Cruz', phone: null,         notes: null,
+    is_active: true, created_by: 'admintest', created_at: new Date().toISOString() },
+];
+
 // ── Special Credits ───────────────────────────────────────────────────────────
 function makeInitialCredits() {
   return [
@@ -332,6 +340,36 @@ const server = createServer(async (req, res) => {
   }
   if (method === 'PATCH' && url === '/api/v1/admin/banks') return json(res, { message: 'Updated' });
 
+  // ── Customers (autocomplete + add) ─────────────────────────────────────────
+  if (method === 'GET' && url.startsWith('/api/v1/customers') && !url.match(/\/customers\/[a-z0-9-]+$/i)) {
+    const u = new URL(url, 'http://x');
+    const q = (u.searchParams.get('q') ?? '').trim().toLowerCase();
+    const limit = Number(u.searchParams.get('limit') ?? '20');
+    let rows = CUSTOMERS.filter(c => c.is_active);
+    if (q) rows = rows.filter(c =>
+      c.name.toLowerCase().includes(q) || (c.phone ?? '').toLowerCase().includes(q)
+    );
+    return json(res, rows.sort((a, b) => a.name.localeCompare(b.name)).slice(0, limit));
+  }
+  if (method === 'POST' && url === '/api/v1/customers') {
+    const body = JSON.parse(await readBody(req));
+    const name = (body.name ?? '').trim();
+    if (!name) return json(res, { detail: 'Customer name is required' }, 400);
+    const newCustomer = {
+      id: `cust-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name, phone: body.phone ?? null, notes: body.notes ?? null,
+      is_active: true, created_by: 'mocked', created_at: new Date().toISOString(),
+    };
+    CUSTOMERS.push(newCustomer);
+    return json(res, newCustomer, 201);
+  }
+  if (method === 'GET' && /^\/api\/v1\/customers\/[^/]+$/.test(url)) {
+    const id = url.split('/').pop();
+    const c = CUSTOMERS.find(x => x.id === id);
+    if (!c) return json(res, { detail: 'Customer not found' }, 404);
+    return json(res, c);
+  }
+
   // Users list (admin rider dispatch form) — handle both /users and /users/
   if (method === 'GET' && (url === '/api/v1/users/' || url === '/api/v1/users')) return json(res, ALL_USERS);
 
@@ -516,6 +554,7 @@ const server = createServer(async (req, res) => {
       than:         0,
       cashier:      'cashier1',
       customer:     data.customer ?? null,
+      customer_id:  data.customer_id ?? null,
       payment_mode: data.payment_mode ?? 'CASH',
       payment_status: 'RECEIVED',
       batch_id:     'mock-batch-uuid',
@@ -538,6 +577,7 @@ const server = createServer(async (req, res) => {
       than:          0,
       cashier:       data.cashier,
       customer:      data.customer ?? null,
+      customer_id:   data.customer_id ?? null,
       payment_mode:  data.payment_mode ?? 'CASH',
       payment_status: data.payment_status ?? 'RECEIVED',
     }, 201);
@@ -559,6 +599,7 @@ const server = createServer(async (req, res) => {
       than:          0,
       cashier:       data.cashier,
       customer:      data.customer ?? null,
+      customer_id:   data.customer_id ?? null,
       payment_mode:  data.payment_mode ?? 'CASH',
       payment_status: data.payment_status ?? 'RECEIVED',
     }, 201);

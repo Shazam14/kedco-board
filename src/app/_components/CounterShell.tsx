@@ -5,6 +5,7 @@ import type { CurrencyMeta, Transaction } from '@/lib/types';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 import { useNumberInput } from '@/hooks/useNumberInput';
 import IDScanner, { type ScannedID } from '@/app/_components/IDScanner';
+import CustomerPicker from '@/app/_components/CustomerPicker';
 import ExpensePanel from '@/app/_components/ExpensePanel';
 
 const M: React.CSSProperties = { fontFamily: 'var(--font-mono)' };
@@ -201,6 +202,7 @@ export default function CounterShell({
   const rateInput      = useNumberInput('', 8);
   const guideRateInput = useNumberInput('', 8);
   const [cust,     setCust]     = useState('');
+  const [custId,   setCustId]   = useState<string | null>(null);
   const [idNumber, setIdNumber] = useState('');
   const [scanning, setScanning] = useState(false);
   const [referrer,       setReferrer]       = useState('');
@@ -268,6 +270,7 @@ export default function CounterShell({
           rate: +rateInput.raw,
           cashier: username,
           customer: cust || undefined,
+          customer_id: custId || undefined,
           id_number: idNumber || undefined,
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
@@ -299,6 +302,7 @@ export default function CounterShell({
         setFlash(txn);
         amtInput.setValue('');
         setCust('');
+        setCustId(null);
         setIdNumber('');
         setReferrer('');
         guideRateInput.setValue('');
@@ -435,6 +439,7 @@ export default function CounterShell({
           type,
           source: 'COUNTER',
           customer: cust || undefined,
+          customer_id: custId || undefined,
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
           referrer: referrer || undefined,
@@ -464,7 +469,7 @@ export default function CounterShell({
         setCart([]);
         setBatchFlash(mapped);
         setCcy(null); setCcyQuery(''); amtInput.setValue(''); rateInput.setValue('');
-        setCust(''); setIdNumber(''); setReferrer('');
+        setCust(''); setCustId(null); setIdNumber(''); setReferrer('');
         guideRateInput.setValue(''); setPaymentTag('');
         await fetchTxns();
         setTimeout(() => setBatchFlash(null), 8000);
@@ -1242,6 +1247,7 @@ export default function CounterShell({
         <IDScanner
           onScan={(result: ScannedID) => {
             setCust(result.name);
+            setCustId(null);  // scanner = free-text path; admin can link in merge UI later
             if (result.idNumber) setIdNumber(result.idNumber);
             setScanning(false);
           }}
@@ -1856,16 +1862,12 @@ export default function CounterShell({
                 📷 Scan ID
               </button>
             </div>
-            <input
-              type="text"
+            <CustomerPicker
               value={cust}
-              onChange={e => setCust(e.target.value)}
+              customerId={custId}
+              onChange={(name, id) => { setCust(name); setCustId(id); }}
               placeholder="Name or reference"
-              style={{
-                width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border)',
-                borderRadius: 8, padding: '12px 14px', color: 'var(--text-strong)',
-                ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box',
-              }}
+              variant="counter"
             />
             <input
               type="text"

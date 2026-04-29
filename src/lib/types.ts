@@ -27,6 +27,7 @@ export interface Transaction {
   than: number;
   cashier: string;
   customer?: string;
+  customerId?: string;
   idNumber?: string;
   paymentMode?: string;
   bankId?: number;

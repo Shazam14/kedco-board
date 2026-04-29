@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CurrencyMeta, Transaction } from '@/lib/types';
 import { useNumberInput } from '@/hooks/useNumberInput';
+import CustomerPicker from './CustomerPicker';
 
 const M: React.CSSProperties = { fontFamily: 'var(--font-mono)' };
 const Y: React.CSSProperties = { fontFamily: 'var(--font-sans)', fontWeight: 600 };
@@ -84,6 +85,7 @@ export default function RiderShell({
   const amtInput  = useNumberInput('', 8);
   const rateInput = useNumberInput('', 6);
   const [cust,        setCust]        = useState('');
+  const [custId,      setCustId]      = useState<string | null>(null);
   const [payMode,     setPayMode]     = useState('CASH');
   const [bankId,      setBankId]      = useState<number | null>(null);
   const [txnBranch,   setTxnBranch]   = useState<string>('');  // per-buy override; falls back to device branch
@@ -178,6 +180,7 @@ export default function RiderShell({
           rate: +rateInput.raw,
           cashier: username,
           customer: cust || undefined,
+          customer_id: custId || undefined,
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
           payment_status: payPending ? 'PENDING' : 'RECEIVED',
@@ -195,9 +198,10 @@ export default function RiderShell({
           currency: data.currency, foreignAmt: data.foreign_amt,
           rate: data.rate, phpAmt: data.php_amt, than: data.than,
           cashier: data.cashier, customer: data.customer ?? undefined,
+          customerId: data.customer_id ?? undefined,
           paymentLabel: bankName ? `${modeLabel} · ${bankName}` : modeLabel,
         });
-        amtInput.setValue(''); setCust(''); setPayMode('CASH'); setBankId(null); setPayPending(false); setTxnBranch('');
+        amtInput.setValue(''); setCust(''); setCustId(null); setPayMode('CASH'); setBankId(null); setPayPending(false); setTxnBranch('');
         await fetchTxns();
         setTimeout(() => setFlash(null), 6000);
       }
@@ -748,12 +752,12 @@ export default function RiderShell({
             <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               CUSTOMER / REF <span style={{ opacity: 0.45 }}>(optional)</span>
             </label>
-            <input
-              type="text"
+            <CustomerPicker
               value={cust}
-              onChange={e => setCust(e.target.value)}
+              customerId={custId}
+              onChange={(name, id) => { setCust(name); setCustId(id); }}
               placeholder="Name or reference"
-              style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', color: 'var(--text-strong)', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+              variant="rider"
             />
           </div>
 
