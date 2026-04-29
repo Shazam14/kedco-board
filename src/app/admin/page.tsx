@@ -36,6 +36,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     color: '#a78bfa',
   },
   {
+    href:  '/admin/customers',
+    icon:  '🤝',
+    title: 'Customers',
+    desc:  'Loyal customer master list — search, see top spenders, txn count, last seen.',
+    color: '#00d4aa',
+  },
+  {
     href:  '/admin/eod',
     icon:  '🔒',
     title: 'End of Day',

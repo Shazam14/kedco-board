@@ -120,11 +120,16 @@ const BANKS = [
 ];
 
 // ── Customers (loyal-customer master list) ───────────────────────────────────
+// Stats fields (txn_count, total_volume_php, last_txn_date) are mocked in
+// directly so /admin/customers tests can verify the enriched list without
+// needing to also seed transactions.
 let CUSTOMERS = [
   { id: 'cust-hannah-wu', name: 'Hannah Wu',  phone: '09171234567', notes: null,
-    is_active: true, created_by: 'admintest', created_at: new Date().toISOString() },
+    is_active: true, created_by: 'admintest', created_at: new Date().toISOString(),
+    txn_count: 12, total_volume_php: 480000, last_txn_date: '2026-04-29' },
   { id: 'cust-pedro-cruz', name: 'Pedro Cruz', phone: null,         notes: null,
-    is_active: true, created_by: 'admintest', created_at: new Date().toISOString() },
+    is_active: true, created_by: 'admintest', created_at: new Date().toISOString(),
+    txn_count: 3, total_volume_php: 95000, last_txn_date: '2026-04-25' },
 ];
 
 // ── Special Credits ───────────────────────────────────────────────────────────
@@ -342,7 +347,8 @@ const server = createServer(async (req, res) => {
 
   // ── Customers (autocomplete + add) ─────────────────────────────────────────
   if (method === 'GET' && url.startsWith('/api/v1/customers') && !url.match(/\/customers\/[a-z0-9-]+$/i)) {
-    const u = new URL(url, 'http://x');
+    // url is path-only (mock-api strips ?... at line 247) — re-parse from req.url
+    const u = new URL(req.url ?? '', 'http://x');
     const q = (u.searchParams.get('q') ?? '').trim().toLowerCase();
     const limit = Number(u.searchParams.get('limit') ?? '20');
     let rows = CUSTOMERS.filter(c => c.is_active);
@@ -368,6 +374,26 @@ const server = createServer(async (req, res) => {
     const c = CUSTOMERS.find(x => x.id === id);
     if (!c) return json(res, { detail: 'Customer not found' }, 404);
     return json(res, c);
+  }
+  // Admin enriched customer list (with txn_count, total_volume_php, last_txn_date)
+  if (method === 'GET' && url.startsWith('/api/v1/admin/customers')) {
+    // url is path-only (mock-api strips ?... at line 247) — re-parse from req.url
+    const u = new URL(req.url ?? '', 'http://x');
+    const q = (u.searchParams.get('q') ?? '').trim().toLowerCase();
+    const includeInactive = u.searchParams.get('include_inactive') === 'true';
+    const limit = Number(u.searchParams.get('limit') ?? '100');
+    let rows = includeInactive ? CUSTOMERS : CUSTOMERS.filter(c => c.is_active);
+    if (q) rows = rows.filter(c =>
+      c.name.toLowerCase().includes(q) || (c.phone ?? '').toLowerCase().includes(q)
+    );
+    const enriched = rows.map(c => ({
+      ...c,
+      txn_count: c.txn_count ?? 0,
+      total_volume_php: c.total_volume_php ?? 0,
+      last_txn_date: c.last_txn_date ?? null,
+    }));
+    enriched.sort((a, b) => b.total_volume_php - a.total_volume_php);
+    return json(res, enriched.slice(0, limit));
   }
 
   // Users list (admin rider dispatch form) — handle both /users and /users/
