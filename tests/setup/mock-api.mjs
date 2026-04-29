@@ -734,6 +734,10 @@ const server = createServer(async (req, res) => {
   if (method === 'POST' && /\/rider\/transactions/.test(url)) {
     const body = await readBody(req);
     const data = JSON.parse(body);
+    // Mirror the API rule: rider non-cash sells force PENDING regardless of client.
+    const pmode = (data.payment_mode ?? 'CASH').toUpperCase();
+    const forcedPending = data.type === 'SELL' && pmode !== 'CASH';
+    const finalStatus = forcedPending ? 'PENDING' : (data.payment_status ?? 'RECEIVED');
     return json(res, {
       id:           'RIDER-TXN-001',
       time:          new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }),
@@ -748,7 +752,7 @@ const server = createServer(async (req, res) => {
       customer:      data.customer ?? null,
       customer_id:   data.customer_id ?? null,
       payment_mode:  data.payment_mode ?? 'CASH',
-      payment_status: data.payment_status ?? 'RECEIVED',
+      payment_status: finalStatus,
     }, 201);
   }
 

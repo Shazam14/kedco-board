@@ -302,7 +302,7 @@ export default function RiderShell({
           customer_id: custId || undefined,
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
-          payment_status: payPending ? 'PENDING' : 'RECEIVED',
+          payment_status: (payPending || (type === 'SELL' && payMode !== 'CASH')) ? 'PENDING' : 'RECEIVED',
           branch_id: (type === 'BUY' ? (txnBranch || branch) : branch) || undefined,
         }),
       });
@@ -582,11 +582,11 @@ export default function RiderShell({
               })()}
             </div>
           )}
-          {/* Total PHP in hand — float position only (FX proceeds tracked separately, counted at remit) */}
+          {/* Total PHP in hand — float carry + cash-sell proceeds (online sells stay PENDING above, so they're naturally excluded). Breakdown rows above act as the decomposition. */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', letterSpacing: '0.1em' }}>TOTAL PHP IN HAND</div>
-            <div style={{ ...Y, fontSize: 26, fontWeight: 800, color: carry != null && carry < 0 ? 'var(--accent-coral)' : 'var(--accent-sky)' }}>
-              {carry != null ? php(carry) : '—'}
+            <div style={{ ...Y, fontSize: 26, fontWeight: 800, color: remaining != null && remaining < 0 ? 'var(--accent-coral)' : 'var(--accent-sky)' }}>
+              {remaining != null ? php(remaining) : '—'}
             </div>
           </div>
         </div>

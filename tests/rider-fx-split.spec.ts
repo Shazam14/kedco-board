@@ -1,19 +1,15 @@
 /**
- * Regression guard for the rider FX-proceeds split.
+ * Regression guard for the rider PHP-in-hand display.
  *
- * Two surfaces, same principle:
- *   • Balance card "TOTAL PHP IN HAND" = carry only (float you haven't spent
- *     on buys). FX proceeds shown as their own line, NOT summed in.
- *   • End Day "PHP CASH RETURNING" input default = carry only too.
- *     FX proceeds appear as a separate row on the modal — they're already
- *     in the txn log and reconciled there, not folded back into the
- *     cash-handover number. Flipped 2026-04-29 after rider feedback that
- *     the carry+FX sum was confusing the cash count.
- *
- * Why: a rider needs one clean number for "how much float am I returning?"
- * Mixing in FX proceeds (which are PHP collected from selling foreign
- * currency) inflates the cash-return figure and makes physical-count
- * reconciliation harder, not easier.
+ * Two surfaces, related but separate:
+ *   • Balance card "TOTAL PHP IN HAND" = carry + FX proceeds from RECEIVED
+ *     (cash) sells. Online sells default to PENDING server-side and don't
+ *     contribute, so this number is "what's actually in the bag right now."
+ *     The FX PROCEEDS row stays as the visible breakdown. Flipped 2026-04-29
+ *     after Ken: admin still wants the sum, with the split shown above.
+ *   • End Day "PHP CASH RETURNING" input default = carry only (unchanged —
+ *     FX proceeds reconciled in the txn log, not folded into the cash
+ *     handover). The split-display intent stays for that surface.
  */
 import { test, expect } from '@playwright/test';
 import path from 'path';
@@ -24,7 +20,8 @@ test.use({ storageState: path.join('tests', '.auth', 'rider.json') });
 //   dispatch.cash_php = 50,000   borrow = 0
 //   BUY  ₱20,000  (RECEIVED)     → phpSpent
 //   SELL ₱29,000  (RECEIVED)     → fxProceeds
-//   carry = 50000 + 0 − 20000 = 30,000  ← used by BOTH balance card & End Day input
+//   carry = 50000 + 0 − 20000 = 30,000
+//   remaining = carry + fxProceeds = 59,000  ← TOTAL PHP IN HAND
 const DISPATCH = {
   dispatch: {
     id: 'DISP-FX-001',
@@ -48,7 +45,7 @@ const TXNS = [
   },
 ];
 
-test.describe('Rider FX-proceeds split', () => {
+test.describe('Rider PHP-in-hand display', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('/api/rider/dispatch', route =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(DISPATCH) })
@@ -62,17 +59,15 @@ test.describe('Rider FX-proceeds split', () => {
     await page.goto('/rider');
   });
 
-  test('TOTAL PHP IN HAND shows carry only — not carry + FX proceeds', async ({ page }) => {
-    // Wait for the dispatched balance card (only renders once /api/rider/dispatch resolves)
+  test('TOTAL PHP IN HAND = carry + cash-sell FX proceeds', async ({ page }) => {
     await expect(page.getByText('TOTAL PHP IN HAND')).toBeVisible();
 
-    // Big-total card = label + value, both in the same wrapping div.
     const totalCard = page.getByText('TOTAL PHP IN HAND').locator('..');
-    await expect(totalCard).toContainText('₱30,000.00');           // carry
-    await expect(totalCard).not.toContainText('₱59,000.00');       // remaining must NOT appear here
+    await expect(totalCard).toContainText('₱59,000.00');           // carry + fxProceeds
+    await expect(totalCard).not.toContainText('₱30,000.00');       // carry-only must NOT be the headline anymore
   });
 
-  test('FX proceeds surface separately on the balance card', async ({ page }) => {
+  test('FX proceeds surface separately on the balance card as the breakdown', async ({ page }) => {
     await expect(page.getByText('FX PROCEEDS (from sells)')).toBeVisible();
     const fxRow = page.getByText('FX PROCEEDS (from sells)').locator('..');
     await expect(fxRow).toContainText('+₱29,000.00');
@@ -81,7 +76,6 @@ test.describe('Rider FX-proceeds split', () => {
   test('End Day FCY row defaults to GROSS BOUGHT — sells shown separately, not deducted', async ({ page }) => {
     // Per Ken: End Day FCY should show what was sourced today (gross BUYS).
     // Sells are reconciled against the txn log, not deducted from the FCY input.
-    // Mirrors the PHP CASH split.
     await expect(page.getByText('TOTAL PHP IN HAND')).toBeVisible();
     await page.getByRole('button', { name: 'End Day' }).click();
 
@@ -96,7 +90,7 @@ test.describe('Rider FX-proceeds split', () => {
     await expect(soldRow).toContainText('−500.00');
   });
 
-  test('End Day input pre-fills with carry only (with commas) — FX proceeds shown as a separate row', async ({ page }) => {
+  test('End Day input pre-fills with carry only — FX proceeds shown as a separate row', async ({ page }) => {
     await expect(page.getByText('TOTAL PHP IN HAND')).toBeVisible();
     await page.getByRole('button', { name: 'End Day' }).click();
 
