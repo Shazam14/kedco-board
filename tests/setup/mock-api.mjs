@@ -496,7 +496,7 @@ const server = createServer(async (req, res) => {
   }
 
   // Transactions today (counter and rider)
-  if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, payment_mode: t.payment_mode, bank_id: null, payment_status: t.payment_status ?? 'RECEIVED' })));
+  if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, payment_mode: t.payment_mode, bank_id: null, payment_status: t.payment_status ?? 'RECEIVED', branch_id: t.branch_id ?? null })));
   if (method === 'GET' && /transactions/.test(url)) return json(res, []);
 
   // Submit batch counter transaction

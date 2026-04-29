@@ -35,6 +35,7 @@ export interface Transaction {
   paymentTag?: 'ADVANCE' | 'LATE';
   paymentStatus?: 'RECEIVED' | 'PENDING';
   referenceDate?: string;
+  branchId?: string;
 }
 
 export interface CurrencyMeta {

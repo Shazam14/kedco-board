@@ -86,6 +86,7 @@ export default function RiderShell({
   const [cust,        setCust]        = useState('');
   const [payMode,     setPayMode]     = useState('CASH');
   const [bankId,      setBankId]      = useState<number | null>(null);
+  const [txnBranch,   setTxnBranch]   = useState<string>('');  // per-buy override; falls back to device branch
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [flash,       setFlash]       = useState<(Transaction & { paymentLabel: string }) | null>(null);
@@ -180,7 +181,7 @@ export default function RiderShell({
           payment_mode: payMode,
           bank_id: bankId ?? undefined,
           payment_status: payPending ? 'PENDING' : 'RECEIVED',
-          branch_id: branch || undefined,
+          branch_id: (type === 'BUY' ? (txnBranch || branch) : branch) || undefined,
         }),
       });
       const data = await res.json();
@@ -196,7 +197,7 @@ export default function RiderShell({
           cashier: data.cashier, customer: data.customer ?? undefined,
           paymentLabel: bankName ? `${modeLabel} · ${bankName}` : modeLabel,
         });
-        amtInput.setValue(''); setCust(''); setPayMode('CASH'); setBankId(null); setPayPending(false);
+        amtInput.setValue(''); setCust(''); setPayMode('CASH'); setBankId(null); setPayPending(false); setTxnBranch('');
         await fetchTxns();
         setTimeout(() => setFlash(null), 6000);
       }
@@ -236,6 +237,12 @@ export default function RiderShell({
   const isReceived = (t: Transaction) => (t.paymentStatus ?? 'RECEIVED') !== 'PENDING';
   const phpSpent   = txns.filter(t => t.type === 'BUY'  && isReceived(t)).reduce((s, t) => s + t.phpAmt, 0);
   const fxProceeds = txns.filter(t => t.type === 'SELL' && isReceived(t)).reduce((s, t) => s + t.phpAmt, 0);
+  const buysByBranch = txns.filter(t => t.type === 'BUY' && isReceived(t)).reduce((acc, t) => {
+    const key = t.branchId ?? '—';
+    acc[key] = (acc[key] ?? 0) + t.phpAmt;
+    return acc;
+  }, {} as Record<string, number>);
+  const buyBranchRows = Object.entries(buysByBranch).sort((a, b) => b[1] - a[1]);
   const pendingIn  = txns.filter(t => t.type === 'SELL' && !isReceived(t)).reduce((s, t) => s + t.phpAmt, 0);
   const pendingOut = txns.filter(t => t.type === 'BUY'  && !isReceived(t)).reduce((s, t) => s + t.phpAmt, 0);
   const borrowed   = borrows.filter(b => b.is_returned === 'N').reduce((s, b) => s + b.amount_php, 0);
@@ -367,6 +374,20 @@ export default function RiderShell({
               </div>
             </div>
           </div>
+          {/* BUYs by source branch — decomposition of SPENT */}
+          {buyBranchRows.length > 0 && (
+            <div style={{ background: 'rgba(95,183,212,0.05)', border: '1px solid rgba(95,183,212,0.15)', borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
+              <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', marginBottom: 4 }}>BUYS BY SOURCE BRANCH</div>
+              {buyBranchRows.map(([code, amt]) => (
+                <div key={code} style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>
+                    {code === '—' ? 'Unspecified' : (BRANCHES.find(b => b.code === code)?.name ?? code)}
+                  </span>
+                  <span style={{ ...M, fontSize: 11, color: 'var(--accent-coral)' }}>−{php(amt)}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {/* Row 2: FX Proceeds — only if rider has sells */}
           {fxProceeds > 0 && (
             <div style={{ background: 'rgba(61,199,173,0.06)', border: '1px solid rgba(61,199,173,0.15)', borderRadius: 8, padding: '8px 12px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -588,6 +609,28 @@ export default function RiderShell({
               }}>{t === 'BUY' ? 'BUY' : 'SELL'}</button>
             ))}
           </div>
+
+          {/* Source branch — BUY only. Defaults to device branch, override per-buy. */}
+          {type === 'BUY' && (
+            <div>
+              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+                BOUGHT FROM <span style={{ opacity: 0.55 }}>(branch)</span>
+              </label>
+              <select
+                value={txnBranch || branch || ''}
+                onChange={e => setTxnBranch(e.target.value)}
+                style={{ width: '100%', background: 'var(--surface)', border: '1px solid rgba(61,199,173,0.25)', borderRadius: 10, padding: '14px 16px', color: 'var(--text-strong)', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+              >
+                <option value="">— select branch —</option>
+                {BRANCHES.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+              </select>
+              {txnBranch && branch && txnBranch !== branch && (
+                <div style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', marginTop: 4 }}>
+                  Overriding device branch ({BRANCHES.find(b => b.code === branch)?.name ?? branch})
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Currency picker */}
           <div>

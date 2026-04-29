@@ -34,6 +34,7 @@ export async function GET() {
       cashier: t.cashier, customer: t.customer ?? undefined,
       paymentMode: t.payment_mode, bankId: t.bank_id,
       paymentStatus: t.payment_status ?? 'RECEIVED',
+      branchId: (t.branch_id as string | undefined) ?? undefined,
     }));
 
   return NextResponse.json(mapped);
