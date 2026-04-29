@@ -97,6 +97,21 @@ export default function RiderShell({
   const [linkPickerName,  setLinkPickerName]  = useState('');
   const [linkPickerCustId,setLinkPickerCustId]= useState<string | null>(null);
   const [linkSaving,      setLinkSaving]      = useState(false);
+
+  // Edit-request state (rider can request edits; admin must approve)
+  const [editTxn,        setEditTxn]        = useState<Transaction | null>(null);
+  const [editForeignAmt, setEditForeignAmt] = useState('');
+  const [editRate,       setEditRate]       = useState('');
+  const [editBranchId,   setEditBranchId]   = useState<string>('');
+  const [editCustName,   setEditCustName]   = useState('');
+  const [editCustId,     setEditCustId]     = useState<string | null>(null);
+  const [editPayMode,    setEditPayMode]    = useState('CASH');
+  const [editBankId,     setEditBankId]     = useState<number | null>(null);
+  const [editNote,       setEditNote]       = useState('');
+  const [editLoading,    setEditLoading]    = useState(false);
+  const [editError,      setEditError]      = useState<string | null>(null);
+  const [editSent,       setEditSent]       = useState(false);
+  const [pendingEdits,   setPendingEdits]   = useState<Set<string>>(new Set());
   const [payPending,  setPayPending]  = useState(false);   // mark payment as pending/advance
   const [showPicker,  setShowPicker]  = useState(false);
   const [tab,         setTab]         = useState<Tab>('form');
@@ -173,6 +188,73 @@ export default function RiderShell({
   }
 
   useEffect(() => { fetchTxns(); }, [fetchTxns]);
+
+  // Fetch the rider's pending edit-request ids on mount so we can show ⏳
+  useEffect(() => {
+    fetch('/api/rider/edit-requests')
+      .then(r => r.ok ? r.json() : [])
+      .then((ids: string[]) => setPendingEdits(new Set(ids)))
+      .catch(() => {});
+  }, []);
+
+  function openEdit(t: Transaction) {
+    setEditTxn(t);
+    setEditForeignAmt(String(t.foreignAmt));
+    setEditRate(String(t.rate));
+    setEditBranchId(t.branchId ?? '');
+    setEditCustName(t.customer ?? '');
+    setEditCustId(t.customerId ?? null);
+    setEditPayMode((t.paymentMode as string) ?? 'CASH');
+    setEditBankId(t.bankId ?? null);
+    setEditNote('');
+    setEditError(null);
+    setEditSent(false);
+  }
+
+  function closeEdit() {
+    setEditTxn(null);
+    setEditError(null);
+    setEditSent(false);
+  }
+
+  async function handleEditRequest() {
+    if (!editTxn) return;
+    const body: Record<string, unknown> = {};
+    const newAmt  = parseFloat(editForeignAmt);
+    const newRate = parseFloat(editRate);
+    if (!isNaN(newAmt)  && newAmt  !== editTxn.foreignAmt) body.foreign_amt = newAmt;
+    if (!isNaN(newRate) && newRate !== editTxn.rate)       body.rate        = newRate;
+    if (editTxn.type === 'BUY') {
+      if (editBranchId !== (editTxn.branchId ?? '')) body.branch_id = editBranchId || null;
+    } else {
+      if (editCustId !== (editTxn.customerId ?? null)) body.customer_id = editCustId;
+      if (editCustName !== (editTxn.customer ?? ''))   body.customer    = editCustName || null;
+      if (editPayMode  !== ((editTxn.paymentMode as string) ?? 'CASH')) body.payment_mode = editPayMode;
+    }
+    if (editNote.trim()) body.note = editNote.trim();
+    if (Object.keys(body).filter(k => k !== 'note').length === 0) {
+      setEditError('No changes detected.');
+      return;
+    }
+    setEditLoading(true);
+    setEditError(null);
+    try {
+      const res = await fetch(`/api/rider/transactions/${editTxn.id}/edit-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setEditError(data.detail ?? data.error ?? 'Failed to submit request');
+        return;
+      }
+      setPendingEdits(prev => new Set([...prev, editTxn.id]));
+      setEditSent(true);
+    } finally {
+      setEditLoading(false);
+    }
+  }
 
   // Fetch rider's own dispatch on mount
   useEffect(() => {
@@ -530,6 +612,8 @@ export default function RiderShell({
                 const pending = t.paymentStatus === 'PENDING';
                 const isLinking = linkingTxnId === t.id;
                 const canLink = t.type === 'SELL' && !t.customerId;
+                const editPending = pendingEdits.has(t.id);
+                const sameDay = t.cashier === username; // server enforces same-day; UI shows on any own row
                 return (
                   <div key={t.id} style={{ background: 'var(--surface)', border: `1px solid ${pending ? 'rgba(212,166,74,0.3)' : 'var(--border)'}`, borderRadius: 10, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -563,6 +647,24 @@ export default function RiderShell({
                             👤 LINK CUSTOMER
                           </button>
                         )}
+                        {sameDay && (editPending ? (
+                          <span
+                            title="Edit request pending admin approval"
+                            data-testid={`edit-pending-${t.id}`}
+                            style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', background: 'rgba(212,166,74,0.12)', border: '1px solid rgba(212,166,74,0.3)', borderRadius: 10, padding: '2px 8px', letterSpacing: '0.06em' }}
+                          >
+                            ⏳ EDIT PENDING
+                          </span>
+                        ) : (
+                          <button
+                            data-testid={`rider-edit-btn-${t.id}`}
+                            onClick={() => openEdit(t)}
+                            title="Request edit"
+                            style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', background: 'rgba(212,166,74,0.10)', border: '1px solid rgba(212,166,74,0.3)', borderRadius: 10, padding: '2px 8px', cursor: 'pointer', letterSpacing: '0.06em' }}
+                          >
+                            ✎ EDIT
+                          </button>
+                        ))}
                       </div>
                     </div>
                     {isLinking && (
@@ -992,6 +1094,155 @@ export default function RiderShell({
           >
             {loading ? 'PROCESSING…' : `CONFIRM ${type}`}
           </button>
+        </div>
+      )}
+
+      {/* ── REQUEST EDIT MODAL ── */}
+      {editTxn && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 500, padding: '20px 12px', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, width: 380, maxWidth: '94vw' }} data-testid="rider-edit-modal">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+              <div>
+                <div style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', letterSpacing: '0.18em', marginBottom: 4 }}>REQUEST EDIT</div>
+                <div style={{ ...Y, fontSize: 16, fontWeight: 800 }}>{editTxn.id}</div>
+                <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                  {editTxn.type} · {editTxn.currency} · {editTxn.time}
+                </div>
+              </div>
+              <button onClick={closeEdit}
+                style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
+            </div>
+
+            {editSent ? (
+              <div style={{ background: 'rgba(61,199,173,0.08)', border: '1px solid rgba(61,199,173,0.3)', borderRadius: 10, padding: 18, textAlign: 'center' }}>
+                <div style={{ fontSize: 26, marginBottom: 6 }}>✓</div>
+                <div style={{ ...Y, fontSize: 14, fontWeight: 800, color: 'var(--teal-300)', marginBottom: 6 }}>Request Submitted</div>
+                <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 14 }}>Waiting for admin approval.</div>
+                <button onClick={closeEdit}
+                  style={{ ...M, fontSize: 12, fontWeight: 700, padding: '10px 22px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-strong)', cursor: 'pointer' }}>
+                  Close
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Foreign amount */}
+                <div>
+                  <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 4 }}>{editTxn.currency} AMOUNT</div>
+                  <input
+                    type="text" inputMode="decimal"
+                    value={editForeignAmt}
+                    onChange={e => setEditForeignAmt(e.target.value)}
+                    data-testid="rider-edit-amt"
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                {/* Rate */}
+                <div>
+                  <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 4 }}>RATE</div>
+                  <input
+                    type="text" inputMode="decimal"
+                    value={editRate}
+                    onChange={e => setEditRate(e.target.value)}
+                    data-testid="rider-edit-rate"
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)', ...M, fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                {/* BUY: branch picker */}
+                {editTxn.type === 'BUY' && (
+                  <div>
+                    <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 4 }}>BOUGHT FROM</div>
+                    <select
+                      value={editBranchId}
+                      onChange={e => setEditBranchId(e.target.value)}
+                      data-testid="rider-edit-branch"
+                      style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                    >
+                      <option value="">— select branch —</option>
+                      {BRANCHES.map(b => (
+                        <option key={b.code} value={b.code}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* SELL: customer picker */}
+                {editTxn.type === 'SELL' && (
+                  <div>
+                    <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 4 }}>CUSTOMER</div>
+                    <CustomerPicker
+                      variant="rider"
+                      value={editCustName}
+                      customerId={editCustId}
+                      onChange={(name, id) => { setEditCustName(name); setEditCustId(id); }}
+                      placeholder="search by name…"
+                    />
+                  </div>
+                )}
+
+                {/* SELL: payment mode */}
+                {editTxn.type === 'SELL' && (
+                  <div>
+                    <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 4 }}>PAYMENT</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {PAYMENT_MODES.map(m => (
+                        <button
+                          key={m.value}
+                          type="button"
+                          onClick={() => { setEditPayMode(m.value); if (!NEEDS_BANK.includes(m.value)) setEditBankId(null); }}
+                          style={{
+                            ...M, fontSize: 10, padding: '6px 10px', borderRadius: 8,
+                            border: `1px solid ${editPayMode === m.value ? 'rgba(61,199,173,0.5)' : 'var(--border-subtle)'}`,
+                            background: editPayMode === m.value ? 'rgba(61,199,173,0.10)' : 'transparent',
+                            color: editPayMode === m.value ? 'var(--teal-300)' : 'var(--text-muted)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {m.icon} {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Note to admin */}
+                <div>
+                  <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 4 }}>NOTE TO ADMIN (optional)</div>
+                  <textarea
+                    value={editNote}
+                    onChange={e => setEditNote(e.target.value)}
+                    rows={2}
+                    placeholder="why this change?"
+                    style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-strong)', ...M, fontSize: 11, outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+                  />
+                </div>
+
+                {editError && (
+                  <div style={{ ...M, fontSize: 11, color: 'var(--accent-coral)', background: 'rgba(238,108,90,0.08)', border: '1px solid rgba(238,108,90,0.2)', borderRadius: 8, padding: '8px 12px' }}>
+                    ✗ {editError}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <button
+                    onClick={closeEdit}
+                    style={{ flex: 1, ...M, fontSize: 12, padding: '12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleEditRequest}
+                    disabled={editLoading}
+                    data-testid="rider-edit-submit"
+                    style={{ flex: 2, ...M, fontSize: 12, fontWeight: 800, padding: '12px', borderRadius: 8, border: 'none', background: editLoading ? 'var(--border-subtle)' : 'linear-gradient(135deg,#f5a623,#e09000)', color: editLoading ? 'var(--text-muted)' : '#000', cursor: editLoading ? 'not-allowed' : 'pointer', letterSpacing: '0.04em' }}
+                  >
+                    {editLoading ? 'SUBMITTING…' : 'SEND REQUEST'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
