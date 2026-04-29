@@ -416,11 +416,11 @@ export default function RiderShell({
               })()}
             </div>
           )}
-          {/* Total PHP in hand */}
+          {/* Total PHP in hand — float position only (FX proceeds tracked separately, counted at remit) */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', letterSpacing: '0.1em' }}>TOTAL PHP IN HAND</div>
-            <div style={{ ...Y, fontSize: 26, fontWeight: 800, color: remaining != null && remaining < 0 ? 'var(--accent-coral)' : 'var(--accent-sky)' }}>
-              {remaining != null ? php(remaining) : '—'}
+            <div style={{ ...Y, fontSize: 26, fontWeight: 800, color: carry != null && carry < 0 ? 'var(--accent-coral)' : 'var(--accent-sky)' }}>
+              {carry != null ? php(carry) : '—'}
             </div>
           </div>
         </div>
