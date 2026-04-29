@@ -22,7 +22,7 @@ interface CustomerRow {
 
 type SortKey = 'volume' | 'name' | 'count' | 'last';
 
-export default function CustomersAdminShell({ canMerge = false }: { canMerge?: boolean }) {
+export default function CustomersAdminShell({ canMerge = false, canAdd = false }: { canMerge?: boolean; canAdd?: boolean }) {
   const [rows,            setRows]            = useState<CustomerRow[]>([]);
   const [loading,         setLoading]         = useState(true);
   const [q,               setQ]               = useState('');
@@ -34,6 +34,12 @@ export default function CustomersAdminShell({ canMerge = false }: { canMerge?: b
   const [merging,         setMerging]         = useState(false);
   const [mergeError,      setMergeError]      = useState<string | null>(null);
   const [reloadTick,      setReloadTick]      = useState(0);
+  const [addOpen,         setAddOpen]         = useState(false);
+  const [addName,         setAddName]         = useState('');
+  const [addPhone,        setAddPhone]        = useState('');
+  const [addNotes,        setAddNotes]        = useState('');
+  const [adding,          setAdding]          = useState(false);
+  const [addError,        setAddError]        = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -96,6 +102,44 @@ export default function CustomersAdminShell({ canMerge = false }: { canMerge?: b
       setReloadTick(t => t + 1);
     } finally {
       setMerging(false);
+    }
+  }
+
+  function openAddModal() {
+    setAddName('');
+    setAddPhone('');
+    setAddNotes('');
+    setAddError(null);
+    setAddOpen(true);
+  }
+
+  async function confirmAdd() {
+    const name = addName.trim();
+    if (!name) {
+      setAddError('Name is required');
+      return;
+    }
+    setAdding(true);
+    setAddError(null);
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          phone: addPhone.trim() || null,
+          notes: addNotes.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddError(typeof data?.detail === 'string' ? data.detail : 'Failed to add customer');
+        return;
+      }
+      setAddOpen(false);
+      setReloadTick(t => t + 1);
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -184,6 +228,15 @@ export default function CustomersAdminShell({ canMerge = false }: { canMerge?: b
             />
             include inactive
           </label>
+          {canAdd && (
+            <button
+              data-testid="open-add-customer"
+              onClick={openAddModal}
+              style={{ background: 'linear-gradient(135deg,#00d4aa,#00a884)', border: 'none', borderRadius: 8, padding: '10px 16px', color: '#000', ...Y, fontSize: 12, fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              + NEW CUSTOMER
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -252,6 +305,78 @@ export default function CustomersAdminShell({ canMerge = false }: { canMerge?: b
             : 'Merge & per-customer detail are admin-only. Cashiers + riders can keep adding from the txn forms.'}
         </div>
       </div>
+
+      {/* Add customer modal */}
+      {canAdd && addOpen && (
+        <div data-testid="add-customer-modal"
+             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}
+             onClick={e => { if (e.target === e.currentTarget && !adding) setAddOpen(false); }}>
+          <div style={{ background: '#1a1d27', border: '1px solid var(--border)', borderRadius: 14, padding: 28, width: 460, maxWidth: '95vw' }}>
+            <div style={{ ...Y, fontSize: 18, fontWeight: 800, marginBottom: 6 }}>Add new customer</div>
+            <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 18 }}>
+              Seed a loyal customer manually. Cashiers + riders can also add inline from txn forms.
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em' }}>NAME *</span>
+                <input
+                  data-testid="add-customer-name"
+                  value={addName}
+                  onChange={e => setAddName(e.target.value)}
+                  autoFocus
+                  placeholder="Hannah Wu"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em' }}>PHONE</span>
+                <input
+                  data-testid="add-customer-phone"
+                  value={addPhone}
+                  onChange={e => setAddPhone(e.target.value)}
+                  placeholder="0917-123-4567"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em' }}>NOTES</span>
+                <input
+                  data-testid="add-customer-notes"
+                  value={addNotes}
+                  onChange={e => setAddNotes(e.target.value)}
+                  placeholder="optional"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }}
+                />
+              </label>
+            </div>
+
+            {addError && (
+              <div data-testid="add-customer-error" style={{ ...M, fontSize: 11, color: '#ff8b8b', background: 'rgba(255,92,92,0.08)', border: '1px solid rgba(255,92,92,0.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 14 }}>
+                {addError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setAddOpen(false)}
+                disabled={adding}
+                style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, padding: '12px', color: 'var(--muted)', ...M, fontSize: 12, cursor: adding ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                data-testid="confirm-add-customer"
+                onClick={confirmAdd}
+                disabled={adding || !addName.trim()}
+                style={{ flex: 2, background: adding ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)', border: 'none', borderRadius: 8, padding: '12px', color: adding ? 'var(--muted)' : '#000', ...Y, fontSize: 13, fontWeight: 800, cursor: adding ? 'wait' : 'pointer' }}
+              >
+                {adding ? 'Adding…' : 'ADD CUSTOMER'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Merge floating action bar */}
       {canMerge && selected.size >= 2 && !mergeOpen && (

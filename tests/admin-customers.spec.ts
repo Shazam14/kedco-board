@@ -199,4 +199,45 @@ test.describe('Admin Customers list page (/admin/customers)', () => {
       await expect(page.getByTestId('select-cust-hannah-wu')).toHaveCount(0);
     });
   });
+
+  test.describe('add customer (admin only)', () => {
+    test.use({ storageState: path.join('tests', '.auth', 'admin.json') });
+
+    test('admin can seed a new customer from the list page', async ({ page }) => {
+      await page.goto('/admin/customers');
+      await page.getByTestId('open-add-customer').click();
+
+      const modal = page.getByTestId('add-customer-modal');
+      await expect(modal).toBeVisible();
+
+      await modal.getByTestId('add-customer-name').fill('Maria Santos');
+      await modal.getByTestId('add-customer-phone').fill('09181112222');
+      await modal.getByTestId('add-customer-notes').fill('regular USD seller');
+      await modal.getByTestId('confirm-add-customer').click();
+
+      // Modal closes, list reloads with the new row
+      await expect(page.getByTestId('add-customer-modal')).toHaveCount(0);
+      // New row id is generated server-side; find by name text
+      await expect(page.getByText('Maria Santos')).toBeVisible();
+      // Summary card customer count bumps from 3 → 4
+      await expect(page.getByTestId('summary-customers')).toContainText('4');
+    });
+
+    test('blank name shows inline error and does not POST', async ({ page }) => {
+      await page.goto('/admin/customers');
+      await page.getByTestId('open-add-customer').click();
+      // Confirm button stays disabled with blank name
+      await expect(page.getByTestId('confirm-add-customer')).toBeDisabled();
+    });
+  });
+
+  test.describe('add customer hidden for supervisor', () => {
+    test.use({ storageState: path.join('tests', '.auth', 'supervisor.json') });
+
+    test('supervisor does NOT see the + NEW CUSTOMER button', async ({ page }) => {
+      await page.goto('/admin/customers');
+      await expect(page.getByText('Customer Master List')).toBeVisible();
+      await expect(page.getByTestId('open-add-customer')).toHaveCount(0);
+    });
+  });
 });

@@ -6,6 +6,7 @@ export default async function AdminCustomersPage() {
   const role = await getTokenRole();
   if (!role) redirect('/login');
   if (role !== 'admin' && role !== 'supervisor') redirect('/');
-  // Merge is admin-only on the API too — supervisor sees the list, no merge UI
-  return <CustomersAdminShell canMerge={role === 'admin'} />;
+  // Merge + add are admin-only on the API too — supervisor sees the list, no merge/add UI
+  const isAdmin = role === 'admin';
+  return <CustomersAdminShell canMerge={isAdmin} canAdd={isAdmin} />;
 }
