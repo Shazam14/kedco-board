@@ -20,6 +20,10 @@ interface CurrencyRow {
   buy_count: number; buy_qty: number; buy_php: number;
   sell_count: number; sell_qty: number; sell_php: number;
   than: number;
+  // Accrual report: SELL PHP / THAN above are inclusive of PENDING. These
+  // fields surface the PENDING piece separately so we can show a badge.
+  sell_php_pending?: number;
+  than_pending?: number;
 }
 interface PositionRow {
   code: string; name: string; flag: string; category: string;
@@ -54,6 +58,11 @@ interface Report {
   total_sold_php: number;
   total_than: number;
   total_commission: number;
+  // Accrual: total_sold_php / total_than above include PENDING. These split
+  // out the PENDING piece for the receivables badge.
+  total_sold_php_pending?: number;
+  total_than_pending?: number;
+  pending_count?: number;
   opening_positions?: PositionRow[];
   stock_summary?: StockRow[];
   total_closing_stock_php?: number;
@@ -74,6 +83,9 @@ function printReport(report: Report) {
   const CATEGORY_LABEL: Record<string, string> = { MAIN: 'Main Currencies', '2ND': '2nd Currencies', OTHERS: 'Others' };
   const categories = ['MAIN', '2ND', 'OTHERS'];
 
+  const pendingBadge = (n: number) =>
+    n > 0 ? `<div style="font-size:9px;color:#c47000;font-weight:700;margin-top:2px">⏳ ${php(n)}</div>` : '';
+
   const currencyRows = categories.map(cat => {
     const rows = report.by_currency.filter(r => r.category === cat);
     if (!rows.length) return '';
@@ -83,6 +95,7 @@ function printReport(report: Report) {
       sell_count: rows.reduce((s, r) => s + r.sell_count, 0),
       sell_php:   rows.reduce((s, r) => s + r.sell_php,   0),
       than:       rows.reduce((s, r) => s + r.than,       0),
+      sell_php_pending: rows.reduce((s, r) => s + (r.sell_php_pending ?? 0), 0),
     };
     return `
       <tr style="background:#f0f0f0"><td colspan="8" style="padding:6px 8px;font-weight:700;font-size:11px;letter-spacing:0.1em">${CATEGORY_LABEL[cat] ?? cat}</td></tr>
@@ -95,7 +108,7 @@ function printReport(report: Report) {
           <td style="text-align:right;color:#2255cc;font-weight:600">${r.buy_php > 0 ? php(r.buy_php) : '—'}</td>
           <td style="text-align:right;color:#c47000">${r.sell_count || '—'}</td>
           <td style="text-align:right;color:#c47000">${r.sell_qty > 0 ? r.sell_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}</td>
-          <td style="text-align:right;color:#c47000;font-weight:600">${r.sell_php > 0 ? php(r.sell_php) : '—'}</td>
+          <td style="text-align:right;color:#c47000;font-weight:600">${r.sell_php > 0 ? php(r.sell_php) : '—'}${pendingBadge(r.sell_php_pending ?? 0)}</td>
         </tr>
       `).join('')}
       <tr style="background:#e8e8e8;font-weight:700">
@@ -105,7 +118,7 @@ function printReport(report: Report) {
         <td style="text-align:right;color:#2255cc">${php(tot.buy_php)}</td>
         <td style="text-align:right;color:#c47000">${tot.sell_count}</td>
         <td></td>
-        <td style="text-align:right;color:#c47000">${php(tot.sell_php)}</td>
+        <td style="text-align:right;color:#c47000">${php(tot.sell_php)}${pendingBadge(tot.sell_php_pending)}</td>
       </tr>`;
   }).join('');
 
@@ -194,7 +207,8 @@ function printReport(report: Report) {
     <div class="summary">
       <div class="summary-box"><div class="label">OPENING STOCK</div><div class="value" style="color:#555">${php(openingStockPhp)}</div></div>
       <div class="summary-box"><div class="label">TOTAL BOUGHT</div><div class="value" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
-      <div class="summary-box"><div class="label">TOTAL SOLD</div><div class="value" style="color:#c47000">${php(report.total_sold_php)}</div></div>
+      <div class="summary-box"><div class="label">TOTAL SOLD</div><div class="value" style="color:#c47000">${php(report.total_sold_php)}</div>${(report.total_sold_php_pending ?? 0) > 0 ? `<div style="font-size:10px;color:#c47000;font-weight:700;margin-top:6px">⏳ pending: ${php(report.total_sold_php_pending!)}</div>` : ''}</div>
+      <div class="summary-box"><div class="label">TOTAL THAN</div><div class="value" style="color:#007a55">${php(report.total_than)}</div>${(report.total_than_pending ?? 0) > 0 ? `<div style="font-size:10px;color:#c47000;font-weight:700;margin-top:6px">⏳ pending: ${php(report.total_than_pending!)}</div>` : ''}</div>
       ${hasComm ? `<div class="summary-box"><div class="label">TOTAL COMM</div><div class="value" style="color:#007a55">${report.total_commission > 0 ? '+' : ''}${php(report.total_commission)}</div></div>` : ''}
     </div>
     <div class="flow">
@@ -266,7 +280,7 @@ function printReport(report: Report) {
         <td></td><td></td>
         <td style="text-align:right;padding:8px;font-size:13px">${php(report.total_bought_php)}</td>
         <td></td><td></td>
-        <td style="text-align:right;padding:8px;font-size:13px">${php(report.total_sold_php)}</td>
+        <td style="text-align:right;padding:8px;font-size:13px">${php(report.total_sold_php)}${(report.total_sold_php_pending ?? 0) > 0 ? `<div style="font-size:9px;color:#ffb061;font-weight:700;margin-top:2px">⏳ ${php(report.total_sold_php_pending!)}</div>` : ''}</td>
       </tr></tfoot>
     </table>
 
@@ -329,6 +343,8 @@ export default function ReportShell({
     sell_count: rows.reduce((s, r) => s + r.sell_count, 0),
     sell_php:   rows.reduce((s, r) => s + r.sell_php,   0),
     than:       rows.reduce((s, r) => s + r.than,       0),
+    sell_php_pending: rows.reduce((s, r) => s + (r.sell_php_pending ?? 0), 0),
+    than_pending:     rows.reduce((s, r) => s + (r.than_pending ?? 0),     0),
   });
 
   const openingStock = report?.total_opening_stock_php ?? 0;
@@ -453,11 +469,13 @@ export default function ReportShell({
             {/* ── SUMMARY BOXES ── */}
             {(() => {
               const cols = report.total_commission !== 0 ? 5 : 4;
+              const soldPending = report.total_sold_php_pending ?? 0;
+              const thanPending = report.total_than_pending ?? 0;
               const boxes = [
                 { label: 'OPENING STOCK', value: php(openingStock), color: '#aab4c8' },
                 { label: 'TOTAL BOUGHT',  value: php(report.total_bought_php),        color: '#5b8cff' },
-                { label: 'TOTAL SOLD',    value: php(report.total_sold_php),           color: '#f5a623' },
-                { label: 'TOTAL THAN',    value: php(report.total_than),               color: '#00d4aa' },
+                { label: 'TOTAL SOLD',    value: php(report.total_sold_php),           color: '#f5a623', pending: soldPending },
+                { label: 'TOTAL THAN',    value: php(report.total_than),               color: '#00d4aa', pending: thanPending },
                 ...(report.total_commission !== 0 ? [{ label: 'TOTAL COMM', value: (report.total_commission > 0 ? '+' : '') + php(report.total_commission), color: '#00d4aa' }] : []),
               ];
               return (
@@ -469,6 +487,11 @@ export default function ReportShell({
                     }}>
                       <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>{s.label}</div>
                       <div className="print-accent" style={{ ...Y, fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+                      {('pending' in s) && (s.pending ?? 0) > 0 && (
+                        <div style={{ ...M, fontSize: 10, color: '#c47000', fontWeight: 700, marginTop: 6, letterSpacing: '0.04em' }}>
+                          ⏳ pending: {php(s.pending!)}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -710,7 +733,10 @@ export default function ReportShell({
                       {CATEGORY_LABEL[cat] ?? cat}
                     </div>
 
-                    {rows.map((r, i) => (
+                    {rows.map((r, i) => {
+                      const sellPending = r.sell_php_pending ?? 0;
+                      const thanPending = r.than_pending ?? 0;
+                      return (
                       <div key={r.code} style={{
                         display: 'grid',
                         gridTemplateColumns: '110px 1fr 80px 90px 110px 80px 90px 110px 100px',
@@ -734,14 +760,21 @@ export default function ReportShell({
                         <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>
                           {r.sell_qty > 0 ? r.sell_qty.toLocaleString('en-PH', { minimumFractionDigits: r.decimal_places, maximumFractionDigits: r.decimal_places }) : '—'}
                         </span>
-                        <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>
-                          {r.sell_php > 0 ? php(r.sell_php) : '—'}
+                        <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                          <span>{r.sell_php > 0 ? php(r.sell_php) : '—'}</span>
+                          {sellPending > 0 && (
+                            <span style={{ fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(sellPending)}</span>
+                          )}
                         </span>
-                        <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right' }}>
-                          {r.than > 0 ? php(r.than) : '—'}
+                        <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                          <span>{r.than > 0 ? php(r.than) : '—'}</span>
+                          {thanPending > 0 && (
+                            <span style={{ fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(thanPending)}</span>
+                          )}
                         </span>
                       </div>
-                    ))}
+                    );
+                    })}
 
                     {/* Category subtotal */}
                     <div style={{
@@ -758,9 +791,17 @@ export default function ReportShell({
                       <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right', fontWeight: 700 }}>{php(tot.buy_php)}</span>
                       <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{tot.sell_count}</span>
                       <span />
-                      <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right', fontWeight: 700 }}>{php(tot.sell_php)}</span>
-                      <span style={{ ...M, fontSize: 11, color: '#00d4aa', textAlign: 'right', fontWeight: 700 }}>
-                        {tot.than > 0 ? php(tot.than) : '—'}
+                      <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right', fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        <span>{php(tot.sell_php)}</span>
+                        {tot.sell_php_pending > 0 && (
+                          <span style={{ fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(tot.sell_php_pending)}</span>
+                        )}
+                      </span>
+                      <span style={{ ...M, fontSize: 11, color: '#00d4aa', textAlign: 'right', fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        <span>{tot.than > 0 ? php(tot.than) : '—'}</span>
+                        {tot.than_pending > 0 && (
+                          <span style={{ fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(tot.than_pending)}</span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -781,8 +822,18 @@ export default function ReportShell({
                 <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#5b8cff', textAlign: 'right' }}>{php(report.total_bought_php)}</span>
                 <span />
                 <span />
-                <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#f5a623', textAlign: 'right' }}>{php(report.total_sold_php)}</span>
-                <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#00d4aa', textAlign: 'right' }}>{php(report.total_than)}</span>
+                <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#f5a623', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                  <span>{php(report.total_sold_php)}</span>
+                  {(report.total_sold_php_pending ?? 0) > 0 && (
+                    <span style={{ ...M, fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(report.total_sold_php_pending!)}</span>
+                  )}
+                </span>
+                <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#00d4aa', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                  <span>{php(report.total_than)}</span>
+                  {(report.total_than_pending ?? 0) > 0 && (
+                    <span style={{ ...M, fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(report.total_than_pending!)}</span>
+                  )}
+                </span>
               </div>
             </div>
 

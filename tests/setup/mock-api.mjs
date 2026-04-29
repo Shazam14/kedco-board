@@ -782,11 +782,16 @@ const server = createServer(async (req, res) => {
       total_bought_php:   46250,
       total_sold_php:     11200,
       total_than:         100,
+      total_sold_php_pending: 0,
+      total_than_pending:     0,
+      pending_count:          0,
       by_currency: [
         { code:'USD', name:'US Dollar',     flag:'🇺🇸', category:'MAIN', decimal_places:2,
-          buy_count:1, buy_qty:500,   buy_php:27750, sell_count:1, sell_qty:200, sell_php:11200, than:100 },
+          buy_count:1, buy_qty:500,   buy_php:27750, sell_count:1, sell_qty:200, sell_php:11200, than:100,
+          sell_php_pending: 0, than_pending: 0 },
         { code:'JPY', name:'Japanese Yen',  flag:'🇯🇵', category:'MAIN', decimal_places:0,
-          buy_count:1, buy_qty:50000, buy_php:18500, sell_count:0, sell_qty:0,   sell_php:0,    than:0   },
+          buy_count:1, buy_qty:50000, buy_php:18500, sell_count:0, sell_qty:0,   sell_php:0,    than:0,
+          sell_php_pending: 0, than_pending: 0 },
       ],
       by_cashier: [
         { cashier:'cashier1', buy_count:2, buy_php:46250, sell_count:1, sell_php:11200, than:100 },
