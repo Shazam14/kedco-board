@@ -335,6 +335,9 @@ const server = createServer(async (req, res) => {
   // Users list (admin rider dispatch form) — handle both /users and /users/
   if (method === 'GET' && (url === '/api/v1/users/' || url === '/api/v1/users')) return json(res, ALL_USERS);
 
+  // Riders only — used by /admin/riders page (allows admin + supervisor on real API)
+  if (method === 'GET' && url === '/api/v1/users/riders') return json(res, ALL_USERS.filter(u => u.role === 'rider'));
+
   // Today's dispatches (rider tab)
   if (method === 'GET' && url === '/api/v1/rider/dispatches/today') return json(res, []);
 
