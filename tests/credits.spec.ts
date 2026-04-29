@@ -249,13 +249,31 @@ test.describe('Ledger', () => {
     await expect(page.locator('text=₱10,000.00').first()).toBeVisible();
   });
 
-  test('date filter narrows the ledger', async ({ page, request }) => {
-    // Seed two entries on different dates via mock-api
-    await request.post(`${MOCK_API}/api/v1/credits/credit-001/ledger`, {
-      data: { date: '2026-04-01', palod: 5000, than: 100, bayad: 0, description: 'april one' },
-    });
-    await request.post(`${MOCK_API}/api/v1/credits/credit-001/ledger`, {
-      data: { date: '2026-04-15', palod: 7000, than: 200, bayad: 0, description: 'april fifteen' },
+  test('date filter narrows the ledger', async ({ page }) => {
+    // Intercept the ledger fetch and return data based on the date-range query.
+    // Avoids relying on mock-api state which can race in cold pre-push runs.
+    const aprilOne     = { id: 'led-1', date: '2026-04-01', time: null, description: 'april one',     palod: 5000, than: 100, bayad: 0, balance: 5100,  created_by: 'admin', created_at: '2026-04-01T10:00:00Z' };
+    const aprilFifteen = { id: 'led-2', date: '2026-04-15', time: null, description: 'april fifteen', palod: 7000, than: 200, bayad: 0, balance: 12300, created_by: 'admin', created_at: '2026-04-15T10:00:00Z' };
+    await page.route('**/api/admin/credits/credit-001/ledger*', async route => {
+      const url = new URL(route.request().url());
+      const from = url.searchParams.get('from_date');
+      const to   = url.searchParams.get('to_date');
+      const all = [aprilOne, aprilFifteen];
+      const entries = all.filter(e => (!from || e.date >= from) && (!to || e.date <= to));
+      const opening = from ? (all.filter(e => e.date < from).slice(-1)[0]?.balance ?? null) : null;
+      const closing = entries.length ? entries[entries.length - 1].balance : opening;
+      await route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({
+          entries,
+          summary: {
+            palod_sum: entries.reduce((s, e) => s + e.palod, 0),
+            than_sum:  entries.reduce((s, e) => s + e.than,  0),
+            bayad_sum: entries.reduce((s, e) => s + e.bayad, 0),
+            opening_balance: opening, closing_balance: closing, count: entries.length,
+          },
+        }),
+      });
     });
 
     await page.reload();
@@ -270,12 +288,10 @@ test.describe('Ledger', () => {
     // Filter to Apr 10–20 — only "april fifteen" should remain
     await page.locator('input[type="date"]').nth(0).fill('2026-04-10');
     await page.locator('input[type="date"]').nth(1).fill('2026-04-20');
-    const respPromise = page.waitForResponse(r => r.url().includes('/credits/credit-001/ledger?') && r.url().includes('from_date=2026-04-10'));
     await page.getByRole('button', { name: 'Apply' }).click();
-    await respPromise;
 
-    await expect(page.getByText('april fifteen')).toBeVisible();
-    await expect(page.getByText('april one')).not.toBeVisible();
+    await expect(page.locator('td', { hasText: 'april fifteen' })).toHaveCount(1, { timeout: 10_000 });
+    await expect(page.locator('td', { hasText: 'april one' })).toHaveCount(0);
   });
 });
 
