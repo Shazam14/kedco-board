@@ -360,9 +360,41 @@ const server = createServer(async (req, res) => {
       dispatch_time:    '09:00 AM',
       return_time:       null,
       cash_php:          data.cash_php,
+      remit_php:         null,
+      items:             [],
+      remit_items:       [],
+      topups:            [],
       notes:             data.notes ?? null,
       dispatched_by:    'admin',
     }, 201);
+  }
+
+  // Top up an existing dispatch
+  if (method === 'POST' && /^\/api\/v1\/rider\/dispatches\/.+\/topup$/.test(url)) {
+    const id = url.split('/').slice(-2)[0];
+    const body = JSON.parse(await readBody(req));
+    return json(res, {
+      id,
+      date:           new Date().toISOString().split('T')[0],
+      rider_username:'rider01',
+      rider_name:    'Rider 01',
+      status:        'IN_FIELD',
+      dispatch_time: '09:00 AM',
+      return_time:    null,
+      cash_php:       (body.amount_php ?? 0) + 100000,
+      remit_php:      null,
+      items:          [],
+      remit_items:    [],
+      topups: [{
+        id:           'topup-' + Date.now(),
+        amount_php:   body.amount_php,
+        time:        '10:30 AM',
+        dispatched_by:'admin',
+        notes:        body.notes ?? null,
+      }],
+      notes:          null,
+      dispatched_by: 'admin',
+    });
   }
 
   // Mark dispatch returned

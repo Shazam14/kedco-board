@@ -19,7 +19,8 @@ function fmtFx(amt: number, code: string, currencies: { code: string; decimalPla
 type Tab = 'form' | 'log' | 'holdings' | 'endday';
 
 interface Bank     { id: number; name: string; code: string; }
-interface Dispatch { id: string; cash_php: number; status: string; dispatch_time: string | null; }
+interface Topup    { id: string; amount_php: number; time: string | null; dispatched_by: string | null; notes: string | null; }
+interface Dispatch { id: string; cash_php: number; status: string; dispatch_time: string | null; topups?: Topup[]; }
 interface Borrow   { id: string; amount_php: number; is_returned: string; }
 
 const PAYMENT_MODES = [
@@ -348,6 +349,9 @@ export default function RiderShell({
             <div>
               <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 3 }}>STARTING</div>
               <div style={{ ...M, fontSize: 13, color: 'var(--text-strong)' }}>{php(dispatch.cash_php)}</div>
+              {(dispatch.topups ?? []).length > 0 && (
+                <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', marginTop: 2 }}>incl. {(dispatch.topups ?? []).length} top-up{(dispatch.topups ?? []).length > 1 ? 's' : ''}</div>
+              )}
               {borrowed > 0 && <div style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', marginTop: 2 }}>+{php(borrowed)} borrow</div>}
             </div>
             <div>
@@ -386,6 +390,30 @@ export default function RiderShell({
                   <span style={{ ...M, fontSize: 11, color: 'var(--accent-gold)', fontWeight: 700 }}>{php(pendingOut)}</span>
                 </div>
               )}
+            </div>
+          )}
+          {/* Top-up history */}
+          {(dispatch.topups ?? []).length > 0 && (
+            <div style={{ background: 'rgba(95,183,212,0.05)', border: '1px solid rgba(95,183,212,0.15)', borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
+              <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', marginBottom: 4 }}>CASH RECEIVED</div>
+              {(() => {
+                const topups = dispatch.topups ?? [];
+                const initial = dispatch.cash_php - topups.reduce((s, t) => s + t.amount_php, 0);
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>Initial dispatch{dispatch.dispatch_time ? ` · ${dispatch.dispatch_time}` : ''}</span>
+                      <span style={{ ...M, fontSize: 11, color: 'var(--text-strong)' }}>{php(initial)}</span>
+                    </div>
+                    {topups.map(t => (
+                      <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                        <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>Top-up{t.time ? ` · ${t.time}` : ''}</span>
+                        <span style={{ ...M, fontSize: 11, color: 'var(--accent-sky)' }}>+{php(t.amount_php)}</span>
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           )}
           {/* Total PHP in hand */}

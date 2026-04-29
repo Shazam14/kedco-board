@@ -387,6 +387,7 @@ function TransactionsTab({ data, role }: { data: DashboardSummary; role: string 
   );
 }
 
+interface DispatchTopup { id: string; amount_php: number; time: string | null; dispatched_by: string | null; notes: string | null; }
 interface Dispatch {
   id: string;
   rider_username: string;
@@ -395,6 +396,7 @@ interface Dispatch {
   dispatch_time: string | null;
   return_time: string | null;
   cash_php: number;
+  topups?: DispatchTopup[];
   notes: string | null;
   dispatched_by: string | null;
 }
@@ -448,6 +450,31 @@ function RiderTab({ data, role }: { data: DashboardSummary; role: string }) {
     await fetch(`/api/admin/dispatches/${id}/return`, { method: 'PATCH' });
     await fetchDispatches();
     setReturning(null);
+  }
+
+  const [topupOpen,   setTopupOpen]   = useState<string | null>(null);
+  const [topupAmt,    setTopupAmt]    = useState('');
+  const [topupNotes,  setTopupNotes]  = useState('');
+  const [topupSaving, setTopupSaving] = useState(false);
+  const [topupErr,    setTopupErr]    = useState<string | null>(null);
+
+  async function handleTopup(id: string) {
+    const amt = parseFloat(topupAmt);
+    if (!amt || amt <= 0) return;
+    setTopupSaving(true); setTopupErr(null);
+    const res = await fetch(`/api/admin/dispatches/${id}/topup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount_php: amt, notes: topupNotes || undefined }),
+    });
+    if (res.ok) {
+      setTopupOpen(null); setTopupAmt(''); setTopupNotes('');
+      await fetchDispatches();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setTopupErr(data.detail ?? data.error ?? 'Failed');
+    }
+    setTopupSaving(false);
   }
 
   const inField   = dispatches.filter(d => d.status === 'IN_FIELD');
@@ -535,43 +562,98 @@ function RiderTab({ data, role }: { data: DashboardSummary; role: string }) {
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-sky)', boxShadow: '0 0 6px #a78bfa' }} />
             <span style={{ ...S.mono, fontSize: 10, color: 'var(--accent-sky)', letterSpacing: '0.12em' }}>IN FIELD — {inField.length}</span>
           </div>
-          {inField.map((d, i) => (
-            <div key={d.id} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-              padding: '14px 20px', borderBottom: i < inField.length - 1 ? '1px solid var(--border)' : 'none',
-            }}>
-              <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ ...S.syne, fontSize: 13, fontWeight: 700, color: 'var(--text-strong)' }}>{d.rider_name}</div>
-                  <div style={{ ...S.mono, fontSize: 10, color: 'var(--text-muted)' }}>{d.rider_username}</div>
+          {inField.map((d, i) => {
+            const topups = d.topups ?? [];
+            const initial = d.cash_php - topups.reduce((s, t) => s + t.amount_php, 0);
+            const isOpen = topupOpen === d.id;
+            return (
+              <div key={d.id} style={{
+                display: 'flex', flexDirection: 'column', gap: 8,
+                padding: '14px 20px', borderBottom: i < inField.length - 1 ? '1px solid var(--border)' : 'none',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ ...S.syne, fontSize: 13, fontWeight: 700, color: 'var(--text-strong)' }}>{d.rider_name}</div>
+                      <div style={{ ...S.mono, fontSize: 10, color: 'var(--text-muted)' }}>{d.rider_username}</div>
+                    </div>
+                    <div>
+                      <div style={{ ...S.mono, fontSize: 9, color: 'var(--text-muted)', marginBottom: 2 }}>CASH</div>
+                      <div style={{ ...S.syne, fontSize: 14, fontWeight: 700, color: 'var(--accent-sky)' }}>{php(d.cash_php)}</div>
+                    </div>
+                    {d.dispatch_time && (
+                      <div>
+                        <div style={{ ...S.mono, fontSize: 9, color: 'var(--text-muted)', marginBottom: 2 }}>DISPATCHED</div>
+                        <div style={{ ...S.mono, fontSize: 12, color: 'var(--text-strong)' }}>{d.dispatch_time}</div>
+                      </div>
+                    )}
+                    {d.notes && (
+                      <div style={{ ...S.mono, fontSize: 11, color: 'var(--text-muted)' }}>{d.notes}</div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {!isOpen && (
+                      <button
+                        onClick={() => { setTopupOpen(d.id); setTopupAmt(''); setTopupNotes(''); setTopupErr(null); }}
+                        style={{
+                          padding: '7px 14px', borderRadius: 7, border: '1px solid rgba(95,183,212,0.35)',
+                          background: 'rgba(95,183,212,0.08)', color: 'var(--accent-sky)',
+                          ...S.mono, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
+                        }}
+                      >+ TOP UP</button>
+                    )}
+                    <button
+                      onClick={() => handleReturn(d.id)}
+                      disabled={returning === d.id}
+                      style={{
+                        padding: '7px 16px', borderRadius: 7, border: '1px solid rgba(61,199,173,0.35)',
+                        background: 'rgba(61,199,173,0.08)', color: 'var(--teal-300)',
+                        ...S.mono, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
+                      }}
+                    >
+                      {returning === d.id ? 'MARKING...' : 'MARK RETURNED'}
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ ...S.mono, fontSize: 9, color: 'var(--text-muted)', marginBottom: 2 }}>STARTING CASH</div>
-                  <div style={{ ...S.syne, fontSize: 14, fontWeight: 700, color: 'var(--accent-sky)' }}>{php(d.cash_php)}</div>
-                </div>
-                {d.dispatch_time && (
-                  <div>
-                    <div style={{ ...S.mono, fontSize: 9, color: 'var(--text-muted)', marginBottom: 2 }}>DISPATCHED</div>
-                    <div style={{ ...S.mono, fontSize: 12, color: 'var(--text-strong)' }}>{d.dispatch_time}</div>
+                {topups.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    <span style={{ ...S.mono, fontSize: 10, color: 'var(--text-muted)' }}>{php(initial)} initial</span>
+                    {topups.map(t => (
+                      <span key={t.id} style={{ ...S.mono, fontSize: 10, color: 'var(--accent-gold)', background: 'rgba(245,166,35,0.06)', padding: '1px 8px', borderRadius: 10 }}>
+                        +{php(t.amount_php)}{t.time ? ` @ ${t.time}` : ''}
+                      </span>
+                    ))}
                   </div>
                 )}
-                {d.notes && (
-                  <div style={{ ...S.mono, fontSize: 11, color: 'var(--text-muted)' }}>{d.notes}</div>
+                {isOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, borderRadius: 8, background: 'rgba(95,183,212,0.05)', border: '1px solid rgba(95,183,212,0.2)' }}>
+                    <div style={{ ...S.mono, fontSize: 9, color: 'var(--accent-sky)', letterSpacing: '0.1em' }}>ADDITIONAL CASH (PHP)</div>
+                    <input
+                      type="number" placeholder="0.00" autoFocus
+                      value={topupAmt} onChange={e => setTopupAmt(e.target.value)}
+                      style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text-strong)', ...S.mono, fontSize: 13, outline: 'none' }}
+                    />
+                    <input
+                      type="text" placeholder="Notes (optional)"
+                      value={topupNotes} onChange={e => setTopupNotes(e.target.value)}
+                      style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text-strong)', ...S.mono, fontSize: 12, outline: 'none' }}
+                    />
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => handleTopup(d.id)} disabled={topupSaving || !parseFloat(topupAmt)}
+                        style={{ flex: 1, padding: '8px', borderRadius: 6, border: 'none', background: 'var(--teal-600)', color: '#fff', ...S.mono, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                        {topupSaving ? '…' : 'TOP UP'}
+                      </button>
+                      <button onClick={() => { setTopupOpen(null); setTopupAmt(''); setTopupNotes(''); setTopupErr(null); }}
+                        style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', ...S.mono, fontSize: 11, cursor: 'pointer' }}>
+                        cancel
+                      </button>
+                    </div>
+                    {topupErr && <div style={{ ...S.mono, fontSize: 10, color: '#f87171' }}>{topupErr}</div>}
+                  </div>
                 )}
               </div>
-              <button
-                onClick={() => handleReturn(d.id)}
-                disabled={returning === d.id}
-                style={{
-                  padding: '7px 16px', borderRadius: 7, border: '1px solid rgba(61,199,173,0.35)',
-                  background: 'rgba(61,199,173,0.08)', color: 'var(--teal-300)',
-                  ...S.mono, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
-                }}
-              >
-                {returning === d.id ? 'MARKING...' : 'MARK RETURNED'}
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

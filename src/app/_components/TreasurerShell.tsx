@@ -16,11 +16,13 @@ function fmt(n: number, currency: string) {
 }
 
 interface CurrItem { currency: string; amount: number; }
+interface Topup { id: string; amount_php: number; time: string | null; dispatched_by: string | null; notes: string | null; }
 interface Rider { username: string; full_name: string; }
 interface Dispatch {
   id: string; rider_username: string; rider_name: string;
   status: string; dispatch_time: string | null; return_time: string | null;
   items: CurrItem[]; remit_items: CurrItem[];
+  topups?: Topup[];
   cash_php?: number; remit_php?: number;
   notes: string | null; dispatched_by: string | null;
 }
@@ -91,6 +93,107 @@ function ItemsEditor({ currencies, items, onChange }: {
   );
 }
 
+function InFieldCard({ d, cardStyle, onTopup }: {
+  d: Dispatch;
+  cardStyle: React.CSSProperties;
+  onTopup: (id: string, amount: number, notes: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const amtInput = useNumberInput('', 2);
+  const [topupNotes, setTopupNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const initial = (d.cash_php ?? 0) - (d.topups ?? []).reduce((s, t) => s + t.amount_php, 0);
+
+  async function handleSubmit() {
+    const amt = parseFloat(amtInput.raw);
+    if (!amt || amt <= 0) return;
+    setSaving(true); setErr(null);
+    const r = await onTopup(d.id, amt, topupNotes);
+    setSaving(false);
+    if (r.ok) {
+      amtInput.setValue(''); setTopupNotes(''); setOpen(false);
+    } else {
+      setErr(r.error);
+    }
+  }
+
+  return (
+    <div style={cardStyle}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div>
+          <span style={{ ...Y, fontSize: 14, fontWeight: 600, color: 'var(--text-strong)' }}>{d.rider_name}</span>
+          <span style={{ ...M, fontSize: 10, color: 'var(--text-faint)', marginLeft: 8 }}>{d.rider_username}</span>
+        </div>
+        <span style={{ ...M, fontSize: 10, color: 'var(--teal-300)', background: 'rgba(61,199,173,0.1)', padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(61,199,173,0.2)' }}>
+          IN FIELD
+        </span>
+      </div>
+
+      {/* Cash line: total + initial / topup history */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+        <span style={{ ...M, fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>CASH</span>
+        <span style={{ ...Y, fontSize: 16, fontWeight: 700, color: 'var(--accent-sky)' }}>{php(d.cash_php ?? 0)}</span>
+      </div>
+      {(d.topups ?? []).length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+          <span style={{ ...M, fontSize: 10, color: 'var(--text-faint)' }}>{php(initial)} initial</span>
+          {(d.topups ?? []).map(t => (
+            <span key={t.id} style={{ ...M, fontSize: 10, color: 'var(--accent-gold)', background: 'rgba(245,166,35,0.06)', padding: '1px 8px', borderRadius: 10 }}>
+              +{php(t.amount_php)}{t.time ? ` @ ${t.time}` : ''}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Forex items */}
+      {d.items.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+          {d.items.map((it, i) => (
+            <span key={i} style={{ ...M, fontSize: 11, color: '#f5a623', background: 'rgba(245,166,35,0.08)', padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(245,166,35,0.15)' }}>
+              OUT {fmt(it.amount, it.currency)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {d.notes && <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)', marginTop: 4, marginBottom: 6 }}>{d.notes}</div>}
+
+      {/* Top-up control */}
+      {!open ? (
+        <button onClick={() => setOpen(true)}
+          style={{ ...M, fontSize: 11, padding: '6px 12px', borderRadius: 6, border: '1px solid rgba(95,183,212,0.3)', background: 'rgba(95,183,212,0.08)', color: 'var(--accent-sky)', cursor: 'pointer' }}>
+          + TOP UP CASH
+        </button>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6, padding: '10px', borderRadius: 8, background: 'rgba(95,183,212,0.05)', border: '1px solid rgba(95,183,212,0.2)' }}>
+          <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', letterSpacing: '0.1em' }}>ADDITIONAL CASH (PHP)</div>
+          <input
+            type="text" inputMode="decimal" placeholder="0.00" autoFocus
+            ref={amtInput.ref} value={amtInput.value}
+            onChange={amtInput.onChange} onFocus={amtInput.onFocus}
+            style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text-strong)', ...M, fontSize: 13, outline: 'none' }}
+          />
+          <input value={topupNotes} onChange={e => setTopupNotes(e.target.value)} placeholder="Notes (optional)"
+            style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', color: 'var(--text-strong)', ...M, fontSize: 12, outline: 'none' }} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={handleSubmit} disabled={saving || !parseFloat(amtInput.raw)}
+              style={{ flex: 1, padding: '8px', borderRadius: 6, border: 'none', background: 'var(--teal-600)', color: '#fff', ...M, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+              {saving ? '…' : 'TOP UP'}
+            </button>
+            <button onClick={() => { setOpen(false); amtInput.setValue(''); setTopupNotes(''); setErr(null); }}
+              style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 11, cursor: 'pointer' }}>
+              cancel
+            </button>
+          </div>
+          {err && <div style={{ ...M, fontSize: 10, color: '#ff5c5c' }}>{err}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FloatRow({ cashier, onSave }: {
   cashier: CashierFloat;
   onSave: (username: string, amount: number) => Promise<void>;
@@ -153,7 +256,9 @@ export default function TreasurerShell({
 
   // Dispatch form
   const [selRider, setSelRider] = useState('');
-  const [dispItems, setDispItems] = useState<LineItem[]>([{ currency: currencies[0] ?? 'PHP', amount: '' }]);
+  const cashInput = useNumberInput('', 2);
+  const forexCurrencies = currencies.filter(c => c !== 'PHP');
+  const [forexItems, setForexItems] = useState<LineItem[]>([]);
   const [notes, setNotes] = useState('');
   const [dispatching, setDispatching] = useState(false);
   const [dispError, setDispError] = useState<string | null>(null);
@@ -173,24 +278,48 @@ export default function TreasurerShell({
     router.push('/login');
   }
 
+  const cashPhp = parseFloat(cashInput.raw) || 0;
+  const forexValid = forexItems.length === 0 || itemsValid(forexItems);
+  const dispatchValid = !!selRider && (cashPhp > 0 || (forexItems.length > 0 && itemsValid(forexItems)));
+
   async function handleDispatch() {
-    if (!selRider || !itemsValid(dispItems)) return;
+    if (!dispatchValid) return;
     setDispatching(true); setDispError(null);
     const res = await fetch('/api/admin/rider/dispatches', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rider_username: selRider, items: toApi(dispItems), notes }),
+      body: JSON.stringify({
+        rider_username: selRider,
+        cash_php: cashPhp,
+        items: forexItems.length > 0 ? toApi(forexItems) : [],
+        notes,
+      }),
     });
     const data = await res.json();
     if (res.ok) {
       setDispatches(prev => [...prev, data]);
-      setSelRider(''); setDispItems([{ currency: currencies[0] ?? 'PHP', amount: '' }]); setNotes('');
+      setSelRider(''); cashInput.setValue(''); setForexItems([]); setNotes('');
       router.refresh();
     } else {
       setDispError(data.detail ?? data.error ?? 'Failed');
     }
     setDispatching(false);
   }
+
+  const handleTopup = useCallback(async (dispatchId: string, amount: number, topupNotes: string) => {
+    const res = await fetch(`/api/admin/dispatches/${dispatchId}/topup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount_php: amount, notes: topupNotes || undefined }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setDispatches(prev => prev.map(d => d.id === dispatchId ? data : d));
+      return { ok: true as const };
+    }
+    const data = await res.json().catch(() => ({}));
+    return { ok: false as const, error: data.detail ?? data.error ?? 'Failed' };
+  }, []);
 
   const handleConfirmReturn = useCallback(async (dispatchId: string) => {
     setConfirming(dispatchId);
@@ -310,15 +439,36 @@ export default function TreasurerShell({
                     <option value="">Select rider…</option>
                     {undispatched.map(r => <option key={r.username} value={r.username}>{r.full_name} ({r.username})</option>)}
                   </select>
-                  <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>CASH TO DISPATCH</div>
-                  <ItemsEditor currencies={currencies} items={dispItems} onChange={setDispItems} />
+                  <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>STARTING CASH (PHP)</div>
+                  <input
+                    type="text" inputMode="decimal" placeholder="0.00"
+                    ref={cashInput.ref} value={cashInput.value}
+                    onChange={cashInput.onChange} onFocus={cashInput.onFocus}
+                    style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text-strong)', ...M, fontSize: 13, outline: 'none' }}
+                  />
+                  {forexCurrencies.length > 0 && (
+                    <>
+                      <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em', marginTop: 4 }}>
+                        FOREX ITEMS (optional)
+                      </div>
+                      {forexItems.length === 0 ? (
+                        <button
+                          onClick={() => setForexItems([{ currency: forexCurrencies[0], amount: '' }])}
+                          style={{ ...M, fontSize: 11, padding: '8px 0', borderRadius: 6, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                          + Add forex
+                        </button>
+                      ) : (
+                        <ItemsEditor currencies={forexCurrencies} items={forexItems} onChange={setForexItems} />
+                      )}
+                    </>
+                  )}
                   <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)"
                     style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text-strong)', ...M, fontSize: 13, outline: 'none' }} />
-                  <button onClick={handleDispatch} disabled={dispatching || !selRider || !itemsValid(dispItems)}
+                  <button onClick={handleDispatch} disabled={dispatching || !dispatchValid || !forexValid}
                     style={{
                       padding: '12px', borderRadius: 8, border: 'none',
-                      background: (!selRider || !itemsValid(dispItems)) ? 'var(--border)' : 'var(--teal-600)',
-                      color: (!selRider || !itemsValid(dispItems)) ? 'var(--text-muted)' : '#fff',
+                      background: (!dispatchValid || !forexValid) ? 'var(--border)' : 'var(--teal-600)',
+                      color: (!dispatchValid || !forexValid) ? 'var(--text-muted)' : '#fff',
                       ...Y, fontSize: 13, fontWeight: 700, cursor: 'pointer',
                     }}>
                     {dispatching ? 'DISPATCHING…' : 'DISPATCH RIDER'}
@@ -336,25 +486,7 @@ export default function TreasurerShell({
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {inField.map(d => (
-                    <div key={d.id} style={cardStyle}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <div>
-                          <span style={{ ...Y, fontSize: 14, fontWeight: 600, color: 'var(--text-strong)' }}>{d.rider_name}</span>
-                          <span style={{ ...M, fontSize: 10, color: 'var(--text-faint)', marginLeft: 8 }}>{d.rider_username}</span>
-                        </div>
-                        <span style={{ ...M, fontSize: 10, color: 'var(--teal-300)', background: 'rgba(61,199,173,0.1)', padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(61,199,173,0.2)' }}>
-                          IN FIELD
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {d.items.map((it, i) => (
-                          <span key={i} style={{ ...M, fontSize: 11, color: '#f5a623', background: 'rgba(245,166,35,0.08)', padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(245,166,35,0.15)' }}>
-                            OUT {fmt(it.amount, it.currency)}
-                          </span>
-                        ))}
-                      </div>
-                      {d.notes && <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)', marginTop: 6 }}>{d.notes}</div>}
-                    </div>
+                    <InFieldCard key={d.id} d={d} cardStyle={cardStyle} onTopup={handleTopup} />
                   ))}
                 </div>
               </div>
