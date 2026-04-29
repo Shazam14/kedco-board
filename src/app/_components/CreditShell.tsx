@@ -18,6 +18,9 @@ interface Installment { id: string; installment_no: number; due_date: string | n
 interface Draw        { id: string; amount: number; notes: string | null; created_by: string; created_at: string; }
 interface Credit      { id: string; customer_name: string; currency_code: string; principal: number; interest: number; credit_type: string; status: string; disbursed_date: string; notes: string | null; created_by: string; installments: Installment[]; draws: Draw[]; }
 interface DrawRules   { interval_minutes: number; max_per_day: number; max_amount: number; }
+interface LedgerEntry { id: string; date: string; time: string | null; description: string | null; palod: number; than: number; bayad: number; balance: number | null; created_by: string; created_at: string; }
+interface LedgerSummary { palod_sum: number; than_sum: number; bayad_sum: number; opening_balance: number | null; closing_balance: number | null; count: number; }
+interface LedgerOut   { entries: LedgerEntry[]; summary: LedgerSummary; }
 
 const php = (n: number, currency = 'PHP') =>
   currency === 'PHP'
@@ -44,6 +47,63 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
   const [drawNote, setDrawNote]         = useState('');
   const [drawSaving, setDrawSaving]     = useState(false);
   const [drawError, setDrawError]       = useState<string | null>(null);
+
+  // Ledger state — keyed by credit id
+  const [ledger, setLedger]                 = useState<Record<string, LedgerOut>>({});
+  const [ledgerLoading, setLedgerLoading]   = useState<Record<string, boolean>>({});
+  const [ledgerFilter, setLedgerFilter]     = useState<Record<string, { from: string; to: string }>>({});
+  const [entryCreditId, setEntryCreditId]   = useState<string | null>(null);
+  const [entryDate, setEntryDate]           = useState(todayPHT());
+  const [entryTime, setEntryTime]           = useState('');
+  const [entryDesc, setEntryDesc]           = useState('');
+  const entryPalodInput                     = useNumberInput('', 2);
+  const entryThanInput                      = useNumberInput('', 2);
+  const entryBayadInput                     = useNumberInput('', 2);
+  const [entrySaving, setEntrySaving]       = useState(false);
+  const [entryError, setEntryError]         = useState<string | null>(null);
+
+  async function loadLedger(creditId: string) {
+    setLedgerLoading(prev => ({ ...prev, [creditId]: true }));
+    const f = ledgerFilter[creditId];
+    const qs = new URLSearchParams();
+    if (f?.from) qs.set('from_date', f.from);
+    if (f?.to)   qs.set('to_date',   f.to);
+    const res = await fetch(`/api/admin/credits/${creditId}/ledger${qs.toString() ? '?' + qs.toString() : ''}`, { cache: 'no-store' });
+    if (res.ok) {
+      const data: LedgerOut = await res.json();
+      setLedger(prev => ({ ...prev, [creditId]: data }));
+    }
+    setLedgerLoading(prev => ({ ...prev, [creditId]: false }));
+  }
+
+  async function submitLedgerEntry() {
+    if (!entryCreditId) return;
+    const palod = parseFloat(entryPalodInput.raw) || 0;
+    const than  = parseFloat(entryThanInput.raw)  || 0;
+    const bayad = parseFloat(entryBayadInput.raw) || 0;
+    if (palod === 0 && than === 0 && bayad === 0) { setEntryError('At least one of PALOD/THAN/BAYAD must be set.'); return; }
+    setEntrySaving(true); setEntryError(null);
+    const res = await fetch(`/api/admin/credits/${entryCreditId}/ledger`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date:        entryDate,
+        time:        entryTime.trim() || null,
+        description: entryDesc.trim() || null,
+        palod, than, bayad,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      await loadLedger(entryCreditId);
+      setEntryCreditId(null);
+      setEntryTime(''); setEntryDesc('');
+      entryPalodInput.setValue(''); entryThanInput.setValue(''); entryBayadInput.setValue('');
+    } else {
+      setEntryError(data.detail ?? data.error ?? 'Failed to save.');
+    }
+    setEntrySaving(false);
+  }
 
   // Settings
   const [showSettings, setShowSettings]     = useState(false);
@@ -417,7 +477,11 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
             <div key={credit.id} style={{ background: 'var(--surface)', border: `1px solid ${overdue.length && credit.status === 'ACTIVE' ? 'rgba(255,92,92,0.3)' : 'var(--border)'}`, borderRadius: 14, marginBottom: 12, overflow: 'hidden' }}>
               {/* Header row */}
               <div
-                onClick={() => setExpanded(isOpen ? null : credit.id)}
+                onClick={() => {
+                  const next = isOpen ? null : credit.id;
+                  setExpanded(next);
+                  if (next && !ledger[credit.id] && !ledgerLoading[credit.id]) loadLedger(credit.id);
+                }}
                 style={{ padding: '16px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
               >
                 <div style={{ flex: 1 }}>
@@ -495,6 +559,107 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
                     </div>
                   )}
 
+                  {/* ── Ledger ─────────────────────────────────────────── */}
+                  <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.12em' }}>LEDGER (PALOD · THAN · BAYAD)</div>
+                      {credit.status === 'ACTIVE' && (
+                        <button
+                          onClick={() => { setEntryCreditId(credit.id); setEntryError(null); setEntryDate(todayPHT()); setEntryTime(''); setEntryDesc(''); entryPalodInput.setValue(''); entryThanInput.setValue(''); entryBayadInput.setValue(''); }}
+                          style={{ ...M, fontSize: 10, padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(0,212,170,0.35)', background: 'rgba(0,212,170,0.08)', color: '#00d4aa', cursor: 'pointer' }}>
+                          + Add Entry
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Date filter */}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>FROM</span>
+                      <input
+                        type="date"
+                        value={ledgerFilter[credit.id]?.from ?? ''}
+                        onChange={e => setLedgerFilter(prev => ({ ...prev, [credit.id]: { from: e.target.value, to: prev[credit.id]?.to ?? '' } }))}
+                        style={{ ...inp, width: 150, padding: '6px 10px' }}
+                      />
+                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>TO</span>
+                      <input
+                        type="date"
+                        value={ledgerFilter[credit.id]?.to ?? ''}
+                        onChange={e => setLedgerFilter(prev => ({ ...prev, [credit.id]: { from: prev[credit.id]?.from ?? '', to: e.target.value } }))}
+                        style={{ ...inp, width: 150, padding: '6px 10px' }}
+                      />
+                      <button
+                        onClick={() => loadLedger(credit.id)}
+                        style={{ ...M, fontSize: 10, padding: '6px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface2)', color: '#e2e6f0', cursor: 'pointer' }}>
+                        Apply
+                      </button>
+                      {(ledgerFilter[credit.id]?.from || ledgerFilter[credit.id]?.to) && (
+                        <button
+                          onClick={() => { setLedgerFilter(prev => ({ ...prev, [credit.id]: { from: '', to: '' } })); setTimeout(() => loadLedger(credit.id), 0); }}
+                          style={{ ...M, fontSize: 10, padding: '6px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer' }}>
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Filtered summary */}
+                    {ledger[credit.id] && (() => {
+                      const sm = ledger[credit.id].summary;
+                      return (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 12 }}>
+                          {[
+                            { label: 'OPENING',  value: sm.opening_balance == null ? '—' : php(sm.opening_balance, credit.currency_code), color: 'var(--muted)' },
+                            { label: 'PALOD',    value: php(sm.palod_sum, credit.currency_code), color: '#f5a623' },
+                            { label: 'THAN',     value: php(sm.than_sum,  credit.currency_code), color: '#00d4aa' },
+                            { label: 'BAYAD',    value: php(sm.bayad_sum, credit.currency_code), color: '#a78bfa' },
+                            { label: 'CLOSING',  value: sm.closing_balance == null ? '—' : php(sm.closing_balance, credit.currency_code), color: '#e2e6f0' },
+                          ].map(s => (
+                            <div key={s.label} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+                              <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: 4 }}>{s.label}</div>
+                              <div style={{ ...M, fontSize: 12, fontWeight: 700, color: s.color }}>{s.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Entries table */}
+                    {ledgerLoading[credit.id] && <div style={{ ...M, fontSize: 11, color: 'var(--muted)', padding: '12px 0' }}>Loading…</div>}
+                    {!ledgerLoading[credit.id] && ledger[credit.id] && ledger[credit.id].entries.length === 0 && (
+                      <div style={{ ...M, fontSize: 11, color: 'var(--muted)', padding: '12px 0', textAlign: 'center' }}>No ledger entries{(ledgerFilter[credit.id]?.from || ledgerFilter[credit.id]?.to) ? ' in this date range.' : '.'}</div>
+                    )}
+                    {!ledgerLoading[credit.id] && ledger[credit.id] && ledger[credit.id].entries.length > 0 && (
+                      <div style={{ maxHeight: 360, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', ...M, fontSize: 11 }}>
+                          <thead style={{ position: 'sticky', top: 0, background: 'var(--surface2)', zIndex: 1 }}>
+                            <tr style={{ color: 'var(--muted)', fontSize: 9, letterSpacing: '0.1em', textAlign: 'left' }}>
+                              <th style={{ padding: '8px 10px' }}>DATE</th>
+                              <th style={{ padding: '8px 10px' }}>TIME</th>
+                              <th style={{ padding: '8px 10px' }}>DESCRIPTION</th>
+                              <th style={{ padding: '8px 10px', textAlign: 'right' }}>PALOD</th>
+                              <th style={{ padding: '8px 10px', textAlign: 'right' }}>THAN</th>
+                              <th style={{ padding: '8px 10px', textAlign: 'right' }}>BAYAD</th>
+                              <th style={{ padding: '8px 10px', textAlign: 'right' }}>BALANCE</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ledger[credit.id].entries.map(e => (
+                              <tr key={e.id} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                                <td style={{ padding: '7px 10px', color: '#e2e6f0' }}>{fmtDate(e.date)}</td>
+                                <td style={{ padding: '7px 10px', color: 'var(--muted)' }}>{e.time ?? '—'}</td>
+                                <td style={{ padding: '7px 10px', color: '#e2e6f0' }}>{e.description ?? '—'}</td>
+                                <td style={{ padding: '7px 10px', textAlign: 'right', color: e.palod ? '#f5a623' : 'var(--muted)' }}>{e.palod ? php(e.palod, credit.currency_code) : '—'}</td>
+                                <td style={{ padding: '7px 10px', textAlign: 'right', color: e.than  ? '#00d4aa' : 'var(--muted)' }}>{e.than  ? php(e.than,  credit.currency_code) : '—'}</td>
+                                <td style={{ padding: '7px 10px', textAlign: 'right', color: e.bayad ? '#a78bfa' : 'var(--muted)' }}>{e.bayad ? php(e.bayad, credit.currency_code) : '—'}</td>
+                                <td style={{ padding: '7px 10px', textAlign: 'right', color: '#e2e6f0', fontWeight: 700 }}>{e.balance == null ? '—' : php(e.balance, credit.currency_code)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
                   {credit.status === 'ACTIVE' && (
                     <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <button
@@ -517,6 +682,62 @@ export default function CreditShell({ credits: initial }: { credits: Credit[] })
         })}
         </div>{/* end credits-list */}
       </div>
+
+      {/* ── Add Ledger Entry Modal ── */}
+      {entryCreditId && (() => {
+        const credit = credits.find(c => c.id === entryCreditId);
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid rgba(0,212,170,0.3)', borderRadius: 14, padding: '28px', width: '100%', maxWidth: 520 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                <div>
+                  <div style={{ ...M, fontSize: 10, color: '#00d4aa', letterSpacing: '0.2em', marginBottom: 4 }}>NEW LEDGER ENTRY</div>
+                  <div style={{ ...Y, fontSize: 17, fontWeight: 800 }}>{credit?.customer_name}</div>
+                </div>
+                <button onClick={() => setEntryCreditId(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div>
+                  <span style={label}>DATE *</span>
+                  <input type="date" value={entryDate} onChange={e => setEntryDate(e.target.value)} style={inp} />
+                </div>
+                <div>
+                  <span style={label}>TIME (optional)</span>
+                  <input value={entryTime} onChange={e => setEntryTime(e.target.value)} placeholder="e.g. 10:41AM" style={inp} />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <span style={label}>DESCRIPTION (optional)</span>
+                <input value={entryDesc} onChange={e => setEntryDesc(e.target.value)} placeholder="e.g. maya to maya, late pay, gcash" style={inp} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <div>
+                  <span style={label}>PALOD</span>
+                  <input type="text" inputMode="decimal" ref={entryPalodInput.ref} value={entryPalodInput.value} onChange={entryPalodInput.onChange} onFocus={entryPalodInput.onFocus} placeholder="0" style={{ ...inp, color: '#f5a623' }} />
+                </div>
+                <div>
+                  <span style={label}>THAN</span>
+                  <input type="text" inputMode="decimal" ref={entryThanInput.ref}  value={entryThanInput.value}  onChange={entryThanInput.onChange}  onFocus={entryThanInput.onFocus}  placeholder="0" style={{ ...inp, color: '#00d4aa' }} />
+                </div>
+                <div>
+                  <span style={label}>BAYAD</span>
+                  <input type="text" inputMode="decimal" ref={entryBayadInput.ref} value={entryBayadInput.value} onChange={entryBayadInput.onChange} onFocus={entryBayadInput.onFocus} placeholder="0" style={{ ...inp, color: '#a78bfa' }} />
+                </div>
+              </div>
+
+              {entryError && <div style={{ ...M, fontSize: 11, color: '#ff5c5c', marginBottom: 12 }}>{entryError}</div>}
+
+              <button onClick={submitLedgerEntry} disabled={entrySaving}
+                style={{ width: '100%', padding: '12px', borderRadius: 8, border: 'none', background: entrySaving ? 'var(--border)' : 'linear-gradient(135deg,#00d4aa,#00a884)', color: entrySaving ? 'var(--muted)' : '#000', ...Y, fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                {entrySaving ? 'Saving…' : 'Save Entry'}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Add Draw Modal ── */}
       {drawCreditId && (() => {

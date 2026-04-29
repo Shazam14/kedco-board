@@ -218,6 +218,67 @@ test.describe('Credit actions', () => {
   });
 });
 
+test.describe('Ledger', () => {
+  test.beforeEach(async ({ page, request }) => {
+    await resetMockState(request);
+    await suppressTour(page);
+    await page.goto('/admin/credits');
+    await page.waitForLoadState('networkidle');
+    await waitForHydration(page);
+  });
+
+  test('expanding a credit shows the ledger panel with empty state', async ({ page }) => {
+    await page.getByText('Sample Customer').click();
+    await expect(page.getByText('LEDGER (PALOD · THAN · BAYAD)')).toBeVisible();
+    await expect(page.getByText(/No ledger entries/)).toBeVisible();
+  });
+
+  test('add ledger entry then see it in the table + summary', async ({ page }) => {
+    await page.getByText('Sample Customer').click();
+    await page.getByRole('button', { name: '+ Add Entry' }).click();
+    await expect(page.getByText('NEW LEDGER ENTRY')).toBeVisible();
+    await page.getByPlaceholder('e.g. maya to maya, late pay, gcash').fill('test palod');
+    await page.locator('input[placeholder="0"]').nth(0).fill('10000');  // PALOD
+    await page.locator('input[placeholder="0"]').nth(1).fill('300');    // THAN
+    await page.getByRole('button', { name: 'Save Entry' }).click();
+    await expect(page.getByText('NEW LEDGER ENTRY')).not.toBeVisible({ timeout: 5000 });
+
+    // Row appears in table
+    await expect(page.getByText('test palod')).toBeVisible();
+    // Summary updated — PALOD card shows ₱10,000.00
+    await expect(page.locator('text=₱10,000.00').first()).toBeVisible();
+  });
+
+  test('date filter narrows the ledger', async ({ page, request }) => {
+    // Seed two entries on different dates via mock-api
+    await request.post(`${MOCK_API}/api/v1/credits/credit-001/ledger`, {
+      data: { date: '2026-04-01', palod: 5000, than: 100, bayad: 0, description: 'april one' },
+    });
+    await request.post(`${MOCK_API}/api/v1/credits/credit-001/ledger`, {
+      data: { date: '2026-04-15', palod: 7000, than: 200, bayad: 0, description: 'april fifteen' },
+    });
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await waitForHydration(page);
+    await page.getByText('Sample Customer').click();
+
+    // Both visible without filter
+    await expect(page.getByText('april one')).toBeVisible();
+    await expect(page.getByText('april fifteen')).toBeVisible();
+
+    // Filter to Apr 10–20 — only "april fifteen" should remain
+    await page.locator('input[type="date"]').nth(0).fill('2026-04-10');
+    await page.locator('input[type="date"]').nth(1).fill('2026-04-20');
+    const respPromise = page.waitForResponse(r => r.url().includes('/credits/credit-001/ledger?') && r.url().includes('from_date=2026-04-10'));
+    await page.getByRole('button', { name: 'Apply' }).click();
+    await respPromise;
+
+    await expect(page.getByText('april fifteen')).toBeVisible();
+    await expect(page.getByText('april one')).not.toBeVisible();
+  });
+});
+
 test.describe('Access control', () => {
   test('cashier cannot access /admin/credits', async ({ page, context }) => {
     // Use cashier auth state

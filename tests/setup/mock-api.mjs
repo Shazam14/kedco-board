@@ -165,6 +165,8 @@ function makeInitialCredits() {
   ];
 }
 let CREDITS = makeInitialCredits();
+// Per-credit ledger entries: { [creditId]: LedgerEntry[] }
+let LEDGER = { 'credit-001': [] };
 
 const ALL_USERS = Object.entries(USERS).map(([username, u]) => ({
   username, full_name: u.full_name, role: u.role, is_active: true, is_demo: u.is_demo,
@@ -338,6 +340,59 @@ const server = createServer(async (req, res) => {
     if (credit.installments.every(i => i.paid_at)) credit.status = 'COMPLETED';
     return json(res, credit);
   }
+  // Ledger — GET (with optional date filter) + POST
+  if (method === 'GET' && /^\/api\/v1\/credits\/[^/]+\/ledger$/.test(url)) {
+    const id = url.split('/')[4];
+    const credit = CREDITS.find(c => c.id === id);
+    if (!credit) return json(res, { detail: 'Not found' }, 404);
+    const qs = new URLSearchParams((req.url ?? '').split('?')[1] ?? '');
+    const from = qs.get('from_date');
+    const to   = qs.get('to_date');
+    const all = (LEDGER[id] ?? []).slice().sort((a, b) => (a.date + (a.created_at ?? '')).localeCompare(b.date + (b.created_at ?? '')));
+    const filt = all.filter(e => (!from || e.date >= from) && (!to || e.date <= to));
+    let opening = null;
+    if (from) {
+      const prior = all.filter(e => e.date < from);
+      opening = prior.length ? prior[prior.length - 1].balance : null;
+    }
+    const closing = filt.length ? filt[filt.length - 1].balance : opening;
+    return json(res, {
+      entries: filt,
+      summary: {
+        palod_sum: filt.reduce((s, e) => s + (e.palod ?? 0), 0),
+        than_sum:  filt.reduce((s, e) => s + (e.than  ?? 0), 0),
+        bayad_sum: filt.reduce((s, e) => s + (e.bayad ?? 0), 0),
+        opening_balance: opening,
+        closing_balance: closing,
+        count: filt.length,
+      },
+    });
+  }
+  if (method === 'POST' && /^\/api\/v1\/credits\/[^/]+\/ledger$/.test(url)) {
+    const id = url.split('/')[4];
+    const credit = CREDITS.find(c => c.id === id);
+    if (!credit) return json(res, { detail: 'Not found' }, 404);
+    const body = JSON.parse(await readBody(req));
+    const palod = body.palod || 0, than = body.than || 0, bayad = body.bayad || 0;
+    if (palod < 0 || than < 0 || bayad < 0) return json(res, { detail: 'must be non-negative' }, 400);
+    if (palod === 0 && than === 0 && bayad === 0) return json(res, { detail: 'one of palod/than/bayad required' }, 400);
+    const list = LEDGER[id] ?? (LEDGER[id] = []);
+    const last = list.length ? list[list.length - 1] : null;
+    const prior = last && last.balance != null ? last.balance : 0;
+    const balance = Math.round((prior + palod + than - bayad) * 100) / 100;
+    const entry = {
+      id: `ledger-${Date.now()}`,
+      date: body.date,
+      time: body.time ?? null,
+      description: body.description ?? null,
+      palod, than, bayad, balance,
+      created_by: 'admin',
+      created_at: new Date().toISOString(),
+    };
+    list.push(entry);
+    return json(res, entry, 201);
+  }
+
   if (method === 'PATCH' && /\/credits\/.+\/cancel$/.test(url)) {
     const id = url.split('/').at(-2);
     const credit = CREDITS.find(c => c.id === id);
@@ -918,6 +973,7 @@ const server = createServer(async (req, res) => {
   if (method === 'POST' && url === '/api/v1/test/reset') {
     EDIT_REQUESTS.length = 0;
     CREDITS = makeInitialCredits();
+    LEDGER = { 'credit-001': [] };
     CUSTOMERS = makeInitialCustomers();
     // Restore both shifts to OPEN state
     SHIFTS.set('cashier1', {
