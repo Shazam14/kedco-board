@@ -231,9 +231,12 @@ export default function RiderShell({
   const todayTotal  = txns.reduce((s, t) => s + t.phpAmt, 0);
   const todayThan   = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.than, 0);
 
-  // Balance card calculations
-  const phpSpent   = txns.filter(t => t.type === 'BUY').reduce((s, t)  => s + t.phpAmt, 0);
-  const fxProceeds = txns.filter(t => t.type === 'SELL').reduce((s, t) => s + t.phpAmt, 0);
+  // Balance card calculations — pending payments don't move PHP yet, so exclude them
+  const isReceived = (t: Transaction) => (t.paymentStatus ?? 'RECEIVED') !== 'PENDING';
+  const phpSpent   = txns.filter(t => t.type === 'BUY'  && isReceived(t)).reduce((s, t) => s + t.phpAmt, 0);
+  const fxProceeds = txns.filter(t => t.type === 'SELL' && isReceived(t)).reduce((s, t) => s + t.phpAmt, 0);
+  const pendingIn  = txns.filter(t => t.type === 'SELL' && !isReceived(t)).reduce((s, t) => s + t.phpAmt, 0);
+  const pendingOut = txns.filter(t => t.type === 'BUY'  && !isReceived(t)).reduce((s, t) => s + t.phpAmt, 0);
   const borrowed   = borrows.filter(b => b.is_returned === 'N').reduce((s, b) => s + b.amount_php, 0);
   const carry      = dispatch ? dispatch.cash_php + borrowed - phpSpent : null;
   const remaining  = carry != null ? carry + fxProceeds : null;
@@ -367,6 +370,24 @@ export default function RiderShell({
               <div style={{ ...M, fontSize: 13, color: 'var(--teal-300)', fontWeight: 700 }}>+{php(fxProceeds)}</div>
             </div>
           )}
+          {/* Pending payments — not yet collected, not in PHP balance */}
+          {(pendingIn > 0 || pendingOut > 0) && (
+            <div style={{ background: 'rgba(212,166,74,0.06)', border: '1px solid rgba(212,166,74,0.2)', borderRadius: 8, padding: '8px 12px', marginBottom: 8 }}>
+              <div style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', marginBottom: 4 }}>PENDING — NOT IN BALANCE</div>
+              {pendingIn > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>To collect (sells)</span>
+                  <span style={{ ...M, fontSize: 11, color: 'var(--accent-gold)', fontWeight: 700 }}>{php(pendingIn)}</span>
+                </div>
+              )}
+              {pendingOut > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>To pay (buys)</span>
+                  <span style={{ ...M, fontSize: 11, color: 'var(--accent-gold)', fontWeight: 700 }}>{php(pendingOut)}</span>
+                </div>
+              )}
+            </div>
+          )}
           {/* Total PHP in hand */}
           <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
             <div style={{ ...M, fontSize: 9, color: 'var(--accent-sky)', letterSpacing: '0.1em' }}>TOTAL PHP IN HAND</div>
@@ -393,22 +414,32 @@ export default function RiderShell({
             <div style={{ ...M, fontSize: 12, color: 'var(--muted)', textAlign: 'center', padding: '32px 0' }}>No transactions yet today.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {txns.map(t => (
-                <div key={t.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.id}</span>
-                    <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.time}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <span style={{ ...M, fontSize: 13, fontWeight: 700, color: t.type === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)', marginRight: 8 }}>{t.type}</span>
-                      <span style={{ ...M, fontSize: 13, color: 'var(--text-strong)' }}>{fmtFx(t.foreignAmt, t.currency, currencies)} {t.currency}</span>
+              {txns.map(t => {
+                const pending = t.paymentStatus === 'PENDING';
+                return (
+                  <div key={t.id} style={{ background: 'var(--surface)', border: `1px solid ${pending ? 'rgba(212,166,74,0.3)' : 'var(--border)'}`, borderRadius: 10, padding: '12px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.id}</span>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.time}</span>
                     </div>
-                    <div style={{ ...M, fontSize: 13, fontWeight: 700 }}>{php(t.phpAmt)}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span style={{ ...M, fontSize: 13, fontWeight: 700, color: t.type === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)', marginRight: 8 }}>{t.type}</span>
+                        <span style={{ ...M, fontSize: 13, color: 'var(--text-strong)' }}>{fmtFx(t.foreignAmt, t.currency, currencies)} {t.currency}</span>
+                      </div>
+                      <div style={{ ...M, fontSize: 13, fontWeight: 700 }}>{php(t.phpAmt)}</div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.customer ?? ''}</span>
+                      {pending && (
+                        <span style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', background: 'rgba(212,166,74,0.12)', border: '1px solid rgba(212,166,74,0.3)', padding: '2px 8px', borderRadius: 10, letterSpacing: '0.08em' }}>
+                          PENDING
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {t.customer && <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>{t.customer}</div>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

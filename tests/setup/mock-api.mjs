@@ -460,11 +460,11 @@ const server = createServer(async (req, res) => {
       txn.php_amt = Math.round(txn.foreign_amt * txn.rate * 100) / 100;
       if (txn.type === 'SELL') txn.than = Math.round((txn.rate - txn.daily_avg_cost) * txn.foreign_amt * 100) / 100;
     }
-    return json(res, { id: txn.id, time: txn.time, type: txn.type, source: txn.source, currency: txn.currency_code, foreign_amt: txn.foreign_amt, rate: txn.rate, php_amt: txn.php_amt, than: txn.than, cashier: txn.cashier, customer: txn.customer, payment_mode: txn.payment_mode, bank_id: null });
+    return json(res, { id: txn.id, time: txn.time, type: txn.type, source: txn.source, currency: txn.currency_code, foreign_amt: txn.foreign_amt, rate: txn.rate, php_amt: txn.php_amt, than: txn.than, cashier: txn.cashier, customer: txn.customer, payment_mode: txn.payment_mode, bank_id: null, payment_status: txn.payment_status ?? 'RECEIVED' });
   }
 
   // Transactions today (counter and rider)
-  if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, payment_mode: t.payment_mode, bank_id: null })));
+  if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, payment_mode: t.payment_mode, bank_id: null, payment_status: t.payment_status ?? 'RECEIVED' })));
   if (method === 'GET' && /transactions/.test(url)) return json(res, []);
 
   // Submit batch counter transaction
@@ -485,6 +485,7 @@ const server = createServer(async (req, res) => {
       cashier:      'cashier1',
       customer:     data.customer ?? null,
       payment_mode: data.payment_mode ?? 'CASH',
+      payment_status: 'RECEIVED',
       batch_id:     'mock-batch-uuid',
     })), 201);
   }
@@ -506,6 +507,7 @@ const server = createServer(async (req, res) => {
       cashier:       data.cashier,
       customer:      data.customer ?? null,
       payment_mode:  data.payment_mode ?? 'CASH',
+      payment_status: data.payment_status ?? 'RECEIVED',
     }, 201);
   }
 
@@ -526,6 +528,7 @@ const server = createServer(async (req, res) => {
       cashier:       data.cashier,
       customer:      data.customer ?? null,
       payment_mode:  data.payment_mode ?? 'CASH',
+      payment_status: data.payment_status ?? 'RECEIVED',
     }, 201);
   }
 

@@ -33,6 +33,7 @@ export async function GET() {
       rate: t.rate, phpAmt: t.php_amt, than: t.than,
       cashier: t.cashier, customer: t.customer ?? undefined,
       paymentMode: t.payment_mode, bankId: t.bank_id,
+      paymentStatus: t.payment_status ?? 'RECEIVED',
     }));
 
   return NextResponse.json(mapped);

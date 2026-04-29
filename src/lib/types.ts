@@ -33,6 +33,7 @@ export interface Transaction {
   officialRate?: number;
   referrer?: string;
   paymentTag?: 'ADVANCE' | 'LATE';
+  paymentStatus?: 'RECEIVED' | 'PENDING';
   referenceDate?: string;
 }
 

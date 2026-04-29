@@ -36,6 +36,7 @@ export async function GET() {
     officialRate:   t.official_rate != null ? Number(t.official_rate) : undefined,
     referrer:       t.referrer ?? undefined,
     paymentTag:     t.payment_tag ?? undefined,
+    paymentStatus:  t.payment_status ?? 'RECEIVED',
     referenceDate:  t.reference_date ?? undefined,
   }));
 
