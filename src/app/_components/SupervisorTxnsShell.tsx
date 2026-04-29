@@ -191,8 +191,9 @@ export default function SupervisorTxnsShell({
                       ...M, fontSize: 11, fontWeight: 700,
                       color: t.type === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)',
                     }}>{t.type}</span>
-                    <span style={{ ...M, fontSize: 9, color: 'var(--text-muted)' }}>
+                    <span style={{ ...M, fontSize: 9, color: t.paymentStatus === 'PENDING' ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
                       {fmtMode(t.paymentMode ?? 'CASH')}
+                      {t.paymentStatus === 'PENDING' && <span title="Payment pending — not yet received" style={{ marginLeft: 3 }}>⏳</span>}
                     </span>
                     <span style={{ ...M, fontSize: 13, color: 'var(--text-strong)' }}>{t.currency}</span>
                     <span style={{ ...M, fontSize: 12, color: 'var(--text-strong)' }}>

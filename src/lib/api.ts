@@ -53,6 +53,9 @@ function mapTransaction(t: Record<string, unknown>): Transaction {
     than: t.than as number,
     cashier: t.cashier as string,
     customer: t.customer as string | undefined,
+    paymentMode: t.payment_mode as string | undefined,
+    paymentTag: t.payment_tag as Transaction['paymentTag'],
+    paymentStatus: (t.payment_status ?? 'RECEIVED') as Transaction['paymentStatus'],
   };
 }
 

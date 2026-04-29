@@ -364,7 +364,10 @@ function TransactionsTab({ data, role }: { data: DashboardSummary; role: string 
           </div>
           {filtered.map((t,i) => (
             <div key={t.id} style={{ display:'grid', gridTemplateColumns:isAdmin ? '110px 70px 58px 80px 70px 1fr 90px 80px 130px' : '110px 70px 58px 80px 70px 1fr 90px 130px', padding:'12px 20px', borderBottom:i<filtered.length-1?'1px solid var(--border)':'none', background:i%2===0?'transparent':'rgba(255,255,255,0.012)', alignItems:'center', gap:10, minWidth:isAdmin ? 700 : 620 }}>
-              <span style={{ ...S.mono, fontSize:9, color:'var(--text-muted)' }}>{t.id}</span>
+              <span style={{ ...S.mono, fontSize:9, color: t.paymentStatus === 'PENDING' ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
+                {t.id}
+                {t.paymentStatus === 'PENDING' && <span title="Payment pending — not yet received" style={{ marginLeft: 3 }}>⏳</span>}
+              </span>
               <span style={{ ...S.mono, fontSize:10, color:'var(--text-muted)' }}>{t.time}</span>
               <span style={{ ...S.mono, fontSize:10, textAlign:'center', padding:'2px 0', borderRadius:4, color:t.type==='BUY'?'var(--accent-sky)':'var(--accent-gold)', background:t.type==='BUY'?'rgba(95,183,212,0.1)':'rgba(212,166,74,0.1)' }}>{t.type}</span>
               <span style={{ ...S.mono, fontSize:10, color:t.source==='RIDER'?'var(--accent-sky)':'var(--text-muted)' }}>{t.source==='RIDER'?'🏍️ Rider':'🖥️ Ctr'}</span>

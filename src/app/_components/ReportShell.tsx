@@ -43,6 +43,7 @@ interface TxnRow {
   id: string; time: string; type: string; source: string;
   currency: string; foreign_amt: number; rate: number;
   php_amt: number; than: number; cashier: string; customer: string;
+  payment_status?: 'RECEIVED' | 'PENDING';
 }
 interface Report {
   date: string;
@@ -119,9 +120,11 @@ function printReport(report: Report) {
       ${hasComm ? `<td style="text-align:right;color:${r.commission !== 0 ? '#007a55' : '#999'};font-weight:700">${r.commission !== 0 ? (r.commission > 0 ? '+' : '') + php(r.commission) : '—'}</td>` : ''}
     </tr>`).join('');
 
-  const txnRows = report.transactions.map((t, i) => `
-    <tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
-      <td style="padding:6px 8px;font-size:10px;color:#555">${t.id}</td>
+  const txnRows = report.transactions.map((t, i) => {
+    const pending = t.payment_status === 'PENDING';
+    return `
+    <tr style="background:${pending ? '#fff7e6' : (i % 2 === 0 ? '#fff' : '#fafafa')}">
+      <td style="padding:6px 8px;font-size:10px;color:${pending ? '#c47000' : '#555'};font-weight:${pending ? 700 : 400}">${pending ? '⏳ ' : ''}${t.id}</td>
       <td style="color:#555">${t.time}</td>
       <td style="font-weight:700;color:${t.type === 'BUY' ? '#2255cc' : '#c47000'}">${t.type}</td>
       <td style="color:#555">${t.source === 'RIDER' ? 'RIDER' : 'CTR'}</td>
@@ -130,8 +133,9 @@ function printReport(report: Report) {
       <td style="text-align:right;color:${t.type === 'BUY' ? '#2255cc' : '#c47000'}">${t.rate}</td>
       <td style="text-align:right;font-weight:600">${php(t.php_amt)}</td>
       <td style="font-size:10px;color:#555">${t.cashier}</td>
-      <td style="font-size:10px;color:#555">${t.customer ?? '—'}</td>
-    </tr>`).join('');
+      <td style="font-size:10px;color:${pending ? '#c47000' : '#555'}">${pending ? 'PENDING — ' : ''}${t.customer || '—'}</td>
+    </tr>`;
+  }).join('');
 
   const th = (label: string, align = 'left') =>
     `<th style="padding:7px 8px;background:#222;color:#fff;text-align:${align};font-size:10px;letter-spacing:0.08em;white-space:nowrap">${label}</th>`;
