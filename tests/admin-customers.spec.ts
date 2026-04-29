@@ -12,7 +12,15 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
 
+const MOCK_API = 'http://localhost:9999';
+async function resetMockState(request: import('@playwright/test').APIRequestContext) {
+  await request.post(`${MOCK_API}/api/v1/test/reset`);
+}
+
 test.describe('Admin Customers list page (/admin/customers)', () => {
+  test.beforeEach(async ({ request }) => {
+    await resetMockState(request);
+  });
 
   test.describe('admin role', () => {
     test.use({ storageState: path.join('tests', '.auth', 'admin.json') });
@@ -21,10 +29,11 @@ test.describe('Admin Customers list page (/admin/customers)', () => {
       await page.goto('/admin/customers');
       await expect(page.getByText('Customer Master List')).toBeVisible();
 
-      // Summary cards reflect the mocked CUSTOMERS state (Hannah=12 txns/₱480K + Pedro=3/₱95K)
-      await expect(page.getByTestId('summary-customers')).toContainText('2');
-      await expect(page.getByTestId('summary-total-txns')).toContainText('15');
-      await expect(page.getByTestId('summary-total-volume')).toContainText('₱575,000');
+      // Summary cards reflect the mocked CUSTOMERS state:
+      //   Hannah Wu (12 txns / ₱480K) + Pedro Cruz (3 / ₱95K) + Hanna Wuu (2 / ₱18K)
+      await expect(page.getByTestId('summary-customers')).toContainText('3');
+      await expect(page.getByTestId('summary-total-txns')).toContainText('17');
+      await expect(page.getByTestId('summary-total-volume')).toContainText('₱593,000');
     });
 
     test('table shows customer rows sorted by volume desc by default', async ({ page }) => {
@@ -42,10 +51,14 @@ test.describe('Admin Customers list page (/admin/customers)', () => {
       await expect(pedroRow).toContainText('Pedro Cruz');
       await expect(pedroRow).toContainText('₱95,000');
 
-      // DOM order: Hannah (480K) BEFORE Pedro (95K)
+      // DOM order: Hannah (480K) BEFORE Pedro (95K) BEFORE Hanna Wuu (18K)
       const all = await page.locator('[data-testid^="customer-row-"]').all();
       const ids = await Promise.all(all.map(r => r.getAttribute('data-testid')));
-      expect(ids).toEqual(['customer-row-cust-hannah-wu', 'customer-row-cust-pedro-cruz']);
+      expect(ids).toEqual([
+        'customer-row-cust-hannah-wu',
+        'customer-row-cust-pedro-cruz',
+        'customer-row-cust-hanna-wuu',
+      ]);
     });
 
     test('search box filters by name', async ({ page }) => {
@@ -87,6 +100,103 @@ test.describe('Admin Customers list page (/admin/customers)', () => {
       await page.goto('/admin/customers');
       await expect(page.getByText('Customer Master List')).toBeVisible();
       await ctx.close();
+    });
+  });
+
+  test.describe('merge flow (admin only)', () => {
+    test.use({ storageState: path.join('tests', '.auth', 'admin.json') });
+
+    test('select 2 rows → MERGE bar → modal → confirm collapses dupes into canonical', async ({ page }) => {
+      await page.goto('/admin/customers');
+
+      // Pick Hannah Wu + Hanna Wuu (the suspected dupe seeded in makeInitialCustomers)
+      await page.getByTestId('select-cust-hannah-wu').check();
+      await page.getByTestId('select-cust-hanna-wuu').check();
+
+      // Floating action bar surfaces with the count + MERGE button
+      await expect(page.getByTestId('merge-bar')).toBeVisible();
+      await expect(page.getByTestId('merge-bar')).toContainText('2 customers selected');
+      await page.getByTestId('open-merge').click();
+
+      // Modal opens; default canonical = highest-volume (Hannah Wu @ ₱480K, NOT Hanna Wuu @ ₱18K)
+      const modal = page.getByTestId('merge-modal');
+      await expect(modal).toBeVisible();
+      const hannahRadio = modal.getByTestId('canonical-radio-cust-hannah-wu').locator('input');
+      await expect(hannahRadio).toBeChecked();
+
+      // Confirm
+      await page.getByTestId('confirm-merge').click();
+
+      // Modal closes, table refetches — Hanna Wuu disappears, Hannah Wu's totals roll up
+      await expect(page.getByTestId('merge-modal')).toHaveCount(0);
+      await expect(page.getByTestId('customer-row-cust-hanna-wuu')).toHaveCount(0);
+      const hannahRow = page.getByTestId('customer-row-cust-hannah-wu');
+      await expect(hannahRow).toContainText('14');                     // 12 + 2 txns
+      await expect(hannahRow).toContainText('₱498,000');               // ₱480K + ₱18K
+
+      // Summary cards reflect the collapse: now 2 active customers, 17 total txns, ₱593K volume
+      await expect(page.getByTestId('summary-customers')).toContainText('2');
+      await expect(page.getByTestId('summary-total-txns')).toContainText('17');
+    });
+
+    test('user can change the canonical via the radio inside the modal', async ({ page }) => {
+      await page.goto('/admin/customers');
+      await page.getByTestId('select-cust-hannah-wu').check();
+      await page.getByTestId('select-cust-hanna-wuu').check();
+      await page.getByTestId('open-merge').click();
+
+      // Flip canonical to the dupe (unusual, but allowed)
+      await page.getByTestId('canonical-radio-cust-hanna-wuu').click();
+      await page.getByTestId('confirm-merge').click();
+
+      // Hanna Wuu becomes the surviving row, Hannah Wu disappears
+      await expect(page.getByTestId('customer-row-cust-hannah-wu')).toHaveCount(0);
+      await expect(page.getByTestId('customer-row-cust-hanna-wuu')).toBeVisible();
+    });
+
+    test('include-inactive shows merged dupes with INACTIVE badge', async ({ page, request }) => {
+      // Pre-merge via the API so we don't have to drive the UI twice
+      await request.post(`${MOCK_API}/api/v1/admin/customers/cust-hannah-wu/merge`, {
+        data: { duplicate_ids: ['cust-hanna-wuu'] },
+      });
+      await page.goto('/admin/customers');
+
+      // Default view: dupe hidden
+      await expect(page.getByTestId('customer-row-cust-hanna-wuu')).toHaveCount(0);
+
+      // Toggle include inactive → dupe reappears with INACTIVE badge
+      await page.getByTestId('customers-include-inactive').check();
+      const dupeRow = page.getByTestId('customer-row-cust-hanna-wuu');
+      await expect(dupeRow).toBeVisible();
+      await expect(dupeRow).toContainText('INACTIVE');
+    });
+
+    test('inactive rows have their checkbox disabled (cannot be selected for merge)', async ({ page, request }) => {
+      await request.post(`${MOCK_API}/api/v1/admin/customers/cust-hannah-wu/merge`, {
+        data: { duplicate_ids: ['cust-hanna-wuu'] },
+      });
+      await page.goto('/admin/customers');
+      await page.getByTestId('customers-include-inactive').check();
+
+      const dupeCheckbox = page.getByTestId('select-cust-hanna-wuu');
+      await expect(dupeCheckbox).toBeDisabled();
+    });
+
+    test('cannot merge fewer than 2 — selecting one keeps the bar hidden', async ({ page }) => {
+      await page.goto('/admin/customers');
+      await page.getByTestId('select-cust-hannah-wu').check();
+      await expect(page.getByTestId('merge-bar')).toHaveCount(0);
+    });
+  });
+
+  test.describe('merge UI hidden for supervisor', () => {
+    test.use({ storageState: path.join('tests', '.auth', 'supervisor.json') });
+
+    test('supervisor sees the list but no checkboxes / merge bar', async ({ page }) => {
+      await page.goto('/admin/customers');
+      await expect(page.getByText('Customer Master List')).toBeVisible();
+      // No select checkboxes rendered for supervisor (canMerge=false)
+      await expect(page.getByTestId('select-cust-hannah-wu')).toHaveCount(0);
     });
   });
 });

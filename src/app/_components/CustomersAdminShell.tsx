@@ -22,12 +22,18 @@ interface CustomerRow {
 
 type SortKey = 'volume' | 'name' | 'count' | 'last';
 
-export default function CustomersAdminShell() {
+export default function CustomersAdminShell({ canMerge = false }: { canMerge?: boolean }) {
   const [rows,            setRows]            = useState<CustomerRow[]>([]);
   const [loading,         setLoading]         = useState(true);
   const [q,               setQ]               = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
   const [sortKey,         setSortKey]         = useState<SortKey>('volume');
+  const [selected,        setSelected]        = useState<Set<string>>(new Set());
+  const [mergeOpen,       setMergeOpen]       = useState(false);
+  const [canonicalId,     setCanonicalId]     = useState<string | null>(null);
+  const [merging,         setMerging]         = useState(false);
+  const [mergeError,      setMergeError]      = useState<string | null>(null);
+  const [reloadTick,      setReloadTick]      = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -41,7 +47,57 @@ export default function CustomersAdminShell() {
       .then((data: CustomerRow[]) => { setRows(data); setLoading(false); })
       .catch(() => { /* abort or net */ });
     return () => ctrl.abort();
-  }, [q, includeInactive]);
+  }, [q, includeInactive, reloadTick]);
+
+  function toggleSelected(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function openMergeModal() {
+    if (selected.size < 2) return;
+    // Default canonical = the selected row with the highest volume
+    const ranked = [...selected]
+      .map(id => rows.find(r => r.id === id))
+      .filter((r): r is CustomerRow => !!r)
+      .sort((a, b) => b.total_volume_php - a.total_volume_php);
+    setCanonicalId(ranked[0]?.id ?? null);
+    setMergeError(null);
+    setMergeOpen(true);
+  }
+
+  async function confirmMerge() {
+    if (!canonicalId) return;
+    const dupes = [...selected].filter(id => id !== canonicalId);
+    if (dupes.length === 0) {
+      setMergeError('Pick a different canonical — at least one dupe must remain selected');
+      return;
+    }
+    setMerging(true);
+    setMergeError(null);
+    try {
+      const res = await fetch(`/api/admin/customers/${canonicalId}/merge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duplicate_ids: dupes }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMergeError(typeof data?.detail === 'string' ? data.detail : 'Merge failed');
+        return;
+      }
+      // Success — close, clear selection, reload
+      setMergeOpen(false);
+      setSelected(new Set());
+      setCanonicalId(null);
+      setReloadTick(t => t + 1);
+    } finally {
+      setMerging(false);
+    }
+  }
 
   const sorted = useMemo(() => {
     const arr = [...rows];
@@ -142,6 +198,7 @@ export default function CustomersAdminShell() {
             <table style={{ width: '100%', borderCollapse: 'collapse', ...M, fontSize: 12 }}>
               <thead>
                 <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border)' }}>
+                  {canMerge && <th style={{ width: 36 }}></th>}
                   {['Name', 'Phone', 'Txns', 'Volume', 'Last seen', 'Status'].map(h => (
                     <th key={h} style={{ textAlign: h === 'Volume' || h === 'Txns' ? 'right' : 'left', padding: '10px 16px', fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', fontWeight: 600 }}>{h.toUpperCase()}</th>
                   ))}
@@ -150,7 +207,20 @@ export default function CustomersAdminShell() {
               <tbody>
                 {sorted.map(r => (
                   <tr key={r.id} data-testid={`customer-row-${r.id}`}
-                      style={{ borderBottom: '1px solid var(--border)', opacity: r.is_active ? 1 : 0.55 }}>
+                      style={{ borderBottom: '1px solid var(--border)', opacity: r.is_active ? 1 : 0.55,
+                               background: selected.has(r.id) ? 'rgba(245,166,35,0.06)' : 'transparent' }}>
+                    {canMerge && (
+                      <td style={{ padding: '12px 16px' }}>
+                        <input
+                          type="checkbox"
+                          checked={selected.has(r.id)}
+                          onChange={() => toggleSelected(r.id)}
+                          disabled={!r.is_active}
+                          data-testid={`select-${r.id}`}
+                          aria-label={`Select ${r.name} for merge`}
+                        />
+                      </td>
+                    )}
                     <td style={{ padding: '12px 16px', color: '#e2e6f0', fontWeight: 600 }}>{r.name}</td>
                     <td style={{ padding: '12px 16px', color: 'var(--muted)' }}>{r.phone ?? '—'}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'right', color: '#e2e6f0' }}>{r.txn_count.toLocaleString('en-PH')}</td>
@@ -171,9 +241,97 @@ export default function CustomersAdminShell() {
         </div>
 
         <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 12 }}>
-          Merge dupes & per-customer detail page coming next. Cashiers + riders can keep adding from the txn forms in the meantime.
+          {canMerge
+            ? 'Tip: select two or more rows to merge dupes — Hannah Wu + Hanna Wuu collapse into one customer with all txns intact.'
+            : 'Merge & per-customer detail are admin-only. Cashiers + riders can keep adding from the txn forms.'}
         </div>
       </div>
+
+      {/* Merge floating action bar */}
+      {canMerge && selected.size >= 2 && !mergeOpen && (
+        <div data-testid="merge-bar"
+             style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#1a1d27', border: '1px solid rgba(245,166,35,0.5)', borderRadius: 12, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 12px 32px rgba(0,0,0,0.5)', zIndex: 90 }}>
+          <span style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>{selected.size} customers selected</span>
+          <button
+            onClick={() => setSelected(new Set())}
+            style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 12px', color: 'var(--muted)', ...M, fontSize: 11, cursor: 'pointer' }}
+          >
+            Clear
+          </button>
+          <button
+            data-testid="open-merge"
+            onClick={openMergeModal}
+            style={{ background: 'linear-gradient(135deg,#f5a623,#e09000)', border: 'none', borderRadius: 6, padding: '8px 16px', color: '#000', ...Y, fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+          >
+            🔗 MERGE…
+          </button>
+        </div>
+      )}
+
+      {/* Merge modal */}
+      {canMerge && mergeOpen && (
+        <div data-testid="merge-modal"
+             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}
+             onClick={e => { if (e.target === e.currentTarget) setMergeOpen(false); }}>
+          <div style={{ background: '#1a1d27', border: '1px solid var(--border)', borderRadius: 14, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ ...Y, fontSize: 18, fontWeight: 800, marginBottom: 6 }}>Merge customers</div>
+            <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 18 }}>
+              Pick the customer to keep. The others get marked inactive and their transactions repoint to the canonical one.
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+              {[...selected]
+                .map(id => rows.find(r => r.id === id))
+                .filter((r): r is CustomerRow => !!r)
+                .map(r => (
+                  <label key={r.id}
+                         data-testid={`canonical-radio-${r.id}`}
+                         style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', border: `1px solid ${canonicalId === r.id ? 'rgba(245,166,35,0.5)' : 'var(--border)'}`, borderRadius: 8, cursor: 'pointer', background: canonicalId === r.id ? 'rgba(245,166,35,0.06)' : 'transparent' }}>
+                    <input
+                      type="radio"
+                      name="canonical"
+                      checked={canonicalId === r.id}
+                      onChange={() => setCanonicalId(r.id)}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ ...M, fontSize: 13, fontWeight: 700, color: '#e2e6f0' }}>{r.name}</div>
+                      <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                        {r.phone ?? 'no phone'} · {r.txn_count} txns · {php(r.total_volume_php)}
+                      </div>
+                    </div>
+                    {canonicalId === r.id && (
+                      <span style={{ ...M, fontSize: 9, color: '#f5a623', letterSpacing: '0.1em' }}>★ KEEP</span>
+                    )}
+                  </label>
+                ))}
+            </div>
+
+            {mergeError && (
+              <div data-testid="merge-error" style={{ ...M, fontSize: 11, color: '#ff8b8b', background: 'rgba(255,92,92,0.08)', border: '1px solid rgba(255,92,92,0.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 14 }}>
+                {mergeError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setMergeOpen(false)}
+                disabled={merging}
+                style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)', borderRadius: 8, padding: '12px', color: 'var(--muted)', ...M, fontSize: 12, cursor: merging ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                data-testid="confirm-merge"
+                onClick={confirmMerge}
+                disabled={merging || !canonicalId}
+                style={{ flex: 2, background: merging ? 'var(--border)' : 'linear-gradient(135deg,#f5a623,#e09000)', border: 'none', borderRadius: 8, padding: '12px', color: merging ? 'var(--muted)' : '#000', ...Y, fontSize: 13, fontWeight: 800, cursor: merging ? 'wait' : 'pointer' }}
+              >
+                {merging ? 'Merging…' : `MERGE ${selected.size - (canonicalId ? 1 : 0)} INTO 1`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

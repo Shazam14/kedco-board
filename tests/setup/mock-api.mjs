@@ -123,14 +123,22 @@ const BANKS = [
 // Stats fields (txn_count, total_volume_php, last_txn_date) are mocked in
 // directly so /admin/customers tests can verify the enriched list without
 // needing to also seed transactions.
-let CUSTOMERS = [
-  { id: 'cust-hannah-wu', name: 'Hannah Wu',  phone: '09171234567', notes: null,
-    is_active: true, created_by: 'admintest', created_at: new Date().toISOString(),
-    txn_count: 12, total_volume_php: 480000, last_txn_date: '2026-04-29' },
-  { id: 'cust-pedro-cruz', name: 'Pedro Cruz', phone: null,         notes: null,
-    is_active: true, created_by: 'admintest', created_at: new Date().toISOString(),
-    txn_count: 3, total_volume_php: 95000, last_txn_date: '2026-04-25' },
-];
+function makeInitialCustomers() {
+  const now = new Date().toISOString();
+  return [
+    { id: 'cust-hannah-wu', name: 'Hannah Wu',  phone: '09171234567', notes: null,
+      is_active: true, merged_into_id: null, created_by: 'admintest', created_at: now,
+      txn_count: 12, total_volume_php: 480000, last_txn_date: '2026-04-29' },
+    { id: 'cust-pedro-cruz', name: 'Pedro Cruz', phone: null,         notes: null,
+      is_active: true, merged_into_id: null, created_by: 'admintest', created_at: now,
+      txn_count: 3, total_volume_php: 95000, last_txn_date: '2026-04-25' },
+    // Suspected dupe of Hannah Wu — used by merge tests
+    { id: 'cust-hanna-wuu', name: 'Hanna Wuu',  phone: null, notes: null,
+      is_active: true, merged_into_id: null, created_by: 'admintest', created_at: now,
+      txn_count: 2, total_volume_php: 18000, last_txn_date: '2026-04-22' },
+  ];
+}
+let CUSTOMERS = makeInitialCustomers();
 
 // ── Special Credits ───────────────────────────────────────────────────────────
 function makeInitialCredits() {
@@ -375,6 +383,46 @@ const server = createServer(async (req, res) => {
     if (!c) return json(res, { detail: 'Customer not found' }, 404);
     return json(res, c);
   }
+  // Admin merge — POST /api/v1/admin/customers/{canonical_id}/merge
+  {
+    const m = url.match(/^\/api\/v1\/admin\/customers\/([^/]+)\/merge$/);
+    if (method === 'POST' && m) {
+      const canonicalId = m[1];
+      const body = JSON.parse(await readBody(req));
+      const dupeIds = Array.isArray(body.duplicate_ids) ? body.duplicate_ids : [];
+      const canonical = CUSTOMERS.find(c => c.id === canonicalId);
+      if (!canonical) return json(res, { detail: 'Canonical customer not found' }, 404);
+      if (!canonical.is_active || canonical.merged_into_id) {
+        return json(res, { detail: 'Canonical customer is inactive or already merged' }, 400);
+      }
+      if (dupeIds.includes(canonicalId)) {
+        return json(res, { detail: 'Cannot merge a customer into itself' }, 400);
+      }
+      const dupes = dupeIds.map(id => CUSTOMERS.find(c => c.id === id));
+      if (dupes.some(d => !d)) return json(res, { detail: 'One or more duplicate ids not found' }, 400);
+      if (dupes.some(d => d.merged_into_id)) {
+        return json(res, { detail: 'Customer already merged — chain merges not supported' }, 400);
+      }
+      // Roll up txn counts + volume into canonical, then soft-delete dupes
+      let repointed = 0;
+      for (const d of dupes) {
+        canonical.txn_count       = (canonical.txn_count ?? 0) + (d.txn_count ?? 0);
+        canonical.total_volume_php = (canonical.total_volume_php ?? 0) + (d.total_volume_php ?? 0);
+        if (d.last_txn_date && (!canonical.last_txn_date || d.last_txn_date > canonical.last_txn_date)) {
+          canonical.last_txn_date = d.last_txn_date;
+        }
+        repointed += d.txn_count ?? 0;
+        d.is_active = false;
+        d.merged_into_id = canonicalId;
+      }
+      return json(res, {
+        canonical_id: canonicalId,
+        merged_count: dupes.length,
+        transactions_repointed: repointed,
+      });
+    }
+  }
+
   // Admin enriched customer list (with txn_count, total_volume_php, last_txn_date)
   if (method === 'GET' && url.startsWith('/api/v1/admin/customers')) {
     // url is path-only (mock-api strips ?... at line 247) — re-parse from req.url
@@ -788,6 +836,7 @@ const server = createServer(async (req, res) => {
   if (method === 'POST' && url === '/api/v1/test/reset') {
     EDIT_REQUESTS.length = 0;
     CREDITS = makeInitialCredits();
+    CUSTOMERS = makeInitialCustomers();
     // Restore both shifts to OPEN state
     SHIFTS.set('cashier1', {
       id: 'shift-cashier1-today', date: today,
