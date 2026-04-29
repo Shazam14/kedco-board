@@ -253,6 +253,13 @@ export default function TreasurerShell({
           <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>
             <span style={{ color: 'var(--text-strong)' }}>{username}</span>
           </div>
+          <a href="/admin/riders" style={{
+            padding: '5px 14px', borderRadius: 6,
+            border: '1px solid var(--border-subtle)', background: 'transparent',
+            color: 'var(--text-muted)', ...M, fontSize: 10, letterSpacing: '0.05em', textDecoration: 'none',
+          }}>
+            RIDER MGMT
+          </a>
           <a href="/supervisor/transactions" style={{
             padding: '5px 14px', borderRadius: 6,
             border: '1px solid var(--border-subtle)', background: 'transparent',
