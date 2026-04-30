@@ -39,14 +39,14 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     color: '#00d4aa',
   },
   {
-    href:  '/supervisor/operations?tab=riders',
+    href:  '/supervisor/dispatch',
     icon:  '🏍️',
     title: 'Rider Dispatch',
     desc:  'Dispatch riders, track top-ups, confirm returns.',
     color: '#f5a623',
   },
   {
-    href:  '/supervisor/operations?tab=cashiers',
+    href:  '/supervisor/floats',
     icon:  '💵',
     title: 'Cashier Floats',
     desc:  'Set opening floats — cashiers see them when they open shift.',

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import TreasurerShell from '@/app/_components/TreasurerShell';
+import DispatchShell from '@/app/_components/DispatchShell';
 
 const API_URL = process.env.API_URL!;
 const AUTH_COOKIE = process.env.AUTH_COOKIE ?? 'kedco_token';
@@ -18,22 +18,17 @@ async function fetchJson(url: string, token: string, fallback: unknown = []) {
   } catch { return fallback; }
 }
 
-export default async function SupervisorOperationsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string }>;
-}) {
+export default async function SupervisorDispatchPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE)?.value;
   if (!token) redirect('/login');
   const payload = decodeToken(token);
   if (!payload || !['admin', 'supervisor'].includes(payload.role)) redirect('/login');
 
-  const [dispatches, users, currencies, cashierFloats] = await Promise.all([
+  const [dispatches, users, currencies] = await Promise.all([
     fetchJson(`${API_URL}/api/v1/rider/dispatches/today`, token),
     fetchJson(`${API_URL}/api/v1/users`, token),
     fetchJson(`${API_URL}/api/v1/currencies`, token),
-    fetchJson(`${API_URL}/api/v1/treasurer/cashiers`, token, []),
   ]);
 
   const riders = (users as { username: string; full_name: string; role: string }[])
@@ -42,18 +37,13 @@ export default async function SupervisorOperationsPage({
   const activeCurrencies = ['PHP', ...(currencies as { code: string }[]).map(c => c.code)];
   const username = payload.full_name || payload.sub;
 
-  const { tab } = await searchParams;
-  const initialTab = tab === 'cashiers' ? 'cashiers' : 'riders';
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (
-    <TreasurerShell
+    <DispatchShell
       dispatches={dispatches as any[]}
       riders={riders}
       currencies={activeCurrencies}
-      cashierFloats={cashierFloats as any[]}
       username={username}
-      initialTab={initialTab}
     />
   );
 }
