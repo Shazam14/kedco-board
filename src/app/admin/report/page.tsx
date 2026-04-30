@@ -32,5 +32,5 @@ export default async function ReportPage({
   const { date: dateParam } = await searchParams;
   const report = await fetchReport(dateParam);
 
-  return <ReportShell report={report} selectedDate={dateParam ?? ''} hideThan={role !== 'admin'} />;
+  return <ReportShell report={report} selectedDate={dateParam ?? ''} hideThan={role !== 'admin'} role={role} />;
 }

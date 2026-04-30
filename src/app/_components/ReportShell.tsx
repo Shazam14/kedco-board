@@ -358,11 +358,14 @@ export default function ReportShell({
   report,
   selectedDate,
   hideThan = false,
+  role = 'admin',
 }: {
   report: Report | null;
   selectedDate: string;
   hideThan?: boolean;
+  role?: string;
 }) {
+  const isTreasurer = role === 'supervisor';
   const router  = useRouter();
   const [date, setDate] = useState(selectedDate || report?.date || '');
   const [isPending, startTransition] = useTransition();
@@ -463,8 +466,8 @@ export default function ReportShell({
             >
               🖨 Print / Save PDF
             </button>
-            <a href="/admin" style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', color: 'var(--muted)', ...M, fontSize: 11, textDecoration: 'none' }}>
-              ← Admin
+            <a href={isTreasurer ? '/supervisor' : '/admin'} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', color: 'var(--muted)', ...M, fontSize: 11, textDecoration: 'none' }}>
+              {isTreasurer ? '← HUB' : '← Admin'}
             </a>
           </div>
         </nav>
