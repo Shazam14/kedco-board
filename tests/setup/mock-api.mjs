@@ -625,6 +625,11 @@ const server = createServer(async (req, res) => {
     return json(res, { message: 'Marked as returned' });
   }
 
+  // Confirm payment on a transaction (treasurer payables flow)
+  if (method === 'PATCH' && /^\/api\/v1\/rider\/transactions\/.+\/confirm-payment$/.test(url)) {
+    return json(res, { message: 'Payment confirmed', confirmed_by: 'treasurer1' });
+  }
+
   // My pending edit request IDs
   if (method === 'GET' && url === '/api/v1/transactions/my-pending-edits') {
     const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');

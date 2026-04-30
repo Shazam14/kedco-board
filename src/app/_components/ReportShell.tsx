@@ -89,7 +89,7 @@ interface Report {
 }
 
 
-function printReport(report: Report) {
+function printReport(report: Report, hideThan = false) {
   const php = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const dpMap: Record<string, number> = Object.fromEntries(report.by_currency.map(r => [r.code, r.decimal_places]));
   const fmtFx = (amt: number, code: string) => { const dp = dpMap[code] ?? 2; return amt.toLocaleString('en-PH', { minimumFractionDigits: dp, maximumFractionDigits: dp }); };
@@ -249,7 +249,7 @@ function printReport(report: Report) {
       <div class="summary-box"><div class="label">OPENING STOCK</div><div class="value" style="color:#555">${php(openingStockPhp)}</div></div>
       <div class="summary-box"><div class="label">TOTAL BOUGHT</div><div class="value" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
       <div class="summary-box"><div class="label">TOTAL SOLD</div><div class="value" style="color:#c47000">${php(report.total_sold_php)}</div>${(report.total_sold_php_pending ?? 0) > 0 ? `<div style="font-size:10px;color:#c47000;font-weight:700;margin-top:6px">⏳ pending: ${php(report.total_sold_php_pending!)}</div>` : ''}</div>
-      <div class="summary-box"><div class="label">TOTAL THAN</div><div class="value" style="color:#007a55">${php(report.total_than)}</div>${(report.total_than_pending ?? 0) > 0 ? `<div style="font-size:10px;color:#c47000;font-weight:700;margin-top:6px">⏳ pending: ${php(report.total_than_pending!)}</div>` : ''}</div>
+      ${hideThan ? '' : `<div class="summary-box"><div class="label">TOTAL THAN</div><div class="value" style="color:#007a55">${php(report.total_than)}</div>${(report.total_than_pending ?? 0) > 0 ? `<div style="font-size:10px;color:#c47000;font-weight:700;margin-top:6px">⏳ pending: ${php(report.total_than_pending!)}</div>` : ''}</div>`}
       ${hasComm ? `<div class="summary-box"><div class="label">TOTAL COMM</div><div class="value" style="color:#007a55">${report.total_commission > 0 ? '+' : ''}${php(report.total_commission)}</div></div>` : ''}
     </div>
     <div class="flow">
@@ -357,9 +357,11 @@ function printReport(report: Report) {
 export default function ReportShell({
   report,
   selectedDate,
+  hideThan = false,
 }: {
   report: Report | null;
   selectedDate: string;
+  hideThan?: boolean;
 }) {
   const router  = useRouter();
   const [date, setDate] = useState(selectedDate || report?.date || '');
@@ -451,7 +453,7 @@ export default function ReportShell({
               }}
             />
             <button
-              onClick={() => report && printReport(report)}
+              onClick={() => report && printReport(report, hideThan)}
               style={{
                 padding: '6px 18px', borderRadius: 6,
                 border: '1px solid rgba(0,212,170,0.35)',
@@ -516,18 +518,18 @@ export default function ReportShell({
 
             {/* ── SUMMARY BOXES ── */}
             {(() => {
-              const cols = report.total_commission !== 0 ? 5 : 4;
+              const summaryCount = (report.total_commission !== 0 ? 5 : 4) - (hideThan ? 1 : 0);
               const soldPending = report.total_sold_php_pending ?? 0;
               const thanPending = report.total_than_pending ?? 0;
               const boxes = [
                 { label: 'OPENING STOCK', value: php(openingStock), color: '#aab4c8' },
                 { label: 'TOTAL BOUGHT',  value: php(report.total_bought_php),        color: '#5b8cff' },
                 { label: 'TOTAL SOLD',    value: php(report.total_sold_php),           color: '#f5a623', pending: soldPending },
-                { label: 'TOTAL THAN',    value: php(report.total_than),               color: '#00d4aa', pending: thanPending },
+                ...(hideThan ? [] : [{ label: 'TOTAL THAN', value: php(report.total_than), color: '#00d4aa', pending: thanPending }]),
                 ...(report.total_commission !== 0 ? [{ label: 'TOTAL COMM', value: (report.total_commission > 0 ? '+' : '') + php(report.total_commission), color: '#00d4aa' }] : []),
               ];
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols},1fr)`, gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${summaryCount},1fr)`, gap: 16 }}>
                   {boxes.map(s => (
                     <div key={s.label} className="print-card" style={{
                       background: 'var(--surface)', border: '1px solid var(--border)',
@@ -751,7 +753,7 @@ export default function ReportShell({
 
               {/* Column headers */}
               <div className="print-thead" style={{
-                display: 'grid', gridTemplateColumns: '110px 1fr 80px 90px 110px 80px 90px 110px 100px',
+                display: 'grid', gridTemplateColumns: (hideThan ? '110px 1fr 80px 90px 110px 80px 90px 110px' : '110px 1fr 80px 90px 110px 80px 90px 110px 100px'),
                 padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
                 ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
               }}>
@@ -762,7 +764,7 @@ export default function ReportShell({
                 <span style={{ textAlign: 'right' }}>SELL #</span>
                 <span style={{ textAlign: 'right' }}>SELL QTY</span>
                 <span style={{ textAlign: 'right' }}>SELL PHP</span>
-                <span style={{ textAlign: 'right' }}>THAN</span>
+                {!hideThan && <span style={{ textAlign: 'right' }}>THAN</span>}
               </div>
 
               {categories.map(cat => {
@@ -787,7 +789,7 @@ export default function ReportShell({
                       return (
                       <div key={r.code} style={{
                         display: 'grid',
-                        gridTemplateColumns: '110px 1fr 80px 90px 110px 80px 90px 110px 100px',
+                        gridTemplateColumns: (hideThan ? '110px 1fr 80px 90px 110px 80px 90px 110px' : '110px 1fr 80px 90px 110px 80px 90px 110px 100px'),
                         padding: '9px 20px',
                         borderBottom: '1px solid var(--border)',
                         background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
@@ -814,12 +816,14 @@ export default function ReportShell({
                             <span style={{ fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(sellPending)}</span>
                           )}
                         </span>
-                        <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                          <span>{r.than > 0 ? php(r.than) : '—'}</span>
-                          {thanPending > 0 && (
-                            <span style={{ fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(thanPending)}</span>
-                          )}
-                        </span>
+                        {!hideThan && (
+                          <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                            <span>{r.than > 0 ? php(r.than) : '—'}</span>
+                            {thanPending > 0 && (
+                              <span style={{ fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(thanPending)}</span>
+                            )}
+                          </span>
+                        )}
                       </div>
                     );
                     })}
@@ -827,7 +831,7 @@ export default function ReportShell({
                     {/* Category subtotal */}
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: '110px 1fr 80px 90px 110px 80px 90px 110px 100px',
+                      gridTemplateColumns: (hideThan ? '110px 1fr 80px 90px 110px 80px 90px 110px' : '110px 1fr 80px 90px 110px 80px 90px 110px 100px'),
                       padding: '8px 20px', borderBottom: '1px solid var(--border)',
                       background: 'rgba(255,255,255,0.05)',
                     }}>
@@ -845,12 +849,14 @@ export default function ReportShell({
                           <span style={{ fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(tot.sell_php_pending)}</span>
                         )}
                       </span>
-                      <span style={{ ...M, fontSize: 11, color: '#00d4aa', textAlign: 'right', fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                        <span>{tot.than > 0 ? php(tot.than) : '—'}</span>
-                        {tot.than_pending > 0 && (
-                          <span style={{ fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(tot.than_pending)}</span>
-                        )}
-                      </span>
+                      {!hideThan && (
+                        <span style={{ ...M, fontSize: 11, color: '#00d4aa', textAlign: 'right', fontWeight: 700, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                          <span>{tot.than > 0 ? php(tot.than) : '—'}</span>
+                          {tot.than_pending > 0 && (
+                            <span style={{ fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(tot.than_pending)}</span>
+                          )}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -859,7 +865,7 @@ export default function ReportShell({
               {/* Grand total */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '110px 1fr 80px 90px 110px 80px 90px 110px 100px',
+                gridTemplateColumns: (hideThan ? '110px 1fr 80px 90px 110px 80px 90px 110px' : '110px 1fr 80px 90px 110px 80px 90px 110px 100px'),
                 padding: '12px 20px',
                 background: 'rgba(0,212,170,0.07)',
                 borderTop: '1px solid rgba(0,212,170,0.3)',
@@ -876,21 +882,23 @@ export default function ReportShell({
                     <span style={{ ...M, fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(report.total_sold_php_pending!)}</span>
                   )}
                 </span>
-                <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#00d4aa', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                  <span>{php(report.total_than)}</span>
-                  {(report.total_than_pending ?? 0) > 0 && (
-                    <span style={{ ...M, fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(report.total_than_pending!)}</span>
-                  )}
-                </span>
+                {!hideThan && (
+                  <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#00d4aa', textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                    <span>{php(report.total_than)}</span>
+                    {(report.total_than_pending ?? 0) > 0 && (
+                      <span style={{ ...M, fontSize: 9, color: '#c47000', fontWeight: 700 }}>⏳ {php(report.total_than_pending!)}</span>
+                    )}
+                  </span>
+                )}
               </div>
             </div>
 
             {/* ── BY CASHIER (replaces CASHIER sheet) ── */}
             {(() => {
               const showComm = report.by_cashier.some(r => r.commission !== 0);
-              const cols = showComm
-                ? '160px 80px 130px 80px 130px 130px 110px'
-                : '160px 80px 130px 80px 130px 130px';
+              const cols = hideThan
+                ? (showComm ? '160px 80px 130px 80px 130px 110px' : '160px 80px 130px 80px 130px')
+                : (showComm ? '160px 80px 130px 80px 130px 130px 110px' : '160px 80px 130px 80px 130px 130px');
               return (
                 <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
                   <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
@@ -907,7 +915,7 @@ export default function ReportShell({
                     <span style={{ textAlign: 'right' }}>BOUGHT (PHP)</span>
                     <span style={{ textAlign: 'right' }}>SELL TXN</span>
                     <span style={{ textAlign: 'right' }}>SOLD (PHP)</span>
-                    <span style={{ textAlign: 'right' }}>THAN</span>
+                    {!hideThan && <span style={{ textAlign: 'right' }}>THAN</span>}
                     {showComm && <span style={{ textAlign: 'right' }}>COMM</span>}
                   </div>
                   {report.by_cashier.map((r, i) => (
@@ -923,9 +931,11 @@ export default function ReportShell({
                       <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>{php(r.buy_php)}</span>
                       <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{r.sell_count}</span>
                       <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{php(r.sell_php)}</span>
-                      <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right' }}>
-                        {r.than > 0 ? php(r.than) : '—'}
-                      </span>
+                      {!hideThan && (
+                        <span style={{ ...M, fontSize: 11, color: r.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right' }}>
+                          {r.than > 0 ? php(r.than) : '—'}
+                        </span>
+                      )}
                       {showComm && (
                         <span style={{ ...M, fontSize: 11, color: r.commission !== 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right', fontWeight: r.commission !== 0 ? 700 : 400 }}>
                           {r.commission !== 0 ? (r.commission > 0 ? '+' : '') + php(r.commission) : '—'}
@@ -1019,7 +1029,7 @@ export default function ReportShell({
               </div>
               <div style={{ overflowX: 'auto' }}>
               <div className="print-thead" style={{
-                display: 'grid', gridTemplateColumns: '110px 60px 50px 46px 60px 80px 90px 90px 80px 80px 1fr',
+                display: 'grid', gridTemplateColumns: (hideThan ? '110px 60px 50px 46px 60px 80px 90px 90px 80px 1fr' : '110px 60px 50px 46px 60px 80px 90px 90px 80px 80px 1fr'),
                 minWidth: 786,
                 padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
                 ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
@@ -1028,7 +1038,7 @@ export default function ReportShell({
                 <span>CCY</span><span style={{ textAlign: 'right' }}>FOREIGN</span>
                 <span style={{ textAlign: 'right' }}>RATE</span>
                 <span style={{ textAlign: 'right' }}>PHP</span>
-                <span style={{ textAlign: 'right' }}>THAN</span>
+                {!hideThan && <span style={{ textAlign: 'right' }}>THAN</span>}
                 <span>CASHIER</span><span>CUST</span>
               </div>
               {report.transactions.map((t, i) => {
@@ -1038,7 +1048,7 @@ export default function ReportShell({
                 <div key={t.id}>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '110px 60px 50px 46px 60px 80px 90px 90px 80px 80px 1fr',
+                  gridTemplateColumns: (hideThan ? '110px 60px 50px 46px 60px 80px 90px 90px 80px 1fr' : '110px 60px 50px 46px 60px 80px 90px 90px 80px 80px 1fr'),
                   minWidth: 786,
                   padding: '8px 20px', borderBottom: isMulti ? 'none' : '1px solid var(--border)',
                   background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
@@ -1055,9 +1065,11 @@ export default function ReportShell({
                   <span style={{ ...M, fontSize: 11, color: '#e2e6f0', textAlign: 'right' }}>{fmtFxScreen(t.foreign_amt, t.currency)}</span>
                   <span style={{ ...M, fontSize: 11, color: t.type === 'BUY' ? '#5b8cff' : '#f5a623', textAlign: 'right' }}>{t.rate}</span>
                   <span style={{ ...M, fontSize: 11, color: '#e2e6f0', textAlign: 'right' }}>{php(t.php_amt)}</span>
-                  <span style={{ ...M, fontSize: 11, color: t.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right' }}>
-                    {t.than > 0 ? php(t.than) : '—'}
-                  </span>
+                  {!hideThan && (
+                    <span style={{ ...M, fontSize: 11, color: t.than > 0 ? '#00d4aa' : 'var(--muted)', textAlign: 'right' }}>
+                      {t.than > 0 ? php(t.than) : '—'}
+                    </span>
+                  )}
                   <span style={{ ...M, fontSize: 10, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {t.cashier}
                   </span>

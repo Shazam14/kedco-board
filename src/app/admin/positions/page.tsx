@@ -5,7 +5,7 @@ import PositionSetterForm from '@/app/_components/PositionSetterForm';
 export default async function AdminPositionsPage() {
   const role = await getTokenRole();
   if (!role) redirect('/login');
-  if (role !== 'admin') redirect('/');
+  if (!['admin', 'supervisor'].includes(role)) redirect('/');
 
   const positions = await getPositions();
 
