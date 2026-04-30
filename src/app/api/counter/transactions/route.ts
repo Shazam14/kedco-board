@@ -38,6 +38,15 @@ export async function GET() {
     paymentTag:     t.payment_tag ?? undefined,
     paymentStatus:  t.payment_status ?? 'RECEIVED',
     referenceDate:  t.reference_date ?? undefined,
+    payments: Array.isArray(t.payments) ? (t.payments as Record<string, unknown>[]).map(p => ({
+      id:          p.id,
+      method:      p.method,
+      amountPhp:   p.amount_php,
+      status:      p.status,
+      referenceNo: p.reference_no ?? undefined,
+      receivedAt:  p.received_at ?? undefined,
+      confirmedBy: p.confirmed_by ?? undefined,
+    })) : [],
   }));
 
   return NextResponse.json(mapped);

@@ -15,6 +15,16 @@ export interface CurrencyPosition {
   unrealizedPHP: number;
 }
 
+export interface PaymentSlice {
+  id: string;
+  method: string;
+  amountPhp: number;
+  status: 'RECEIVED' | 'PENDING';
+  referenceNo?: string;
+  receivedAt?: string;
+  confirmedBy?: string;
+}
+
 export interface Transaction {
   id: string;
   time: string;
@@ -37,6 +47,7 @@ export interface Transaction {
   paymentStatus?: 'RECEIVED' | 'PENDING';
   referenceDate?: string;
   branchId?: string;
+  payments?: PaymentSlice[];
 }
 
 export interface CurrencyMeta {

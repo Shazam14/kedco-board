@@ -736,7 +736,7 @@ const server = createServer(async (req, res) => {
   }
 
   // Transactions today (counter and rider)
-  if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, customer_id: t.customer_id ?? null, payment_mode: t.payment_mode, bank_id: null, payment_status: t.payment_status ?? 'RECEIVED', branch_id: t.branch_id ?? null })));
+  if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, customer_id: t.customer_id ?? null, payment_mode: t.payment_mode, bank_id: null, payment_status: t.payment_status ?? 'RECEIVED', branch_id: t.branch_id ?? null, payments: [{ id: `${t.id}-p0`, method: t.payment_mode ?? 'CASH', amount_php: t.php_amt, status: t.payment_status ?? 'RECEIVED', reference_no: null, received_at: null, confirmed_by: null }] })));
   if (method === 'GET' && /transactions/.test(url)) return json(res, []);
 
   // Submit batch counter transaction
@@ -763,25 +763,63 @@ const server = createServer(async (req, res) => {
     })), 201);
   }
 
-  // Submit counter transaction
+  // Submit counter transaction (also used by rider proxy)
   if (method === 'POST' && url === '/api/v1/transactions/') {
     const body = await readBody(req);
     const data = JSON.parse(body);
+    const phpAmt = data.foreign_amt * data.rate;
+    const isRiderSell = data.source === 'RIDER' && data.type === 'SELL';
+    let slices;
+    if (Array.isArray(data.payments) && data.payments.length > 0) {
+      const sum = data.payments.reduce((s, p) => s + (p.amount_php ?? 0), 0);
+      if (Math.abs(sum - phpAmt) > 0.01) {
+        return json(res, { detail: `Sum of payments (${sum.toFixed(2)}) does not match php_amt (${phpAmt.toFixed(2)})` }, 400);
+      }
+      slices = data.payments.map((p, i) => {
+        const method = (p.method ?? 'CASH').toUpperCase();
+        const forced = isRiderSell && method !== 'CASH';
+        const status = forced ? 'PENDING' : (p.status ?? 'RECEIVED');
+        return {
+          id: `TXN-TEST-001-p${i}`,
+          method,
+          amount_php: p.amount_php,
+          status,
+          reference_no: p.reference_no ?? null,
+          received_at: status === 'RECEIVED' ? new Date().toISOString() : null,
+          confirmed_by: status === 'RECEIVED' ? data.cashier : null,
+        };
+      });
+    } else {
+      const method = (data.payment_mode ?? 'CASH').toUpperCase();
+      const forced = isRiderSell && method !== 'CASH';
+      const status = forced ? 'PENDING' : (data.payment_status ?? 'RECEIVED');
+      slices = [{
+        id: 'TXN-TEST-001-p0',
+        method,
+        amount_php: phpAmt,
+        status,
+        reference_no: null,
+        received_at: status === 'RECEIVED' ? new Date().toISOString() : null,
+        confirmed_by: status === 'RECEIVED' ? data.cashier : null,
+      }];
+    }
+    const parentStatus = slices.some(s => s.status === 'PENDING') ? 'PENDING' : 'RECEIVED';
     return json(res, {
-      id:           'TXN-TEST-001',
-      time:          new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }),
-      type:          data.type,
-      source:        data.source,
-      currency:      data.currency,
-      foreign_amt:   data.foreign_amt,
-      rate:          data.rate,
-      php_amt:       data.foreign_amt * data.rate,
-      than:          0,
-      cashier:       data.cashier,
-      customer:      data.customer ?? null,
-      customer_id:   data.customer_id ?? null,
-      payment_mode:  data.payment_mode ?? 'CASH',
-      payment_status: data.payment_status ?? 'RECEIVED',
+      id:            'TXN-TEST-001',
+      time:           new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' }),
+      type:           data.type,
+      source:         data.source,
+      currency:       data.currency,
+      foreign_amt:    data.foreign_amt,
+      rate:           data.rate,
+      php_amt:        phpAmt,
+      than:           0,
+      cashier:        data.cashier,
+      customer:       data.customer ?? null,
+      customer_id:    data.customer_id ?? null,
+      payment_mode:   slices[0].method,
+      payment_status: parentStatus,
+      payments:       slices,
     }, 201);
   }
 

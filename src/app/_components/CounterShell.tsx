@@ -210,6 +210,12 @@ export default function CounterShell({
   const [referenceDate,  setReferenceDate]  = useState('');
   const [payMode,        setPayMode]        = useState<PayMode>('CASH');
   const [bankId,   setBankId]   = useState<number | null>(null);
+  type SliceDraft = { method: PayMode; amountPhp: string; referenceNo: string };
+  const [splitMode, setSplitMode] = useState(false);
+  const [slices,    setSlices]    = useState<SliceDraft[]>([
+    { method: 'CASH',  amountPhp: '', referenceNo: '' },
+    { method: 'GCASH', amountPhp: '', referenceNo: '' },
+  ]);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
   const [flash,       setFlash]       = useState<Transaction | null>(null);
@@ -232,6 +238,12 @@ export default function CounterShell({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payMode]);
 
+  // Split mode is SELL-only; force it off whenever leaving SELL
+  useEffect(() => {
+    if (type !== 'SELL' && splitMode) setSplitMode(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type]);
+
   // Auto-fill rate when currency or BUY/SELL changes
   useEffect(() => {
     if (!ccy) return;
@@ -250,9 +262,19 @@ export default function CounterShell({
       ? +amtInput.raw * +rateInput.raw
       : null;
 
+  const sliceSum   = slices.reduce((s, x) => s + (parseFloat(x.amountPhp) || 0), 0);
+  const sliceDelta = phpTotal != null ? +(phpTotal - sliceSum).toFixed(2) : 0;
+  const splitNeedsBank = splitMode && slices.some(s => NEEDS_BANK.includes(s.method));
+  const slicesValid = splitMode
+    && slices.length >= 2
+    && slices.every(s => parseFloat(s.amountPhp) > 0)
+    && Math.abs(sliceDelta) < 0.01;
+
   const canSubmit =
     !!ccy && !!amtInput.raw && +amtInput.raw > 0 && !!rateInput.raw && +rateInput.raw > 0 && !loading
-    && (!NEEDS_BANK.includes(payMode) || bankId !== null);
+    && (splitMode
+      ? (slicesValid && (!splitNeedsBank || bankId !== null))
+      : (!NEEDS_BANK.includes(payMode) || bankId !== null));
 
   async function handleSubmit() {
     if (!canSubmit || !ccy) return;
@@ -272,7 +294,7 @@ export default function CounterShell({
           customer: cust || undefined,
           customer_id: custId || undefined,
           id_number: idNumber || undefined,
-          payment_mode: payMode,
+          payment_mode: splitMode ? slices[0].method : payMode,
           bank_id: bankId ?? undefined,
           official_rate: +guideRateInput.raw > 0 ? +guideRateInput.raw : undefined,
           referrer: referrer || undefined,
@@ -280,6 +302,13 @@ export default function CounterShell({
           reference_date: (role === 'supervisor' && referenceDate) ? referenceDate : undefined,
           terminal_id: terminal || undefined,
           branch_id: branch || undefined,
+          payments: splitMode
+            ? slices.map(s => ({
+                method: s.method,
+                amount_php: parseFloat(s.amountPhp),
+                reference_no: s.referenceNo || undefined,
+              }))
+            : undefined,
         }),
       });
       const data = await res.json();
@@ -298,6 +327,15 @@ export default function CounterShell({
           paymentTag: data.payment_tag ?? undefined,
           paymentStatus: data.payment_status ?? 'RECEIVED',
           referenceDate: data.reference_date ?? undefined,
+          payments: Array.isArray(data.payments) ? data.payments.map((p: Record<string, unknown>) => ({
+            id: p.id as string,
+            method: p.method as string,
+            amountPhp: p.amount_php as number,
+            status: (p.status as 'RECEIVED' | 'PENDING'),
+            referenceNo: (p.reference_no as string | null) ?? undefined,
+            receivedAt: (p.received_at as string | null) ?? undefined,
+            confirmedBy: (p.confirmed_by as string | null) ?? undefined,
+          })) : [],
         };
         setFlash(txn);
         amtInput.setValue('');
@@ -308,6 +346,11 @@ export default function CounterShell({
         guideRateInput.setValue('');
         setPaymentTag('');
         setReferenceDate(new Date().toISOString().split('T')[0]);
+        setSplitMode(false);
+        setSlices([
+          { method: 'CASH',  amountPhp: '', referenceNo: '' },
+          { method: 'GCASH', amountPhp: '', referenceNo: '' },
+        ]);
         await fetchTxns();
         setTimeout(() => setFlash(null), 5000);
       }
@@ -1934,48 +1977,198 @@ export default function CounterShell({
 
           {/* Payment Mode */}
           <div>
-            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
-              PAYMENT MODE
-            </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {PAY_MODES.map(m => (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em' }}>
+                PAYMENT MODE
+              </label>
+              {type === 'SELL' && (
                 <button
-                  key={m}
                   type="button"
-                  onClick={() => setPayMode(m)}
+                  data-testid="split-toggle"
+                  onClick={() => setSplitMode(v => !v)}
                   style={{
-                    padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
-                    border: `1px solid ${payMode === m ? 'rgba(61,199,173,0.5)' : 'var(--border-subtle)'}`,
-                    background: payMode === m ? 'rgba(61,199,173,0.1)' : 'transparent',
-                    color: payMode === m ? 'var(--teal-300)' : 'var(--text-muted)',
-                    ...M, fontSize: 10, letterSpacing: '0.05em',
+                    padding: '4px 10px', borderRadius: 5, cursor: 'pointer',
+                    border: `1px solid ${splitMode ? 'rgba(61,199,173,0.5)' : 'var(--border-subtle)'}`,
+                    background: splitMode ? 'rgba(61,199,173,0.1)' : 'transparent',
+                    color: splitMode ? 'var(--teal-300)' : 'var(--text-muted)',
+                    ...M, fontSize: 9, letterSpacing: '0.08em',
                   }}
                 >
-                  {m.replace('_', ' ')}
+                  {splitMode ? 'SPLIT ON' : '+ SPLIT'}
                 </button>
-              ))}
+              )}
             </div>
-            {NEEDS_BANK.includes(payMode) && (
-              <div style={{ marginTop: 10 }}>
-                <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
-                  {payMode === 'CHEQUE' ? 'BANK (CHEQUE)' : 'BANK'}
-                </label>
-                <select
-                  value={bankId ?? ''}
-                  onChange={e => setBankId(e.target.value ? +e.target.value : null)}
-                  style={{
-                    width: '100%', background: 'var(--bg-card)',
-                    border: `1px solid ${bankId ? 'rgba(61,199,173,0.4)' : '#ff5c5c44'}`,
-                    borderRadius: 8, padding: '10px 14px', boxSizing: 'border-box',
-                    color: bankId ? 'var(--text-strong)' : 'var(--text-muted)',
-                    ...M, fontSize: 13, outline: 'none',
-                  }}
-                >
-                  <option value="">Select bank…</option>
-                  {banks.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
+
+            {!splitMode ? (
+              <>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {PAY_MODES.map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setPayMode(m)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
+                        border: `1px solid ${payMode === m ? 'rgba(61,199,173,0.5)' : 'var(--border-subtle)'}`,
+                        background: payMode === m ? 'rgba(61,199,173,0.1)' : 'transparent',
+                        color: payMode === m ? 'var(--teal-300)' : 'var(--text-muted)',
+                        ...M, fontSize: 10, letterSpacing: '0.05em',
+                      }}
+                    >
+                      {m.replace('_', ' ')}
+                    </button>
                   ))}
-                </select>
+                </div>
+                {NEEDS_BANK.includes(payMode) && (
+                  <div style={{ marginTop: 10 }}>
+                    <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
+                      {payMode === 'CHEQUE' ? 'BANK (CHEQUE)' : 'BANK'}
+                    </label>
+                    <select
+                      value={bankId ?? ''}
+                      onChange={e => setBankId(e.target.value ? +e.target.value : null)}
+                      style={{
+                        width: '100%', background: 'var(--bg-card)',
+                        border: `1px solid ${bankId ? 'rgba(61,199,173,0.4)' : '#ff5c5c44'}`,
+                        borderRadius: 8, padding: '10px 14px', boxSizing: 'border-box',
+                        color: bankId ? 'var(--text-strong)' : 'var(--text-muted)',
+                        ...M, fontSize: 13, outline: 'none',
+                      }}
+                    >
+                      <option value="">Select bank…</option>
+                      {banks.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div data-testid="slice-builder" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {slices.map((s, i) => {
+                  const refRequired = ['GCASH', 'MAYA', 'SHOPEEPAY'].includes(s.method);
+                  return (
+                    <div key={i} data-testid={`slice-row-${i}`} style={{
+                      border: '1px solid var(--border-subtle)', borderRadius: 8, padding: 10,
+                      display: 'flex', flexDirection: 'column', gap: 8,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>
+                          SLICE {i + 1}
+                        </span>
+                        {slices.length > 2 && (
+                          <button
+                            type="button"
+                            data-testid={`slice-remove-${i}`}
+                            onClick={() => setSlices(slices.filter((_, j) => j !== i))}
+                            style={{
+                              background: 'none', border: '1px solid var(--border)',
+                              borderRadius: 4, color: 'var(--text-muted)', cursor: 'pointer',
+                              ...M, fontSize: 10, padding: '2px 8px',
+                            }}
+                          >×</button>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {PAY_MODES.map(m => (
+                          <button
+                            key={m}
+                            type="button"
+                            data-testid={`slice-${i}-method-${m}`}
+                            onClick={() => setSlices(slices.map((x, j) => j === i ? { ...x, method: m } : x))}
+                            style={{
+                              padding: '4px 8px', borderRadius: 5, cursor: 'pointer',
+                              border: `1px solid ${s.method === m ? 'rgba(61,199,173,0.5)' : 'var(--border-subtle)'}`,
+                              background: s.method === m ? 'rgba(61,199,173,0.1)' : 'transparent',
+                              color: s.method === m ? 'var(--teal-300)' : 'var(--text-muted)',
+                              ...M, fontSize: 9, letterSpacing: '0.04em',
+                            }}
+                          >
+                            {m.replace('_', ' ')}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="₱ amount"
+                          data-testid={`slice-${i}-amount`}
+                          value={s.amountPhp}
+                          onChange={e => setSlices(slices.map((x, j) => j === i ? { ...x, amountPhp: e.target.value } : x))}
+                          style={{
+                            flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border)',
+                            borderRadius: 6, padding: '8px 10px', color: 'var(--text-strong)',
+                            ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
+                          }}
+                        />
+                        {s.method !== 'CASH' && s.method !== 'OTHER' && (
+                          <input
+                            type="text"
+                            placeholder={refRequired ? 'Reference #' : 'Reference # (optional)'}
+                            data-testid={`slice-${i}-ref`}
+                            value={s.referenceNo}
+                            onChange={e => setSlices(slices.map((x, j) => j === i ? { ...x, referenceNo: e.target.value } : x))}
+                            style={{
+                              flex: 1.2, background: 'var(--bg-card)', border: '1px solid var(--border)',
+                              borderRadius: 6, padding: '8px 10px', color: 'var(--text-strong)',
+                              ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <button
+                    type="button"
+                    data-testid="slice-add"
+                    onClick={() => setSlices([...slices, { method: 'CASH', amountPhp: '', referenceNo: '' }])}
+                    style={{
+                      padding: '6px 12px', borderRadius: 6, cursor: 'pointer',
+                      border: '1px dashed var(--border-subtle)', background: 'transparent',
+                      color: 'var(--text-muted)', ...M, fontSize: 10, letterSpacing: '0.05em',
+                    }}
+                  >+ ADD SLICE</button>
+                  {phpTotal != null && (
+                    <span data-testid="slice-delta" style={{
+                      ...M, fontSize: 10,
+                      color: Math.abs(sliceDelta) < 0.01
+                        ? 'var(--teal-300)'
+                        : (sliceDelta > 0 ? 'var(--accent-gold)' : 'var(--accent-coral)'),
+                    }}>
+                      {Math.abs(sliceDelta) < 0.01
+                        ? '✓ matches php amt'
+                        : sliceDelta > 0
+                          ? `₱remaining: ${sliceDelta.toFixed(2)}`
+                          : `₱over: ${Math.abs(sliceDelta).toFixed(2)}`}
+                    </span>
+                  )}
+                </div>
+                {splitNeedsBank && (
+                  <div>
+                    <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 6 }}>
+                      BANK (for cheque/transfer slices)
+                    </label>
+                    <select
+                      value={bankId ?? ''}
+                      onChange={e => setBankId(e.target.value ? +e.target.value : null)}
+                      style={{
+                        width: '100%', background: 'var(--bg-card)',
+                        border: `1px solid ${bankId ? 'rgba(61,199,173,0.4)' : '#ff5c5c44'}`,
+                        borderRadius: 8, padding: '10px 14px', boxSizing: 'border-box',
+                        color: bankId ? 'var(--text-strong)' : 'var(--text-muted)',
+                        ...M, fontSize: 13, outline: 'none',
+                      }}
+                    >
+                      <option value="">Select bank…</option>
+                      {banks.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -2277,8 +2470,22 @@ export default function CounterShell({
                         ...M, fontSize: 11, fontWeight: 700,
                         color: t.type === 'BUY' ? 'var(--accent-sky)' : 'var(--accent-gold)',
                       }}>{t.type}</span>
-                      <span style={{ ...M, fontSize: 9, color: t.paymentStatus === 'PENDING' ? 'var(--accent-gold)' : 'var(--text-muted)' }}>
-                        {(t.paymentMode ?? 'CASH') === 'BANK_TRANSFER' ? 'BANK' : (t.paymentMode ?? 'CASH') === 'SHOPEEPAY' ? 'SHPAY' : (t.paymentMode ?? 'CASH')}
+                      <span
+                        style={{ ...M, fontSize: 9, color: t.paymentStatus === 'PENDING' ? 'var(--accent-gold)' : 'var(--text-muted)' }}
+                        title={(t.payments && t.payments.length > 1)
+                          ? t.payments.map(p => `${p.method} ${php(p.amountPhp)}${p.status === 'PENDING' ? ' (pending)' : ''}`).join(' · ')
+                          : undefined}
+                      >
+                        {(() => {
+                          const m = (t.paymentMode ?? 'CASH');
+                          const label = m === 'BANK_TRANSFER' ? 'BANK' : m === 'SHOPEEPAY' ? 'SHPAY' : m;
+                          return label;
+                        })()}
+                        {t.payments && t.payments.length > 1 && (
+                          <span data-testid="split-chip" style={{ marginLeft: 3, color: 'var(--teal-300)' }}>
+                            +{t.payments.length - 1}
+                          </span>
+                        )}
                         {t.paymentStatus === 'PENDING' && <span title="Payment pending — not yet received" style={{ marginLeft: 3 }}>⏳</span>}
                       </span>
                       <span style={{ ...M, fontSize: 13, color: 'var(--text-strong)' }}>{t.currency}</span>

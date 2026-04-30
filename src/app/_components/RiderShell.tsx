@@ -88,6 +88,12 @@ export default function RiderShell({
   const [custId,      setCustId]      = useState<string | null>(null);
   const [payMode,     setPayMode]     = useState('CASH');
   const [bankId,      setBankId]      = useState<number | null>(null);
+  type SliceDraft = { method: string; amountPhp: string; referenceNo: string };
+  const [splitMode,   setSplitMode]   = useState(false);
+  const [slices,      setSlices]      = useState<SliceDraft[]>([
+    { method: 'CASH',  amountPhp: '', referenceNo: '' },
+    { method: 'GCASH', amountPhp: '', referenceNo: '' },
+  ]);
   const [txnBranch,   setTxnBranch]   = useState<string>('');  // per-buy override; falls back to device branch
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState<string | null>(null);
@@ -275,12 +281,28 @@ export default function RiderShell({
 
   useEffect(() => { if (dispatchId) fetchBorrows(); }, [dispatchId, fetchBorrows]);
 
+  // Split mode is SELL-only; force it off whenever leaving SELL
+  useEffect(() => {
+    if (type !== 'SELL' && splitMode) setSplitMode(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type]);
+
   const phpTotal = ccy && amtInput.raw && rateInput.raw && +amtInput.raw > 0 && +rateInput.raw > 0
     ? +amtInput.raw * +rateInput.raw : null;
 
+  const sliceSum   = slices.reduce((s, x) => s + (parseFloat(x.amountPhp) || 0), 0);
+  const sliceDelta = phpTotal != null ? +(phpTotal - sliceSum).toFixed(2) : 0;
+  const splitNeedsBank = splitMode && slices.some(s => NEEDS_BANK.includes(s.method));
+  const slicesValid = splitMode
+    && slices.length >= 2
+    && slices.every(s => parseFloat(s.amountPhp) > 0)
+    && Math.abs(sliceDelta) < 0.01;
+
   const canSubmit = !!ccy && !!amtInput.raw && +amtInput.raw > 0
     && !!rateInput.raw && +rateInput.raw > 0
-    && (!NEEDS_BANK.includes(payMode) || bankId !== null)
+    && (splitMode
+      ? (slicesValid && (!splitNeedsBank || bankId !== null))
+      : (!NEEDS_BANK.includes(payMode) || bankId !== null))
     && !loading;
 
   async function handleSubmit() {
@@ -300,10 +322,17 @@ export default function RiderShell({
           cashier: username,
           customer: cust || undefined,
           customer_id: custId || undefined,
-          payment_mode: payMode,
+          payment_mode: splitMode ? slices[0].method : payMode,
           bank_id: bankId ?? undefined,
           payment_status: (payPending || (type === 'SELL' && payMode !== 'CASH')) ? 'PENDING' : 'RECEIVED',
           branch_id: (type === 'BUY' ? (txnBranch || branch) : branch) || undefined,
+          payments: splitMode
+            ? slices.map(s => ({
+                method: s.method,
+                amount_php: parseFloat(s.amountPhp),
+                reference_no: s.referenceNo || undefined,
+              }))
+            : undefined,
         }),
       });
       const data = await res.json();
@@ -321,6 +350,11 @@ export default function RiderShell({
           paymentLabel: bankName ? `${modeLabel} · ${bankName}` : modeLabel,
         });
         amtInput.setValue(''); setCust(''); setCustId(null); setPayMode('CASH'); setBankId(null); setPayPending(false); setTxnBranch('');
+        setSplitMode(false);
+        setSlices([
+          { method: 'CASH',  amountPhp: '', referenceNo: '' },
+          { method: 'GCASH', amountPhp: '', referenceNo: '' },
+        ]);
         await fetchTxns();
         setTimeout(() => setFlash(null), 6000);
       }
@@ -633,6 +667,15 @@ export default function RiderShell({
                         {t.customer ?? ''}
                       </span>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {t.payments && t.payments.length > 1 && (
+                          <span
+                            data-testid={`split-chip-${t.id}`}
+                            title={t.payments.map(p => `${p.method} ${php(p.amountPhp)}${p.status === 'PENDING' ? ' (pending)' : ''}`).join(' · ')}
+                            style={{ ...M, fontSize: 9, color: 'var(--teal-300)', background: 'rgba(61,199,173,0.10)', border: '1px solid rgba(61,199,173,0.3)', padding: '2px 8px', borderRadius: 10, letterSpacing: '0.06em' }}
+                          >
+                            SPLIT +{t.payments.length - 1}
+                          </span>
+                        )}
                         {pending && (
                           <span style={{ ...M, fontSize: 9, color: 'var(--accent-gold)', background: 'rgba(212,166,74,0.12)', border: '1px solid rgba(212,166,74,0.3)', padding: '2px 8px', borderRadius: 10, letterSpacing: '0.08em' }}>
                             PENDING
@@ -942,27 +985,150 @@ export default function RiderShell({
 
           {/* Payment mode */}
           <div>
-            <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>PAYMENT MODE</label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-              {PAYMENT_MODES.map(m => (
-                <button key={m.value} onClick={() => setPayMode(m.value)} style={{
-                  padding: '10px 4px', borderRadius: 8, border: `1px solid ${payMode === m.value ? '#a78bfa44' : 'var(--border)'}`,
-                  background: payMode === m.value ? 'rgba(95,183,212,0.12)' : 'transparent',
-                  color: payMode === m.value ? 'var(--accent-sky)' : 'var(--muted)',
-                  ...M, fontSize: 9, cursor: 'pointer', textAlign: 'center', lineHeight: 1.4,
-                }}>
-                  <div style={{ fontSize: 16, marginBottom: 2 }}>{m.icon}</div>
-                  {m.label}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em' }}>PAYMENT MODE</label>
+              {type === 'SELL' && (
+                <button
+                  type="button"
+                  data-testid="split-toggle"
+                  onClick={() => setSplitMode(v => !v)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 5, cursor: 'pointer',
+                    border: `1px solid ${splitMode ? 'rgba(61,199,173,0.5)' : 'var(--border)'}`,
+                    background: splitMode ? 'rgba(61,199,173,0.1)' : 'transparent',
+                    color: splitMode ? 'var(--teal-300)' : 'var(--muted)',
+                    ...M, fontSize: 9, letterSpacing: '0.08em',
+                  }}
+                >
+                  {splitMode ? 'SPLIT ON' : '+ SPLIT'}
                 </button>
-              ))}
+              )}
             </div>
+            {!splitMode ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                {PAYMENT_MODES.map(m => (
+                  <button key={m.value} onClick={() => setPayMode(m.value)} style={{
+                    padding: '10px 4px', borderRadius: 8, border: `1px solid ${payMode === m.value ? '#a78bfa44' : 'var(--border)'}`,
+                    background: payMode === m.value ? 'rgba(95,183,212,0.12)' : 'transparent',
+                    color: payMode === m.value ? 'var(--accent-sky)' : 'var(--muted)',
+                    ...M, fontSize: 9, cursor: 'pointer', textAlign: 'center', lineHeight: 1.4,
+                  }}>
+                    <div style={{ fontSize: 16, marginBottom: 2 }}>{m.icon}</div>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div data-testid="slice-builder" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {slices.map((s, i) => {
+                  const refRequired = ['GCASH', 'MAYA', 'SHOPEEPAY'].includes(s.method);
+                  return (
+                    <div key={i} data-testid={`slice-row-${i}`} style={{
+                      border: '1px solid var(--border)', borderRadius: 10, padding: 10,
+                      display: 'flex', flexDirection: 'column', gap: 8,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em' }}>
+                          SLICE {i + 1}
+                        </span>
+                        {slices.length > 2 && (
+                          <button
+                            type="button"
+                            data-testid={`slice-remove-${i}`}
+                            onClick={() => setSlices(slices.filter((_, j) => j !== i))}
+                            style={{
+                              background: 'none', border: '1px solid var(--border)',
+                              borderRadius: 5, color: 'var(--muted)', cursor: 'pointer',
+                              ...M, fontSize: 11, padding: '3px 9px',
+                            }}
+                          >×</button>
+                        )}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+                        {PAYMENT_MODES.map(m => (
+                          <button
+                            key={m.value}
+                            type="button"
+                            data-testid={`slice-${i}-method-${m.value}`}
+                            onClick={() => setSlices(slices.map((x, j) => j === i ? { ...x, method: m.value } : x))}
+                            style={{
+                              padding: '6px 2px', borderRadius: 6, cursor: 'pointer',
+                              border: `1px solid ${s.method === m.value ? '#a78bfa44' : 'var(--border)'}`,
+                              background: s.method === m.value ? 'rgba(95,183,212,0.12)' : 'transparent',
+                              color: s.method === m.value ? 'var(--accent-sky)' : 'var(--muted)',
+                              ...M, fontSize: 8, textAlign: 'center', lineHeight: 1.3,
+                            }}
+                          >
+                            <div style={{ fontSize: 13 }}>{m.icon}</div>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        placeholder="₱ amount"
+                        data-testid={`slice-${i}-amount`}
+                        value={s.amountPhp}
+                        onChange={e => setSlices(slices.map((x, j) => j === i ? { ...x, amountPhp: e.target.value } : x))}
+                        style={{
+                          width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
+                          borderRadius: 8, padding: '10px 12px', color: 'var(--text-strong)',
+                          ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box',
+                        }}
+                      />
+                      {s.method !== 'CASH' && s.method !== 'OTHER' && (
+                        <input
+                          type="text"
+                          placeholder={refRequired ? 'Reference #' : 'Reference # (optional)'}
+                          data-testid={`slice-${i}-ref`}
+                          value={s.referenceNo}
+                          onChange={e => setSlices(slices.map((x, j) => j === i ? { ...x, referenceNo: e.target.value } : x))}
+                          style={{
+                            width: '100%', background: 'var(--surface)', border: '1px solid var(--border)',
+                            borderRadius: 8, padding: '10px 12px', color: 'var(--text-strong)',
+                            ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <button
+                    type="button"
+                    data-testid="slice-add"
+                    onClick={() => setSlices([...slices, { method: 'CASH', amountPhp: '', referenceNo: '' }])}
+                    style={{
+                      padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+                      border: '1px dashed var(--border)', background: 'transparent',
+                      color: 'var(--muted)', ...M, fontSize: 11, letterSpacing: '0.05em',
+                    }}
+                  >+ ADD SLICE</button>
+                  {phpTotal != null && (
+                    <span data-testid="slice-delta" style={{
+                      ...M, fontSize: 11,
+                      color: Math.abs(sliceDelta) < 0.01
+                        ? 'var(--teal-300)'
+                        : (sliceDelta > 0 ? 'var(--accent-gold)' : 'var(--accent-coral)'),
+                    }}>
+                      {Math.abs(sliceDelta) < 0.01
+                        ? '✓ matches'
+                        : sliceDelta > 0
+                          ? `₱${sliceDelta.toFixed(2)} left`
+                          : `₱${Math.abs(sliceDelta).toFixed(2)} over`}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Bank picker — only when BANK_TRANSFER or CHEQUE */}
-          {NEEDS_BANK.includes(payMode) && (
+          {/* Bank picker — only when BANK_TRANSFER or CHEQUE (single OR split-with-bank-slice) */}
+          {((!splitMode && NEEDS_BANK.includes(payMode)) || splitNeedsBank) && (
             <div>
               <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
-                {payMode === 'CHEQUE' ? 'BANK (CHEQUE)' : 'BANK'}
+                {splitMode ? 'BANK (for cheque/transfer slices)' : (payMode === 'CHEQUE' ? 'BANK (CHEQUE)' : 'BANK')}
               </label>
               <select
                 value={bankId ?? ''}
