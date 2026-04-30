@@ -59,3 +59,25 @@ test.describe('Pending Payments shell', () => {
     await expect(page.getByText('What do you need to do?')).toBeVisible();
   });
 });
+
+test.describe('Treasurer-aware nav on shared admin pages', () => {
+  test('Daily Report shows ← HUB linking to /supervisor', async ({ page }) => {
+    await page.goto('/admin/report');
+    await page.waitForLoadState('networkidle');
+    const hub = page.getByRole('link', { name: /← HUB/ });
+    await expect(hub).toBeVisible();
+    await expect(hub).toHaveAttribute('href', '/supervisor');
+    // Admin-flavoured back link must NOT be present for treasurer
+    await expect(page.getByRole('link', { name: /← Admin/ })).toHaveCount(0);
+  });
+
+  test('Opening Positions shows Treasurer label + HUB back link', async ({ page }) => {
+    await page.goto('/admin/positions');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText('Treasurer · Positions', { exact: true })).toBeVisible();
+    await expect(page.getByText('TREASURER · POSITIONS', { exact: true })).toBeVisible();
+    const hub = page.getByRole('link', { name: 'HUB' });
+    await expect(hub).toBeVisible();
+    await expect(hub).toHaveAttribute('href', '/supervisor');
+  });
+});

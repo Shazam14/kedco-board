@@ -7,6 +7,12 @@ export default async function AdminPositionsPage() {
   if (!role) redirect('/login');
   if (!['admin', 'supervisor'].includes(role)) redirect('/');
 
+  const isTreasurer = role === 'supervisor';
+  const hubHref = isTreasurer ? '/supervisor' : '/admin';
+  const hubLabel = isTreasurer ? 'HUB' : 'Admin Home';
+  const panelLabel = isTreasurer ? 'Treasurer · Positions' : 'Admin Panel';
+  const sectionLabel = isTreasurer ? 'TREASURER · POSITIONS' : 'ADMIN · POSITIONS';
+
   const positions = await getPositions();
 
   const today = new Date().toLocaleDateString('en-US', {
@@ -21,19 +27,19 @@ export default async function AdminPositionsPage() {
           <div style={{ width:28, height:28, borderRadius:8, background:'linear-gradient(135deg,#00d4aa,#00a884)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#000' }}>K</div>
           <div>
             <div style={{ fontSize:13, fontWeight:700, color:'#e2e6f0', fontFamily:"'Syne',sans-serif" }}>Kedco FX</div>
-            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'var(--muted)', marginTop:-2 }}>Admin Panel</div>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'var(--muted)', marginTop:-2 }}>{panelLabel}</div>
           </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <a href="/dashboard" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none' }}>← Dashboard</a>
-          <a href="/admin" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid rgba(91,140,255,0.3)', background:'rgba(91,140,255,0.08)', color:'#5b8cff', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none' }}>Admin Home</a>
+          <a href={hubHref} style={{ padding:'6px 16px', borderRadius:6, border:'1px solid rgba(91,140,255,0.3)', background:'rgba(91,140,255,0.08)', color:'#5b8cff', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none' }}>{hubLabel}</a>
         </div>
       </nav>
 
       <div style={{ padding:'28px 32px', display:'flex', flexDirection:'column', gap:20 }}>
         {/* Header */}
         <div>
-          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:6 }}>ADMIN · POSITIONS</div>
+          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:6 }}>{sectionLabel}</div>
           <div style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, color:'#e2e6f0', letterSpacing:'-0.02em' }}>Opening Positions</div>
           <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)', marginTop:4 }}>{today.toUpperCase()}</div>
         </div>
