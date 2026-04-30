@@ -107,6 +107,7 @@ export default function CounterShell({
     closing_cash_php?: number; expected_cash_php?: number; cash_variance?: number;
     txn_count?: number; total_sold_php?: number; total_bought_php?: number; total_than?: number;
     total_commission?: number; total_replenishment_php?: number;
+    total_petty_cash_php?: number;
     replenishments?: Replenishment[];
   };
   const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
@@ -692,6 +693,7 @@ export default function CounterShell({
     const dateLabel = new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
     const comm = s.total_commission ?? 0;
     const repl = s.total_replenishment_php ?? 0;
+    const petty = s.total_petty_cash_php ?? 0;
     const variance = s.cash_variance ?? 0;
 
     // Per-currency breakdown from local txns
@@ -752,6 +754,7 @@ export default function CounterShell({
       <div class="row"><span class="label">Total THAN</span><span class="val" style="color:#007a55">${phpFmt(s.total_than ?? 0)}</span></div>
       ${comm !== 0 ? `<div class="row"><span class="label">Commission</span><span class="val" style="color:#cc0000">${comm > 0 ? '-' : '+'}${phpFmt(Math.abs(comm))}</span></div>` : ''}
       ${repl !== 0 ? `<div class="row"><span class="label">Replenishment</span><span class="val" style="color:#007a55">+${phpFmt(repl)}</span></div>` : ''}
+      ${petty !== 0 ? `<div class="row"><span class="label">Petty Cash</span><span class="val" style="color:#cc0000">-${phpFmt(petty)}</span></div>` : ''}
       <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
       <div class="highlight">
         <span style="font-size:11px;font-weight:700;letter-spacing:0.1em">EXPECTED CASH</span>
@@ -1020,6 +1023,7 @@ export default function CounterShell({
             {(() => {
               const comm = shiftClosed.total_commission ?? 0;
               const repl = shiftClosed.total_replenishment_php ?? 0;
+              const petty = shiftClosed.total_petty_cash_php ?? 0;
               const variance = shiftClosed.cash_variance ?? 0;
               const rows: [string, string, string?, number?][] = [
                 ['Transactions',      String(shiftClosed.txn_count ?? 0)],
@@ -1027,6 +1031,7 @@ export default function CounterShell({
                 ['Total Bought (PHP)', php((shiftClosed.total_bought_php ?? 0) + comm),   'var(--accent-sky)'],
                 ['Total THAN',         php(shiftClosed.total_than ?? 0),                  'var(--teal-300)'],
                 ...(repl !== 0 ? [['Replenishment', '+' + php(repl), 'var(--teal-300)'] as [string, string, string]] : []),
+                ...(petty !== 0 ? [['Petty Cash', '-' + php(petty), 'var(--accent-coral)'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shiftClosed.opening_cash_php)],
                 ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
                 ['Actual Cash',        php(shiftClosed.closing_cash_php ?? 0)],
@@ -1174,6 +1179,7 @@ export default function CounterShell({
                 ['Total Sold (PHP)',   php(shift.total_sold_php ?? myTxns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
                 ['Total Bought (PHP)', php(boughtRaw + comm)],
                 ...((shift.total_replenishment_php ?? 0) !== 0 ? [['Replenishment', '+' + php(shift.total_replenishment_php ?? 0), 'var(--teal-300)'] as [string, string, string]] : []),
+                ...((shift.total_petty_cash_php ?? 0) !== 0 ? [['Petty Cash', '-' + php(shift.total_petty_cash_php ?? 0), 'var(--accent-coral)'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shift.opening_cash_php)],
               ];
               return rows.map(([k, v, color]) => (
@@ -1223,9 +1229,10 @@ export default function CounterShell({
             {(() => {
               const comm      = shift.total_commission ?? totalCommission;
               const repl      = shift.total_replenishment_php ?? 0;
+              const petty     = shift.total_petty_cash_php ?? 0;
               const soldAmt   = shift.total_sold_php   ?? myTxns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0);
               const boughtAmt = shift.total_bought_php ?? myTxns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
-              const expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt - comm + repl;
+              const expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt - comm + repl - petty;
               return (
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',

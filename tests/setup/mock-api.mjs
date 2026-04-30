@@ -989,7 +989,8 @@ const server = createServer(async (req, res) => {
     if (!shift || shift.status !== 'OPEN') {
       return json(res, { detail: 'No open shift found for today.' }, 404);
     }
-    const expected = Math.round((shift.opening_cash_php + shift.total_sold_php - shift.total_bought_php) * 100) / 100;
+    const petty = shift.total_petty_cash_php ?? 0;
+    const expected = Math.round((shift.opening_cash_php + shift.total_sold_php - shift.total_bought_php - petty) * 100) / 100;
     const variance = Math.round((body.closing_cash_php - expected) * 100) / 100;
     Object.assign(shift, {
       status: 'CLOSED',
