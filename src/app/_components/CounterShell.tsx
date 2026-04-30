@@ -1625,6 +1625,9 @@ export default function CounterShell({
             </a>
           </>)}
           {role === 'supervisor' && (<>
+            <a href="/supervisor" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(61,199,173,0.3)', background: 'transparent', color: 'var(--teal-300)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
+              ← HUB
+            </a>
             <a href="/supervisor/transactions" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
               CASHIER TXNS
             </a>
