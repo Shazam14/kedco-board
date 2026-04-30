@@ -43,11 +43,27 @@ interface CashierRow {
   than: number;
   commission: number;
 }
+interface PaymentSliceRow {
+  id: string;
+  method: string;
+  amount_php: number;
+  status: 'RECEIVED' | 'PENDING';
+  reference_no?: string | null;
+}
 interface TxnRow {
   id: string; time: string; type: string; source: string;
   currency: string; foreign_amt: number; rate: number;
   php_amt: number; than: number; cashier: string; customer: string;
   payment_status?: 'RECEIVED' | 'PENDING';
+  payments?: PaymentSliceRow[];
+}
+interface PaymentMethodRow {
+  method: string;
+  buy_count: number; buy_php: number;
+  sell_count: number;
+  sell_php: number;            // accrual (received + pending)
+  sell_php_received: number;
+  sell_php_pending: number;
 }
 interface Report {
   date: string;
@@ -68,6 +84,7 @@ interface Report {
   total_closing_stock_php?: number;
   by_currency: CurrencyRow[];
   by_cashier: CashierRow[];
+  by_payment_method?: PaymentMethodRow[];
   transactions: TxnRow[];
 }
 
@@ -135,9 +152,12 @@ function printReport(report: Report) {
 
   const txnRows = report.transactions.map((t, i) => {
     const pending = t.payment_status === 'PENDING';
-    return `
-    <tr style="background:${pending ? '#fff7e6' : (i % 2 === 0 ? '#fff' : '#fafafa')}">
-      <td style="padding:6px 8px;font-size:10px;color:${pending ? '#c47000' : '#555'};font-weight:${pending ? 700 : 400}">${pending ? '⏳ ' : ''}${t.id}</td>
+    const slices = t.payments ?? [];
+    const isMulti = slices.length > 1;
+    const bg = pending ? '#fff7e6' : (i % 2 === 0 ? '#fff' : '#fafafa');
+    const main = `
+    <tr style="background:${bg}">
+      <td style="padding:6px 8px;font-size:10px;color:${pending ? '#c47000' : '#555'};font-weight:${pending ? 700 : 400}">${pending ? '⏳ ' : ''}${t.id}${isMulti ? `<span style="margin-left:6px;font-size:8px;color:#888;font-weight:700">SPLIT +${slices.length - 1}</span>` : ''}</td>
       <td style="color:#555">${t.time}</td>
       <td style="font-weight:700;color:${t.type === 'BUY' ? '#2255cc' : '#c47000'}">${t.type}</td>
       <td style="color:#555">${t.source === 'RIDER' ? 'RIDER' : 'CTR'}</td>
@@ -148,7 +168,28 @@ function printReport(report: Report) {
       <td style="font-size:10px;color:#555">${t.cashier}</td>
       <td style="font-size:10px;color:${pending ? '#c47000' : '#555'}">${pending ? 'PENDING — ' : ''}${t.customer || '—'}</td>
     </tr>`;
+    const sliceRows = isMulti ? slices.map(s => `
+    <tr style="background:${bg}">
+      <td colspan="2" style="padding:3px 8px 3px 24px;font-size:9px;color:#888">└ ${s.method}</td>
+      <td colspan="6" style="padding:3px 8px;font-size:10px;color:${s.status === 'PENDING' ? '#c47000' : '#555'}">
+        <span style="font-weight:700;color:#000">${php(s.amount_php)}</span>
+        <span style="margin-left:12px;font-weight:${s.status === 'PENDING' ? 700 : 400}">${s.status === 'PENDING' ? '⏳ PENDING' : 'RECEIVED'}</span>
+        ${s.reference_no ? `<span style="margin-left:12px;color:#888">ref: ${s.reference_no}</span>` : ''}
+      </td>
+      <td colspan="2"></td>
+    </tr>`).join('') : '';
+    return main + sliceRows;
   }).join('');
+
+  const methodRows = (report.by_payment_method ?? []).map((r, i) => `
+    <tr style="background:${i % 2 === 0 ? '#fff' : '#fafafa'}">
+      <td style="padding:7px 8px;font-weight:700">${r.method}</td>
+      <td style="text-align:right;color:#2255cc">${r.buy_count || '—'}</td>
+      <td style="text-align:right;color:#2255cc;font-weight:600">${r.buy_php > 0 ? php(r.buy_php) : '—'}</td>
+      <td style="text-align:right;color:#c47000">${r.sell_count || '—'}</td>
+      <td style="text-align:right;color:#c47000;font-weight:600">${r.sell_php > 0 ? php(r.sell_php) : '—'}</td>
+      <td style="text-align:right;color:${r.sell_php_pending > 0 ? '#c47000' : '#999'};font-weight:${r.sell_php_pending > 0 ? 700 : 400}">${r.sell_php_pending > 0 ? php(r.sell_php_pending) : '—'}</td>
+    </tr>`).join('');
 
   const th = (label: string, align = 'left') =>
     `<th style="padding:7px 8px;background:#222;color:#fff;text-align:${align};font-size:10px;letter-spacing:0.08em;white-space:nowrap">${label}</th>`;
@@ -289,6 +330,13 @@ function printReport(report: Report) {
       <thead><tr>${th('CASHIER')}${th('BUY TXN','right')}${th('BOUGHT (PHP)','right')}${th('SELL TXN','right')}${th('SOLD (PHP)','right')}${hasComm ? th('COMM','right') : ''}</tr></thead>
       <tbody>${cashierRows}</tbody>
     </table>
+
+    ${methodRows ? `
+    <h2>BY PAYMENT METHOD</h2>
+    <table>
+      <thead><tr>${th('METHOD')}${th('BUY #','right')}${th('BUY PHP','right')}${th('SELL #','right')}${th('SELL PHP','right')}${th('⏳ PENDING','right')}</tr></thead>
+      <tbody>${methodRows}</tbody>
+    </table>` : ''}
 
     <h2>TRANSACTION LOG</h2>
     <table>
@@ -889,6 +937,78 @@ export default function ReportShell({
               );
             })()}
 
+            {/* ── BY PAYMENT METHOD (slice-level aggregate, Phase 4) ── */}
+            {(report.by_payment_method ?? []).length > 0 && (() => {
+              const rows = report.by_payment_method!;
+              const totals = {
+                buy_count: rows.reduce((s, r) => s + r.buy_count, 0),
+                buy_php:   rows.reduce((s, r) => s + r.buy_php,   0),
+                sell_count:        rows.reduce((s, r) => s + r.sell_count, 0),
+                sell_php:          rows.reduce((s, r) => s + r.sell_php,   0),
+                sell_php_pending:  rows.reduce((s, r) => s + r.sell_php_pending, 0),
+              };
+              const COL = '160px 80px 130px 80px 130px 130px';
+              return (
+                <div data-testid="report-by-method" className="print-card" style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden',
+                }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>By Payment Method</div>
+                    <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                      Slice-level money flow — counts and PHP totals per method, split by direction
+                    </div>
+                  </div>
+                  <div className="print-thead" style={{
+                    display: 'grid', gridTemplateColumns: COL,
+                    padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
+                    ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
+                  }}>
+                    <span>METHOD</span>
+                    <span style={{ textAlign: 'right' }}>BUY #</span>
+                    <span style={{ textAlign: 'right' }}>BUY PHP</span>
+                    <span style={{ textAlign: 'right' }}>SELL #</span>
+                    <span style={{ textAlign: 'right' }}>SELL PHP</span>
+                    <span style={{ textAlign: 'right' }}>⏳ PENDING</span>
+                  </div>
+                  {rows.map((r, i) => (
+                    <div key={r.method} data-testid={`method-row-${r.method}`} style={{
+                      display: 'grid', gridTemplateColumns: COL,
+                      padding: '10px 20px', borderBottom: '1px solid var(--border)',
+                      background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
+                      alignItems: 'center',
+                    }}>
+                      <span style={{ ...M, fontSize: 13, color: '#e2e6f0', fontWeight: 700 }}>{r.method}</span>
+                      <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>{r.buy_count || '—'}</span>
+                      <span style={{ ...M, fontSize: 11, color: '#5b8cff', textAlign: 'right' }}>
+                        {r.buy_php > 0 ? php(r.buy_php) : '—'}
+                      </span>
+                      <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>{r.sell_count || '—'}</span>
+                      <span style={{ ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' }}>
+                        {r.sell_php > 0 ? php(r.sell_php) : '—'}
+                      </span>
+                      <span style={{ ...M, fontSize: 11, color: r.sell_php_pending > 0 ? '#c47000' : 'var(--muted)', textAlign: 'right', fontWeight: r.sell_php_pending > 0 ? 700 : 400 }}>
+                        {r.sell_php_pending > 0 ? php(r.sell_php_pending) : '—'}
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: COL,
+                    padding: '10px 20px', background: 'rgba(0,212,170,0.07)',
+                    borderTop: '1px solid rgba(0,212,170,0.3)',
+                  }}>
+                    <span style={{ ...Y, fontSize: 12, fontWeight: 800, color: '#00d4aa' }}>TOTAL</span>
+                    <span style={{ ...Y, fontSize: 12, fontWeight: 800, color: '#5b8cff', textAlign: 'right' }}>{totals.buy_count}</span>
+                    <span style={{ ...Y, fontSize: 12, fontWeight: 800, color: '#5b8cff', textAlign: 'right' }}>{php(totals.buy_php)}</span>
+                    <span style={{ ...Y, fontSize: 12, fontWeight: 800, color: '#f5a623', textAlign: 'right' }}>{totals.sell_count}</span>
+                    <span style={{ ...Y, fontSize: 12, fontWeight: 800, color: '#f5a623', textAlign: 'right' }}>{php(totals.sell_php)}</span>
+                    <span style={{ ...Y, fontSize: 12, fontWeight: 800, color: totals.sell_php_pending > 0 ? '#c47000' : 'var(--muted)', textAlign: 'right' }}>
+                      {totals.sell_php_pending > 0 ? php(totals.sell_php_pending) : '—'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* ── FULL TRANSACTION LOG ── */}
             <div className="print-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
               <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
@@ -911,16 +1031,23 @@ export default function ReportShell({
                 <span style={{ textAlign: 'right' }}>THAN</span>
                 <span>CASHIER</span><span>CUST</span>
               </div>
-              {report.transactions.map((t, i) => (
-                <div key={t.id} style={{
+              {report.transactions.map((t, i) => {
+                const slices = t.payments ?? [];
+                const isMulti = slices.length > 1;
+                return (
+                <div key={t.id}>
+                <div style={{
                   display: 'grid',
                   gridTemplateColumns: '110px 60px 50px 46px 60px 80px 90px 90px 80px 80px 1fr',
                   minWidth: 786,
-                  padding: '8px 20px', borderBottom: '1px solid var(--border)',
+                  padding: '8px 20px', borderBottom: isMulti ? 'none' : '1px solid var(--border)',
                   background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
                   alignItems: 'center',
                 }}>
-                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.id}</span>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>
+                    {t.id}
+                    {isMulti && <span data-testid={`split-chip-${t.id}`} style={{ marginLeft: 6, fontSize: 8, color: '#aab4c8', fontWeight: 700, letterSpacing: '0.05em' }}>SPLIT +{slices.length - 1}</span>}
+                  </span>
                   <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.time}</span>
                   <span style={{ ...M, fontSize: 11, fontWeight: 700, color: t.type === 'BUY' ? '#5b8cff' : '#f5a623' }}>{t.type}</span>
                   <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>{t.source === 'RIDER' ? 'RIDER' : 'CTR'}</span>
@@ -938,7 +1065,28 @@ export default function ReportShell({
                     {t.customer ?? '—'}
                   </span>
                 </div>
-              ))}
+                {isMulti && slices.map(s => (
+                  <div key={s.id} data-testid={`slice-row-${t.id}-${s.method}`} style={{
+                    display: 'grid', gridTemplateColumns: '110px 1fr',
+                    minWidth: 786,
+                    padding: '4px 20px 4px 40px',
+                    borderBottom: '1px solid var(--border)',
+                    background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.025)',
+                    alignItems: 'center',
+                  }}>
+                    <span style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.08em' }}>
+                      └ {s.method}
+                    </span>
+                    <span style={{ ...M, fontSize: 10, color: s.status === 'PENDING' ? '#c47000' : 'var(--muted)', display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, color: '#e2e6f0' }}>{php(s.amount_php)}</span>
+                      <span style={{ fontWeight: s.status === 'PENDING' ? 700 : 400 }}>{s.status === 'PENDING' ? '⏳ PENDING' : 'RECEIVED'}</span>
+                      {s.reference_no && <span>ref: {s.reference_no}</span>}
+                    </span>
+                  </div>
+                ))}
+                </div>
+                );
+              })}
               </div>{/* end overflowX:auto */}
             </div>
 
