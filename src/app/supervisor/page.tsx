@@ -52,6 +52,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     desc:  'Set opening floats — cashiers see them when they open shift.',
     color: '#5b8cff',
   },
+  {
+    href:  '/supervisor/payables',
+    icon:  '⏳',
+    title: 'Pending Payments',
+    desc:  'Confirm payment slices once funds clear.',
+    color: '#d4a64a',
+  },
 ];
 
 export default async function SupervisorPage() {
