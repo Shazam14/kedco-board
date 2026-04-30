@@ -1,9 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import TreasurerShell from '@/app/_components/TreasurerShell';
 
-const API_URL = process.env.API_URL!;
 const AUTH_COOKIE = process.env.AUTH_COOKIE ?? 'kedco_token';
 
 function decodeToken(t: string) {
@@ -11,12 +9,50 @@ function decodeToken(t: string) {
   catch { return null; }
 }
 
-async function fetchJson(url: string, token: string, fallback: unknown = []) {
-  try {
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
-    return res.ok ? res.json() : fallback;
-  } catch { return fallback; }
-}
+const tools: { href: string; icon: string; title: string; desc: string; color: string }[] = [
+  {
+    href:  '/counter',
+    icon:  '🖥️',
+    title: 'Counter',
+    desc:  'Enter buy and sell transactions for walk-in customers.',
+    color: '#00d4aa',
+  },
+  {
+    href:  '/admin/positions',
+    icon:  '📦',
+    title: 'Opening Positions',
+    desc:  'Set carry-in stock quantities and rates for the day.',
+    color: '#5b8cff',
+  },
+  {
+    href:  '/admin/report',
+    icon:  '📋',
+    title: 'Daily Report',
+    desc:  'Full day breakdown by currency, cashier, and stock.',
+    color: '#a78bfa',
+  },
+  {
+    href:  '/supervisor/transactions',
+    icon:  '📒',
+    title: 'Transactions',
+    desc:  'All buy/sell entries — search, filter, inspect.',
+    color: '#00d4aa',
+  },
+  {
+    href:  '/supervisor/operations?tab=riders',
+    icon:  '🏍️',
+    title: 'Rider Dispatch',
+    desc:  'Dispatch riders, track top-ups, confirm returns.',
+    color: '#f5a623',
+  },
+  {
+    href:  '/supervisor/operations?tab=cashiers',
+    icon:  '💵',
+    title: 'Cashier Floats',
+    desc:  'Set opening floats — cashiers see them when they open shift.',
+    color: '#5b8cff',
+  },
+];
 
 export default async function SupervisorPage() {
   const cookieStore = await cookies();
@@ -25,27 +61,40 @@ export default async function SupervisorPage() {
   const payload = decodeToken(token);
   if (!payload || !['admin', 'supervisor'].includes(payload.role)) redirect('/login');
 
-  const [dispatches, users, currencies, cashierFloats] = await Promise.all([
-    fetchJson(`${API_URL}/api/v1/rider/dispatches/today`, token),
-    fetchJson(`${API_URL}/api/v1/users`, token),
-    fetchJson(`${API_URL}/api/v1/currencies`, token),
-    fetchJson(`${API_URL}/api/v1/treasurer/cashiers`, token, []),
-  ]);
-
-  const riders = (users as { username: string; full_name: string; role: string }[])
-    .filter(u => u.role === 'rider');
-
-  const activeCurrencies = ['PHP', ...(currencies as { code: string }[]).map(c => c.code)];
-  const username = payload.full_name || payload.sub;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (
-    <TreasurerShell
-      dispatches={dispatches as any[]}
-      riders={riders}
-      currencies={activeCurrencies}
-      cashierFloats={cashierFloats as any[]}
-      username={username}
-    />
+    <div style={{ minHeight:'100vh', background:'var(--bg)', color:'#e2e6f0' }}>
+      <nav style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 32px', height:'56px', borderBottom:'1px solid var(--border)', background:'var(--nav-bg)', backdropFilter:'blur(12px)', position:'sticky', top:0, zIndex:100 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ width:28, height:28, borderRadius:8, background:'linear-gradient(135deg,#00d4aa,#00a884)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#000' }}>K</div>
+          <div>
+            <div style={{ fontSize:13, fontWeight:700, color:'#e2e6f0', fontFamily:"'Syne',sans-serif" }}>Kedco FX</div>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:'var(--muted)', marginTop:-2 }}>Treasurer</div>
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:8 }}>
+          <a href="/dashboard" style={{ padding:'6px 16px', borderRadius:6, border:'1px solid var(--border)', background:'transparent', color:'var(--muted)', fontFamily:"'DM Mono',monospace", fontSize:11, textDecoration:'none' }}>← Dashboard</a>
+        </div>
+      </nav>
+
+      <div style={{ padding:'28px 32px' }}>
+        <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:6 }}>TREASURER</div>
+        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, marginBottom:28, letterSpacing:'-0.02em' }}>What do you need to do?</div>
+
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:16 }}>
+          {tools.map(tool => (
+            <a
+              key={tool.href}
+              href={tool.href}
+              style={{ background:'var(--surface)', border:`1px solid ${tool.color}33`, borderRadius:14, padding:'24px', textDecoration:'none', display:'block', position:'relative', overflow:'hidden' }}
+            >
+              <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,${tool.color},transparent)` }} />
+              <div style={{ fontSize:28, marginBottom:12 }}>{tool.icon}</div>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:700, color:'#e2e6f0', marginBottom:6 }}>{tool.title}</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)', lineHeight:1.6 }}>{tool.desc}</div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

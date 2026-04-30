@@ -240,17 +240,19 @@ function FloatRow({ cashier, onSave }: {
 
 export default function TreasurerShell({
   dispatches: initial, riders, currencies, cashierFloats: initialFloats, username,
+  initialTab = 'riders',
 }: {
   dispatches: Dispatch[];
   riders: Rider[];
   currencies: string[];
   cashierFloats: CashierFloat[];
   username: string;
+  initialTab?: 'riders' | 'cashiers';
 }) {
   const router = useRouter();
   useIdleTimeout(20);
 
-  const [tab, setTab] = useState<'riders' | 'cashiers'>('riders');
+  const [tab, setTab] = useState<'riders' | 'cashiers'>(initialTab);
   const [dispatches, setDispatches] = useState<Dispatch[]>(initial);
   const [cashierFloats, setCashierFloats] = useState<CashierFloat[]>(initialFloats);
 
