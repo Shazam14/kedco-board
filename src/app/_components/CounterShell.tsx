@@ -238,12 +238,6 @@ export default function CounterShell({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payMode]);
 
-  // Split mode is SELL-only; force it off whenever leaving SELL
-  useEffect(() => {
-    if (type !== 'SELL' && splitMode) setSplitMode(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type]);
-
   // Auto-fill rate when currency or BUY/SELL changes
   useEffect(() => {
     if (!ccy) return;
@@ -1981,22 +1975,20 @@ export default function CounterShell({
               <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em' }}>
                 PAYMENT MODE
               </label>
-              {type === 'SELL' && (
-                <button
-                  type="button"
-                  data-testid="split-toggle"
-                  onClick={() => setSplitMode(v => !v)}
-                  style={{
-                    padding: '4px 10px', borderRadius: 5, cursor: 'pointer',
-                    border: `1px solid ${splitMode ? 'rgba(61,199,173,0.5)' : 'var(--border-subtle)'}`,
-                    background: splitMode ? 'rgba(61,199,173,0.1)' : 'transparent',
-                    color: splitMode ? 'var(--teal-300)' : 'var(--text-muted)',
-                    ...M, fontSize: 9, letterSpacing: '0.08em',
-                  }}
-                >
-                  {splitMode ? 'SPLIT ON' : '+ SPLIT'}
-                </button>
-              )}
+              <button
+                type="button"
+                data-testid="split-toggle"
+                onClick={() => setSplitMode(v => !v)}
+                style={{
+                  padding: '4px 10px', borderRadius: 5, cursor: 'pointer',
+                  border: `1px solid ${splitMode ? 'rgba(61,199,173,0.5)' : 'var(--border-subtle)'}`,
+                  background: splitMode ? 'rgba(61,199,173,0.1)' : 'transparent',
+                  color: splitMode ? 'var(--teal-300)' : 'var(--text-muted)',
+                  ...M, fontSize: 9, letterSpacing: '0.08em',
+                }}
+              >
+                {splitMode ? 'SPLIT ON' : '+ SPLIT'}
+              </button>
             </div>
 
             {!splitMode ? (

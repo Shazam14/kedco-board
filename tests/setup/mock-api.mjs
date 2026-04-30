@@ -768,7 +768,7 @@ const server = createServer(async (req, res) => {
     const body = await readBody(req);
     const data = JSON.parse(body);
     const phpAmt = data.foreign_amt * data.rate;
-    const isRiderSell = data.source === 'RIDER' && data.type === 'SELL';
+    const riderForcePendingNoncash = data.source === 'RIDER' && (data.type === 'SELL' || data.type === 'BUY');
     let slices;
     if (Array.isArray(data.payments) && data.payments.length > 0) {
       const sum = data.payments.reduce((s, p) => s + (p.amount_php ?? 0), 0);
@@ -777,7 +777,7 @@ const server = createServer(async (req, res) => {
       }
       slices = data.payments.map((p, i) => {
         const method = (p.method ?? 'CASH').toUpperCase();
-        const forced = isRiderSell && method !== 'CASH';
+        const forced = riderForcePendingNoncash && method !== 'CASH';
         const status = forced ? 'PENDING' : (p.status ?? 'RECEIVED');
         return {
           id: `TXN-TEST-001-p${i}`,
@@ -791,7 +791,7 @@ const server = createServer(async (req, res) => {
       });
     } else {
       const method = (data.payment_mode ?? 'CASH').toUpperCase();
-      const forced = isRiderSell && method !== 'CASH';
+      const forced = riderForcePendingNoncash && method !== 'CASH';
       const status = forced ? 'PENDING' : (data.payment_status ?? 'RECEIVED');
       slices = [{
         id: 'TXN-TEST-001-p0',
@@ -827,9 +827,9 @@ const server = createServer(async (req, res) => {
   if (method === 'POST' && /\/rider\/transactions/.test(url)) {
     const body = await readBody(req);
     const data = JSON.parse(body);
-    // Mirror the API rule: rider non-cash sells force PENDING regardless of client.
+    // Mirror the API rule: rider non-cash slices force PENDING regardless of client (BUY or SELL).
     const pmode = (data.payment_mode ?? 'CASH').toUpperCase();
-    const forcedPending = data.type === 'SELL' && pmode !== 'CASH';
+    const forcedPending = (data.type === 'SELL' || data.type === 'BUY') && pmode !== 'CASH';
     const finalStatus = forcedPending ? 'PENDING' : (data.payment_status ?? 'RECEIVED');
     return json(res, {
       id:           'RIDER-TXN-001',

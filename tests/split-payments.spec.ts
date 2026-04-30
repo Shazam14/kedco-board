@@ -43,11 +43,11 @@ test.describe('Counter SELL — split payment', () => {
     await page.goto('/counter');
   });
 
-  test('SPLIT toggle is hidden on BUY, visible on SELL', async ({ page }) => {
-    // BUY (default) — no toggle
-    await expect(page.getByTestId('split-toggle')).toHaveCount(0);
+  test('SPLIT toggle is visible on both BUY and SELL (Phase 5)', async ({ page }) => {
+    // BUY (default) — toggle is now visible too
+    await expect(page.getByTestId('split-toggle')).toBeVisible();
 
-    // SELL — toggle appears
+    // SELL — still visible
     await page.getByText('↑ SELL').click();
     await expect(page.getByTestId('split-toggle')).toBeVisible();
   });
@@ -165,9 +165,9 @@ test.describe('Rider SELL — split payment', () => {
     await page.goto('/rider');
   });
 
-  test('SPLIT toggle is SELL-only on rider', async ({ page }) => {
-    // BUY default — no toggle
-    await expect(page.getByTestId('split-toggle')).toHaveCount(0);
+  test('SPLIT toggle visible on rider BUY and SELL (Phase 5)', async ({ page }) => {
+    // BUY default — toggle now visible
+    await expect(page.getByTestId('split-toggle')).toBeVisible();
     await page.getByRole('button', { name: 'SELL', exact: true }).click();
     await expect(page.getByTestId('split-toggle')).toBeVisible();
   });

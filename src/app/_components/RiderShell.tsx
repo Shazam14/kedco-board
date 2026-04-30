@@ -281,12 +281,6 @@ export default function RiderShell({
 
   useEffect(() => { if (dispatchId) fetchBorrows(); }, [dispatchId, fetchBorrows]);
 
-  // Split mode is SELL-only; force it off whenever leaving SELL
-  useEffect(() => {
-    if (type !== 'SELL' && splitMode) setSplitMode(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type]);
-
   const phpTotal = ccy && amtInput.raw && rateInput.raw && +amtInput.raw > 0 && +rateInput.raw > 0
     ? +amtInput.raw * +rateInput.raw : null;
 
@@ -987,22 +981,20 @@ export default function RiderShell({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <label style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em' }}>PAYMENT MODE</label>
-              {type === 'SELL' && (
-                <button
-                  type="button"
-                  data-testid="split-toggle"
-                  onClick={() => setSplitMode(v => !v)}
-                  style={{
-                    padding: '4px 10px', borderRadius: 5, cursor: 'pointer',
-                    border: `1px solid ${splitMode ? 'rgba(61,199,173,0.5)' : 'var(--border)'}`,
-                    background: splitMode ? 'rgba(61,199,173,0.1)' : 'transparent',
-                    color: splitMode ? 'var(--teal-300)' : 'var(--muted)',
-                    ...M, fontSize: 9, letterSpacing: '0.08em',
-                  }}
-                >
-                  {splitMode ? 'SPLIT ON' : '+ SPLIT'}
-                </button>
-              )}
+              <button
+                type="button"
+                data-testid="split-toggle"
+                onClick={() => setSplitMode(v => !v)}
+                style={{
+                  padding: '4px 10px', borderRadius: 5, cursor: 'pointer',
+                  border: `1px solid ${splitMode ? 'rgba(61,199,173,0.5)' : 'var(--border)'}`,
+                  background: splitMode ? 'rgba(61,199,173,0.1)' : 'transparent',
+                  color: splitMode ? 'var(--teal-300)' : 'var(--muted)',
+                  ...M, fontSize: 9, letterSpacing: '0.08em',
+                }}
+              >
+                {splitMode ? 'SPLIT ON' : '+ SPLIT'}
+              </button>
             </div>
             {!splitMode ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
