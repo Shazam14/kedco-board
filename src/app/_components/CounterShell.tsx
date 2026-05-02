@@ -751,7 +751,6 @@ export default function CounterShell({
       <div class="row"><span class="label">Transactions</span><span class="val">${s.txn_count ?? myTxns.length}</span></div>
       <div class="row"><span class="label">Total Sold (PHP)</span><span class="val" style="color:#c47000">${phpFmt(s.total_sold_php ?? 0)}</span></div>
       <div class="row"><span class="label">Total Bought (PHP)</span><span class="val" style="color:#2255cc">${phpFmt(s.total_bought_php ?? 0)}</span></div>
-      <div class="row"><span class="label">Total THAN</span><span class="val" style="color:#007a55">${phpFmt(s.total_than ?? 0)}</span></div>
       ${comm !== 0 ? `<div class="row"><span class="label">Commission</span><span class="val" style="color:#cc0000">${comm > 0 ? '-' : '+'}${phpFmt(Math.abs(comm))}</span></div>` : ''}
       ${repl !== 0 ? `<div class="row"><span class="label">Replenishment</span><span class="val" style="color:#007a55">+${phpFmt(repl)}</span></div>` : ''}
       ${petty !== 0 ? `<div class="row"><span class="label">Petty Cash</span><span class="val" style="color:#cc0000">-${phpFmt(petty)}</span></div>` : ''}
@@ -1029,7 +1028,6 @@ export default function CounterShell({
                 ['Transactions',      String(shiftClosed.txn_count ?? 0)],
                 ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),              'var(--accent-gold)'],
                 ['Total Bought (PHP)', php((shiftClosed.total_bought_php ?? 0) + comm),   'var(--accent-sky)'],
-                ['Total THAN',         php(shiftClosed.total_than ?? 0),                  'var(--teal-300)'],
                 ...(repl !== 0 ? [['Replenishment', '+' + php(repl), 'var(--teal-300)'] as [string, string, string]] : []),
                 ...(petty !== 0 ? [['Petty Cash', '-' + php(petty), 'var(--accent-coral)'] as [string, string, string]] : []),
                 ['Opening Cash',       php(shiftClosed.opening_cash_php)],
