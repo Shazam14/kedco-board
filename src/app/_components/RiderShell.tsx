@@ -437,11 +437,11 @@ export default function RiderShell({
           : amount,
       }))
       .filter(i => i.amount > 0);
-    // PHP returned = unspent dispatch float only (carry). FX proceeds from
-    // selling foreign currency are reconciled separately against the txn log,
-    // not folded back into the cash-handover number.
+    // PHP returned = physical cash in rider's hand = carry + fxProceeds.
+    // (When BUYs exceed dispatched cash, SELL proceeds cover the shortfall —
+    // remit must reflect what's physically there, not just unspent dispatch.)
     const overrideRaw = remitPhpOverride.replace(/,/g, '');
-    const cash_php_remaining = overrideRaw !== '' ? +overrideRaw : (carry ?? 0);
+    const cash_php_remaining = overrideRaw !== '' ? +overrideRaw : Math.max(remaining ?? 0, 0);
     const res = await fetch('/api/rider/remit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

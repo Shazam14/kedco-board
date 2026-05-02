@@ -115,6 +115,7 @@ export default function CounterShell({
     from_dispatches_php?: number;
     from_cashier_php?: number;
     bale_peso_php?: number;
+    vault_returns_php?: number;
   };
   const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
   const openingCashInput = useNumberInput('', 2);
@@ -767,12 +768,12 @@ export default function CounterShell({
         <div class="row"><span class="label">Difference (overall)</span><span class="val">${phpFmt((s.overall_total_sold_php ?? 0) - (s.overall_total_bought_php ?? 0))}</span></div>
         <div class="row"><span class="label">From Dispatches</span><span class="val" style="color:#007a55">+${phpFmt(s.from_dispatches_php ?? 0)}</span></div>
         <div class="row"><span class="label">From Cashier</span><span class="val" style="color:#007a55">+${phpFmt(s.from_cashier_php ?? 0)}</span></div>
+        <div class="row"><span class="label">Bale Peso (vault liab.)</span><span class="val" style="color:#cc0000">-${phpFmt((s.bale_peso_php ?? 0) - (s.vault_returns_php ?? 0))}</span></div>
         <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
         <div class="highlight">
           <span style="font-size:11px;font-weight:700;letter-spacing:0.1em">EXPECTED CASH</span>
           <span style="font-size:16px;font-weight:900">${phpFmt(s.expected_cash_php ?? 0)}</span>
         </div>
-        <div class="row"><span class="label">Bale Peso (vault)</span><span class="val" style="color:#cc0000">-${phpFmt(s.bale_peso_php ?? 0)}</span></div>
         <div class="row"><span class="label">Actual Cash</span><span class="val">${phpFmt(s.closing_cash_php ?? 0)}</span></div>
         <div class="row"><span class="label">Variance</span><span class="val" style="color:${variance === 0 ? '#007a55' : '#cc0000'}">${phpFmt(variance)}</span></div>
       ` : `
@@ -1056,15 +1057,17 @@ export default function CounterShell({
                 const overallBought = shiftClosed.overall_total_bought_php ?? 0;
                 const overallSold   = shiftClosed.overall_total_sold_php   ?? 0;
                 const bale          = shiftClosed.bale_peso_php            ?? 0;
+                const vaultReturns  = shiftClosed.vault_returns_php        ?? 0;
+                const netBale       = bale - vaultReturns;
                 rows = [
                   ['Total Bought (overall)',   php(overallBought),               'var(--accent-sky)'],
                   ['Total Sold (overall)',     php(overallSold),                 'var(--accent-gold)'],
                   ['Difference (overall)',     php(overallSold - overallBought), 'var(--text-strong)'],
                   ['From Dispatches',          '+' + php(shiftClosed.from_dispatches_php ?? 0), 'var(--teal-300)'],
                   ['From Cashier',             '+' + php(shiftClosed.from_cashier_php    ?? 0), 'var(--teal-300)'],
+                  ['Bale Peso (vault liab.)',  '-' + php(netBale),               'var(--accent-coral)'],
                   ['Opening Cash',             php(shiftClosed.opening_cash_php)],
                   ['Expected Cash',            php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
-                  ['Bale Peso (vault)',        '-' + php(bale),                  'var(--accent-coral)'],
                   ['Actual Cash',              php(shiftClosed.closing_cash_php ?? 0)],
                   ['Variance',                 php(variance), variance === 0 ? 'var(--teal-300)' : 'var(--accent-coral)', 700],
                 ];
@@ -1247,12 +1250,14 @@ export default function CounterShell({
               if (isTreasurer) {
                 const overallBought = shift.overall_total_bought_php ?? 0;
                 const overallSold   = shift.overall_total_sold_php   ?? 0;
+                const netBale       = (shift.bale_peso_php ?? 0) - (shift.vault_returns_php ?? 0);
                 rows = [
                   ['Total Bought (overall)',   php(overallBought),               'var(--accent-sky)'],
                   ['Total Sold (overall)',     php(overallSold),                 'var(--accent-gold)'],
                   ['Difference (overall)',     php(overallSold - overallBought), 'var(--text-strong)'],
                   ['From Dispatches',          '+' + php(shift.from_dispatches_php ?? 0), 'var(--teal-300)'],
                   ['From Cashier',             '+' + php(shift.from_cashier_php    ?? 0), 'var(--teal-300)'],
+                  ['Bale Peso (vault liab.)',  '-' + php(netBale),                          'var(--accent-coral)'],
                   ['Opening Cash',             php(shift.opening_cash_php)],
                 ];
               } else {
@@ -1316,10 +1321,12 @@ export default function CounterShell({
               let expected: number;
               let bale = 0;
               if (isTreasurer) {
+                bale = shift.bale_peso_php ?? 0;
                 expected = (shift.opening_cash_php ?? 0)
                   + (shift.from_dispatches_php ?? 0)
-                  + (shift.from_cashier_php    ?? 0);
-                bale = shift.bale_peso_php ?? 0;
+                  + (shift.from_cashier_php    ?? 0)
+                  - bale
+                  + (shift.vault_returns_php ?? 0);
               } else {
                 const comm      = shift.total_commission ?? totalCommission;
                 const repl      = shift.total_replenishment_php ?? 0;
@@ -1329,30 +1336,14 @@ export default function CounterShell({
                 expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt - comm + repl - petty;
               }
               return (
-                <>
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '10px 14px', marginTop: 12, borderRadius: 8,
-                    background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.3)',
-                  }}>
-                    <span style={{ ...M, fontSize: 11, color: 'var(--accent-gold)', letterSpacing: '0.1em' }}>EXPECTED CASH</span>
-                    <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: 'var(--accent-gold)' }}>{php(expected)}</span>
-                  </div>
-                  {isTreasurer && (
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '8px 14px', marginTop: 6, borderRadius: 8,
-                      background: 'rgba(255,107,107,0.06)', border: '1px solid rgba(255,107,107,0.25)',
-                    }}>
-                      <span style={{ ...M, fontSize: 11, color: 'var(--accent-coral)', letterSpacing: '0.1em' }}>
-                        BALE PESO (vault liability)
-                      </span>
-                      <span style={{ ...Y, fontSize: 14, fontWeight: 700, color: 'var(--accent-coral)' }}>
-                        -{php(bale)}
-                      </span>
-                    </div>
-                  )}
-                </>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 14px', marginTop: 12, borderRadius: 8,
+                  background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.3)',
+                }}>
+                  <span style={{ ...M, fontSize: 11, color: 'var(--accent-gold)', letterSpacing: '0.1em' }}>EXPECTED CASH</span>
+                  <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: 'var(--accent-gold)' }}>{php(expected)}</span>
+                </div>
               );
             })()}
 

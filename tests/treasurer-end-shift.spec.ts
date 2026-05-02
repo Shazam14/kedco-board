@@ -70,8 +70,8 @@ test.describe('Treasurer end-shift — supervisor view', () => {
     await expect(page.getByText('From Dispatches')).toBeVisible();
     await expect(page.getByText('From Cashier')).toBeVisible();
 
-    // Bale peso row appears as a deduction
-    await expect(page.getByText(/BALE PESO/)).toBeVisible();
+    // Bale peso row appears as a deduction (subtracted from expected)
+    await expect(page.getByText(/Bale Peso/)).toBeVisible();
     await expect(page.getByText('-₱200,000.00')).toBeVisible();
   });
 
