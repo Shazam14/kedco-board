@@ -270,6 +270,7 @@ function withTreasurerView(s) {
     from_cashier_php:          s.from_cashier_php          ?? 0,
     bale_peso_php:             bale,
     vault_returns_php:         s.vault_returns_php ?? 0,
+    dispatches_out_php:        s.dispatches_out_php ?? 0,
   };
 }
 
@@ -1038,12 +1039,13 @@ const server = createServer(async (req, res) => {
     let expected, variance;
     if (isTreasurer) {
       const fromDisp = shift.from_dispatches_php ?? 0;
+      const dispOut  = shift.dispatches_out_php  ?? 0;
       const fromCash = shift.from_cashier_php    ?? 0;
       const bale     = (shift.replenishments ?? [])
         .filter(r => r.source === 'SAFE')
         .reduce((sum, r) => sum + r.amount_php, 0);
       const vaultReturns = shift.vault_returns_php ?? 0;
-      expected = Math.round((shift.opening_cash_php + fromDisp + fromCash - bale + vaultReturns) * 100) / 100;
+      expected = Math.round((shift.opening_cash_php + fromDisp - dispOut + fromCash - bale + vaultReturns) * 100) / 100;
       variance = Math.round((body.closing_cash_php - expected) * 100) / 100;
     } else {
       expected = Math.round((shift.opening_cash_php + shift.total_sold_php - shift.total_bought_php - petty) * 100) / 100;

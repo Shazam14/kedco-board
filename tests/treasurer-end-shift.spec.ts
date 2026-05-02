@@ -66,8 +66,9 @@ test.describe('Treasurer end-shift — supervisor view', () => {
     await expect(page.getByText('Total Sold (overall)')).toBeVisible();
     await expect(page.getByText('Difference (overall)')).toBeVisible();
 
-    // Drawer inflows
-    await expect(page.getByText('From Dispatches')).toBeVisible();
+    // Drawer flows — both legs of dispatch shown separately
+    await expect(page.getByText('Dispatched Out')).toBeVisible();
+    await expect(page.getByText('Remitted In (riders)')).toBeVisible();
     await expect(page.getByText('From Cashier')).toBeVisible();
 
     // Bale peso row appears as a deduction (subtracted from expected)
