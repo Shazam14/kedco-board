@@ -759,8 +759,8 @@ export default function CounterShell({
       <div class="row"><span class="label">Total Sold (PHP)</span><span class="val" style="color:#c47000">${phpFmt(s.total_sold_php ?? 0)}</span></div>
       <div class="row"><span class="label">Total Bought (PHP)</span><span class="val" style="color:#2255cc">${phpFmt(s.total_bought_php ?? 0)}</span></div>
       ${comm !== 0 ? `<div class="row"><span class="label">Commission</span><span class="val" style="color:#cc0000">${comm > 0 ? '-' : '+'}${phpFmt(Math.abs(comm))}</span></div>` : ''}
-      ${repl !== 0 ? `<div class="row"><span class="label">Replenishment</span><span class="val" style="color:#007a55">+${phpFmt(repl)}</span></div>` : ''}
-      ${petty !== 0 ? `<div class="row"><span class="label">Petty Cash</span><span class="val" style="color:#cc0000">-${phpFmt(petty)}</span></div>` : ''}
+      <div class="row"><span class="label">Replenishment</span><span class="val" style="color:#007a55">+${phpFmt(repl)}</span></div>
+      <div class="row"><span class="label">Petty Cash</span><span class="val" style="color:#cc0000">-${phpFmt(petty)}</span></div>
       <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
       <div class="highlight">
         <span style="font-size:11px;font-weight:700;letter-spacing:0.1em">EXPECTED CASH</span>
@@ -1035,8 +1035,8 @@ export default function CounterShell({
                 ['Transactions',      String(shiftClosed.txn_count ?? 0)],
                 ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),              'var(--accent-gold)'],
                 ['Total Bought (PHP)', php((shiftClosed.total_bought_php ?? 0) + comm),   'var(--accent-sky)'],
-                ...(repl !== 0 ? [['Replenishment', '+' + php(repl), 'var(--teal-300)'] as [string, string, string]] : []),
-                ...(petty !== 0 ? [['Petty Cash', '-' + php(petty), 'var(--accent-coral)'] as [string, string, string]] : []),
+                ['Replenishment',      '+' + php(repl), 'var(--teal-300)'],
+                ['Petty Cash',         '-' + php(petty), 'var(--accent-coral)'],
                 ['Opening Cash',       php(shiftClosed.opening_cash_php)],
                 ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
                 ['Actual Cash',        php(shiftClosed.closing_cash_php ?? 0)],
@@ -1206,8 +1206,8 @@ export default function CounterShell({
                 ['Transactions',       String(shift.txn_count ?? myTxns.length)],
                 ['Total Sold (PHP)',   php(shift.total_sold_php ?? myTxns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
                 ['Total Bought (PHP)', php(boughtRaw + comm)],
-                ...((shift.total_replenishment_php ?? 0) !== 0 ? [['Replenishment', '+' + php(shift.total_replenishment_php ?? 0), 'var(--teal-300)'] as [string, string, string]] : []),
-                ...((shift.total_petty_cash_php ?? 0) !== 0 ? [['Petty Cash', '-' + php(shift.total_petty_cash_php ?? 0), 'var(--accent-coral)'] as [string, string, string]] : []),
+                ['Replenishment',      '+' + php(shift.total_replenishment_php ?? 0), 'var(--teal-300)'],
+                ['Petty Cash',         '-' + php(shift.total_petty_cash_php ?? 0), 'var(--accent-coral)'],
                 ['Opening Cash',       php(shift.opening_cash_php)],
               ];
               return rows.map(([k, v, color]) => (
