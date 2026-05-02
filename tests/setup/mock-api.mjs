@@ -558,6 +558,16 @@ const server = createServer(async (req, res) => {
     return json(res, enriched.slice(0, limit));
   }
 
+  // Petty-cash / expenses — minimal stubs (see test_expense_shift_scope.py for real coverage).
+  // Cashier per-shift scoping is enforced server-side; tests don't currently exercise it via UI.
+  if (method === 'GET' && url === '/api/v1/expenses/today') return json(res, []);
+  if (method === 'GET' && url === '/api/v1/expenses/categories') {
+    return json(res, [
+      'OFFICE_SUPPLIES', 'UTILITIES', 'TRANSPORTATION', 'MEALS',
+      'MAINTENANCE', 'SALARY_ADVANCE', 'BANK_CHARGES', 'COMMISSION_PAYOUT', 'OTHERS',
+    ]);
+  }
+
   // Users list (admin rider dispatch form) — handle both /users and /users/
   if (method === 'GET' && (url === '/api/v1/users/' || url === '/api/v1/users')) return json(res, ALL_USERS);
 
