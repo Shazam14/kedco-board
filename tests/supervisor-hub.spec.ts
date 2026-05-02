@@ -10,7 +10,7 @@ import path from 'path';
 test.use({ storageState: path.join('tests', '.auth', 'supervisor.json') });
 
 test.describe('Treasurer hub', () => {
-  test('renders the seven cards', async ({ page }) => {
+  test('renders the eight cards', async ({ page }) => {
     await page.goto('/supervisor');
     await expect(page.getByText('What do you need to do?')).toBeVisible();
     for (const title of [
@@ -21,6 +21,7 @@ test.describe('Treasurer hub', () => {
       'Rider Dispatch',
       'Cashier Floats',
       'Pending Payments',
+      'End of Day',
     ]) {
       await expect(page.getByRole('link', { name: new RegExp(title) })).toBeVisible();
     }
@@ -79,5 +80,17 @@ test.describe('Treasurer-aware nav on shared admin pages', () => {
     const hub = page.getByRole('link', { name: 'HUB' });
     await expect(hub).toBeVisible();
     await expect(hub).toHaveAttribute('href', '/supervisor');
+  });
+
+  test('End of Day shows Treasurer label + HUB back link', async ({ page }) => {
+    await page.goto('/admin/eod');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText('Treasurer · EOD', { exact: true })).toBeVisible();
+    await expect(page.getByText('TREASURER · EOD', { exact: true })).toBeVisible();
+    const hub = page.getByRole('link', { name: 'HUB' });
+    await expect(hub).toBeVisible();
+    await expect(hub).toHaveAttribute('href', '/supervisor');
+    // Admin-only "← Admin" back link must NOT be present for treasurer
+    await expect(page.getByRole('link', { name: /← Admin/ })).toHaveCount(0);
   });
 });

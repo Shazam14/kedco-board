@@ -59,6 +59,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     desc:  'Confirm payment slices once funds clear.',
     color: '#d4a64a',
   },
+  {
+    href:  '/admin/eod',
+    icon:  '🔒',
+    title: 'End of Day',
+    desc:  'Close today after the 3pm cut-off — rolls stock to tomorrow.',
+    color: '#f5a623',
+  },
 ];
 
 export default async function SupervisorPage() {

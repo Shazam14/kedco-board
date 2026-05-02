@@ -7,7 +7,7 @@ const AUTH_COOKIE = process.env.AUTH_COOKIE ?? 'kedco_token';
 
 export async function POST() {
   const role = await getTokenRole();
-  if (role !== 'admin') {
+  if (role !== 'admin' && role !== 'supervisor') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
