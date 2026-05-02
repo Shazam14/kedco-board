@@ -131,12 +131,18 @@ export default function CounterShell({
         const openShift = data.status === 'OPEN' ? data : null;
         setShift(openShift);
         if (!openShift) {
-          fetch('/api/counter/pending-float', { cache: 'no-store' })
+          const tid = localStorage.getItem('kedco_terminal') ?? '';
+          const qs = tid ? `?terminal_id=${encodeURIComponent(tid)}` : '';
+          fetch(`/api/counter/pending-float${qs}`, { cache: 'no-store' })
             .then(r => r.json())
             .then(f => {
               if (f && f.amount_php) {
                 openingCashInput.setValue(String(f.amount_php));
-                setFloatHint(`Float from ${f.treasurer_name}`);
+                if (f.source === 'handoff') {
+                  setFloatHint(`Handoff from ${f.cashier_name}`);
+                } else {
+                  setFloatHint(`Float from ${f.treasurer_name}`);
+                }
               }
             })
             .catch(() => {});

@@ -943,6 +943,11 @@ const server = createServer(async (req, res) => {
     return json(res, results);
   }
 
+  // GET /api/v1/treasurer/pending-float — returns null (no pre-fill) in tests
+  if (method === 'GET' && url.startsWith('/api/v1/treasurer/pending-float')) {
+    return json(res, null);
+  }
+
   // ── Shifts ───────────────────────────────────────────────────────────────
   // GET /api/v1/shifts/active — returns open shift for current cashier or 404
   if (method === 'GET' && url === '/api/v1/shifts/active') {
