@@ -65,6 +65,18 @@ interface PaymentMethodRow {
   sell_php_received: number;
   sell_php_pending: number;
 }
+interface SafeMovementRow {
+  id: string;
+  amount_php: number;          // signed: + deposit, − withdrawal
+  reason: string;
+  note?: string | null;
+  actor_username: string;
+  created_at: string;
+}
+interface SafeBlock {
+  movements: SafeMovementRow[];
+  today_net: number;
+}
 interface Report {
   date: string;
   generated_at: string;
@@ -85,6 +97,7 @@ interface Report {
   by_currency: CurrencyRow[];
   by_cashier: CashierRow[];
   by_payment_method?: PaymentMethodRow[];
+  safe?: SafeBlock;
   transactions: TxnRow[];
 }
 
@@ -1018,6 +1031,58 @@ export default function ReportShell({
                       {totals.sell_php_pending > 0 ? php(totals.sell_php_pending) : '—'}
                     </span>
                   </div>
+                </div>
+              );
+            })()}
+
+            {/* ── SAFE / VAULT MOVEMENTS ── */}
+            {report.safe && (report.safe.movements.length > 0 || report.safe.today_net !== 0) && (() => {
+              const s = report.safe!;
+              const COL = '160px 90px 1fr 130px';
+              return (
+                <div data-testid="report-safe" className="print-card" style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden',
+                }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>Safe / Vault Movements</div>
+                      <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                        Cash in/out of the shared PHP vault
+                      </div>
+                    </div>
+                    <div style={{
+                      ...M, fontSize: 13, fontWeight: 800,
+                      color: s.today_net > 0 ? '#00d4aa' : s.today_net < 0 ? '#f5a623' : 'var(--muted)',
+                    }}>
+                      NET {s.today_net > 0 ? '+' : s.today_net < 0 ? '−' : ''}₱{Math.abs(s.today_net).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  <div className="print-thead" style={{
+                    display: 'grid', gridTemplateColumns: COL,
+                    padding: '8px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)',
+                    ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em',
+                  }}>
+                    <span>REASON</span>
+                    <span>BY</span>
+                    <span>NOTE</span>
+                    <span style={{ textAlign: 'right' }}>AMOUNT</span>
+                  </div>
+                  {s.movements.map((m, i) => (
+                    <div key={m.id} data-testid={`safe-row-${m.id}`} style={{
+                      display: 'grid', gridTemplateColumns: COL,
+                      padding: '10px 20px', borderBottom: '1px solid var(--border)',
+                      background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)',
+                      alignItems: 'center',
+                    }}>
+                      <span style={{ ...M, fontSize: 11, color: '#e2e6f0', fontWeight: 700 }}>{m.reason}</span>
+                      <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{m.actor_username}</span>
+                      <span style={{ ...M, fontSize: 10, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.note ?? '—'}</span>
+                      <span style={{
+                        ...M, fontSize: 11, textAlign: 'right', fontWeight: 700,
+                        color: m.amount_php > 0 ? '#00d4aa' : '#f5a623',
+                      }}>{m.amount_php > 0 ? '+' : m.amount_php < 0 ? '−' : ''}₱{Math.abs(m.amount_php).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  ))}
                 </div>
               );
             })()}

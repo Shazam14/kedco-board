@@ -120,6 +120,7 @@ export default function CounterShell({
   const [shiftClosed,        setShiftClosed]        = useState<Shift | null>(null);
   const replenishInput = useNumberInput('', 2);
   const [replenishNote,      setReplenishNote]      = useState('');
+  const [replenishSource,    setReplenishSource]    = useState<'SAFE' | 'EXTERNAL' | 'OTHER'>('SAFE');
   const [replenishLoading,   setReplenishLoading]   = useState(false);
   const [replenishError,     setReplenishError]     = useState<string | null>(null);
   const [floatHint,          setFloatHint]          = useState<string | null>(null);
@@ -192,11 +193,11 @@ export default function CounterShell({
       const res = await fetch('/api/counter/shift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'replenish', amount_php: amount, note: replenishNote || undefined }),
+        body: JSON.stringify({ action: 'replenish', amount_php: amount, note: replenishNote || undefined, source: replenishSource }),
       });
       const data = await res.json();
       if (!res.ok) { setReplenishError(data.detail ?? 'Failed to record replenishment.'); }
-      else { setShift(data); setShowReplenishModal(false); replenishInput.setValue(''); setReplenishNote(''); }
+      else { setShift(data); setShowReplenishModal(false); replenishInput.setValue(''); setReplenishNote(''); setReplenishSource('SAFE'); }
     } finally { setReplenishLoading(false); }
   }
 
@@ -1122,6 +1123,29 @@ export default function CounterShell({
                 ...M, fontSize: 22, outline: 'none', boxSizing: 'border-box', marginBottom: 12,
               }}
             />
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              SOURCE
+            </label>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+              {(['SAFE', 'EXTERNAL', 'OTHER'] as const).map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setReplenishSource(s)}
+                  data-testid={`replenish-source-${s}`}
+                  style={{
+                    flex: 1, padding: '10px 8px', borderRadius: 8,
+                    border: replenishSource === s ? '1px solid var(--teal-300)' : '1px solid var(--border)',
+                    background: replenishSource === s ? 'rgba(61,199,173,0.12)' : 'transparent',
+                    color: replenishSource === s ? 'var(--teal-300)' : 'var(--text-muted)',
+                    ...M, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer',
+                  }}
+                >
+                  {s === 'SAFE' ? 'VAULT' : s}
+                </button>
+              ))}
+            </div>
+
             <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               NOTE (optional)
             </label>

@@ -189,6 +189,9 @@ function readBody(req) {
 // ── Date override state (mutable) ────────────────────────────────────────────
 let mockTestDate = null;
 
+// ── Safe / vault movements (mutable, resets on each mock-api start) ──────────
+const SAFE_MOVEMENTS = [];
+
 // ── Shift state (mutable, resets on each mock-api process start) ─────────────
 const today = new Date().toISOString().split('T')[0];
 
@@ -1015,6 +1018,68 @@ const server = createServer(async (req, res) => {
   // GET /api/v1/shifts/today — admin view
   if (method === 'GET' && url === '/api/v1/shifts/today') {
     return json(res, [...SHIFTS.values()]);
+  }
+
+  // POST /api/v1/shifts/replenish — also writes a paired safe movement when source=SAFE
+  if (method === 'POST' && url === '/api/v1/shifts/replenish') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const cashier = payload.sub ?? 'cashier1';
+    const body    = JSON.parse(await readBody(req));
+    const shift   = SHIFTS.get(cashier);
+    if (!shift || shift.status !== 'OPEN') {
+      return json(res, { detail: 'No open shift found for today.' }, 404);
+    }
+    const source = (body.source ?? 'TREASURER_FLOAT').toUpperCase();
+    const r = {
+      id: `repl-${Date.now()}`,
+      amount_php: body.amount_php,
+      note: body.note ?? null,
+      source,
+      added_at: new Date().toISOString(),
+    };
+    shift.replenishments = [...(shift.replenishments ?? []), r];
+    shift.total_replenishment_php = (shift.total_replenishment_php ?? 0) + body.amount_php;
+    if (source === 'SAFE') {
+      SAFE_MOVEMENTS.push({
+        id: `sm-${Date.now()}`,
+        amount_php: -Math.abs(body.amount_php),
+        reason: 'REPLENISH_DRAWER',
+        note: body.note ?? null,
+        actor_username: cashier,
+        related_replenishment_id: r.id,
+        related_dispatch_id: null,
+        movement_date: today,
+        created_at: new Date().toISOString(),
+      });
+    }
+    return json(res, shift);
+  }
+
+  // ── Safe / Vault ─────────────────────────────────────────────────────────
+  if (method === 'GET' && url.startsWith('/api/v1/safe') && !url.startsWith('/api/v1/safe/movements')) {
+    const todays = SAFE_MOVEMENTS.filter(m => m.movement_date === today);
+    const today_net   = Math.round(todays.reduce((s, m) => s + m.amount_php, 0) * 100) / 100;
+    const running_net = Math.round(SAFE_MOVEMENTS.reduce((s, m) => s + m.amount_php, 0) * 100) / 100;
+    return json(res, { date: today, today_net, running_net, movements: todays });
+  }
+  if (method === 'POST' && url === '/api/v1/safe/movements') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const body    = JSON.parse(await readBody(req));
+    const m = {
+      id: `sm-${Date.now()}`,
+      amount_php: body.amount_php,
+      reason: (body.reason ?? 'OTHER').toUpperCase(),
+      note: body.note ?? null,
+      actor_username: payload.sub ?? 'admin',
+      related_replenishment_id: null,
+      related_dispatch_id: null,
+      movement_date: today,
+      created_at: new Date().toISOString(),
+    };
+    SAFE_MOVEMENTS.push(m);
+    return json(res, m, 201);
   }
 
   // ── Date override (test mode) ────────────────────────────────────────────
