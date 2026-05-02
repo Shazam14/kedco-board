@@ -100,7 +100,7 @@ export default function CounterShell({
   }
 
   // ── Shift state ──────────────────────────────────────────────────────────
-  type Replenishment = { id: string; amount_php: number; note?: string; added_at: string };
+  type Replenishment = { id: string; amount_php: number; note?: string; added_at: string; source?: string };
   type Shift = {
     id: string; cashier: string; cashier_name: string; status: string;
     opened_at: string; opening_cash_php: number;
@@ -109,6 +109,12 @@ export default function CounterShell({
     total_commission?: number; total_replenishment_php?: number;
     total_petty_cash_php?: number;
     replenishments?: Replenishment[];
+    is_treasurer_shift?: boolean;
+    overall_total_bought_php?: number;
+    overall_total_sold_php?: number;
+    from_dispatches_php?: number;
+    from_cashier_php?: number;
+    bale_peso_php?: number;
   };
   const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
   const openingCashInput = useNumberInput('', 2);
@@ -755,19 +761,35 @@ export default function CounterShell({
         <div style="font-size:11px;color:#888;margin-top:2px">${s.cashier_name} (@${s.cashier})</div>
       </div>
 
-      <div class="row"><span class="label">Transactions</span><span class="val">${s.txn_count ?? myTxns.length}</span></div>
-      <div class="row"><span class="label">Total Sold (PHP)</span><span class="val" style="color:#c47000">${phpFmt(s.total_sold_php ?? 0)}</span></div>
-      <div class="row"><span class="label">Total Bought (PHP)</span><span class="val" style="color:#2255cc">${phpFmt(s.total_bought_php ?? 0)}</span></div>
-      ${comm !== 0 ? `<div class="row"><span class="label">Commission</span><span class="val" style="color:#cc0000">${comm > 0 ? '-' : '+'}${phpFmt(Math.abs(comm))}</span></div>` : ''}
-      <div class="row"><span class="label">Replenishment</span><span class="val" style="color:#007a55">+${phpFmt(repl)}</span></div>
-      <div class="row"><span class="label">Petty Cash</span><span class="val" style="color:#cc0000">-${phpFmt(petty)}</span></div>
-      <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
-      <div class="highlight">
-        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em">EXPECTED CASH</span>
-        <span style="font-size:16px;font-weight:900">${phpFmt(s.expected_cash_php ?? 0)}</span>
-      </div>
-      <div class="row"><span class="label">Actual Cash</span><span class="val">${phpFmt(s.closing_cash_php ?? 0)}</span></div>
-      <div class="row"><span class="label">Variance</span><span class="val" style="color:${variance === 0 ? '#007a55' : '#cc0000'}">${phpFmt(variance)}</span></div>
+      ${s.is_treasurer_shift ? `
+        <div class="row"><span class="label">Total Bought (overall)</span><span class="val" style="color:#2255cc">${phpFmt(s.overall_total_bought_php ?? 0)}</span></div>
+        <div class="row"><span class="label">Total Sold (overall)</span><span class="val" style="color:#c47000">${phpFmt(s.overall_total_sold_php ?? 0)}</span></div>
+        <div class="row"><span class="label">Difference (overall)</span><span class="val">${phpFmt((s.overall_total_sold_php ?? 0) - (s.overall_total_bought_php ?? 0))}</span></div>
+        <div class="row"><span class="label">From Dispatches</span><span class="val" style="color:#007a55">+${phpFmt(s.from_dispatches_php ?? 0)}</span></div>
+        <div class="row"><span class="label">From Cashier</span><span class="val" style="color:#007a55">+${phpFmt(s.from_cashier_php ?? 0)}</span></div>
+        <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
+        <div class="highlight">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.1em">EXPECTED CASH</span>
+          <span style="font-size:16px;font-weight:900">${phpFmt(s.expected_cash_php ?? 0)}</span>
+        </div>
+        <div class="row"><span class="label">Bale Peso (vault)</span><span class="val" style="color:#cc0000">-${phpFmt(s.bale_peso_php ?? 0)}</span></div>
+        <div class="row"><span class="label">Actual Cash</span><span class="val">${phpFmt(s.closing_cash_php ?? 0)}</span></div>
+        <div class="row"><span class="label">Variance</span><span class="val" style="color:${variance === 0 ? '#007a55' : '#cc0000'}">${phpFmt(variance)}</span></div>
+      ` : `
+        <div class="row"><span class="label">Transactions</span><span class="val">${s.txn_count ?? myTxns.length}</span></div>
+        <div class="row"><span class="label">Total Sold (PHP)</span><span class="val" style="color:#c47000">${phpFmt(s.total_sold_php ?? 0)}</span></div>
+        <div class="row"><span class="label">Total Bought (PHP)</span><span class="val" style="color:#2255cc">${phpFmt(s.total_bought_php ?? 0)}</span></div>
+        ${comm !== 0 ? `<div class="row"><span class="label">Commission</span><span class="val" style="color:#cc0000">${comm > 0 ? '-' : '+'}${phpFmt(Math.abs(comm))}</span></div>` : ''}
+        <div class="row"><span class="label">Replenishment</span><span class="val" style="color:#007a55">+${phpFmt(repl)}</span></div>
+        <div class="row"><span class="label">Petty Cash</span><span class="val" style="color:#cc0000">-${phpFmt(petty)}</span></div>
+        <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
+        <div class="highlight">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.1em">EXPECTED CASH</span>
+          <span style="font-size:16px;font-weight:900">${phpFmt(s.expected_cash_php ?? 0)}</span>
+        </div>
+        <div class="row"><span class="label">Actual Cash</span><span class="val">${phpFmt(s.closing_cash_php ?? 0)}</span></div>
+        <div class="row"><span class="label">Variance</span><span class="val" style="color:${variance === 0 ? '#007a55' : '#cc0000'}">${phpFmt(variance)}</span></div>
+      `}
 
       ${ccyTable}
 
@@ -1027,21 +1049,41 @@ export default function CounterShell({
               Shift Summary
             </div>
             {(() => {
-              const comm = shiftClosed.total_commission ?? 0;
-              const repl = shiftClosed.total_replenishment_php ?? 0;
-              const petty = shiftClosed.total_petty_cash_php ?? 0;
+              const isTreasurer = shiftClosed.is_treasurer_shift ?? false;
               const variance = shiftClosed.cash_variance ?? 0;
-              const rows: [string, string, string?, number?][] = [
-                ['Transactions',      String(shiftClosed.txn_count ?? 0)],
-                ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),              'var(--accent-gold)'],
-                ['Total Bought (PHP)', php((shiftClosed.total_bought_php ?? 0) + comm),   'var(--accent-sky)'],
-                ['Replenishment',      '+' + php(repl), 'var(--teal-300)'],
-                ['Petty Cash',         '-' + php(petty), 'var(--accent-coral)'],
-                ['Opening Cash',       php(shiftClosed.opening_cash_php)],
-                ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
-                ['Actual Cash',        php(shiftClosed.closing_cash_php ?? 0)],
-                ['Variance',           php(variance), variance === 0 ? 'var(--teal-300)' : 'var(--accent-coral)', 700],
-              ];
+              let rows: [string, string, string?, number?][];
+              if (isTreasurer) {
+                const overallBought = shiftClosed.overall_total_bought_php ?? 0;
+                const overallSold   = shiftClosed.overall_total_sold_php   ?? 0;
+                const bale          = shiftClosed.bale_peso_php            ?? 0;
+                rows = [
+                  ['Total Bought (overall)',   php(overallBought),               'var(--accent-sky)'],
+                  ['Total Sold (overall)',     php(overallSold),                 'var(--accent-gold)'],
+                  ['Difference (overall)',     php(overallSold - overallBought), 'var(--text-strong)'],
+                  ['From Dispatches',          '+' + php(shiftClosed.from_dispatches_php ?? 0), 'var(--teal-300)'],
+                  ['From Cashier',             '+' + php(shiftClosed.from_cashier_php    ?? 0), 'var(--teal-300)'],
+                  ['Opening Cash',             php(shiftClosed.opening_cash_php)],
+                  ['Expected Cash',            php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
+                  ['Bale Peso (vault)',        '-' + php(bale),                  'var(--accent-coral)'],
+                  ['Actual Cash',              php(shiftClosed.closing_cash_php ?? 0)],
+                  ['Variance',                 php(variance), variance === 0 ? 'var(--teal-300)' : 'var(--accent-coral)', 700],
+                ];
+              } else {
+                const comm = shiftClosed.total_commission ?? 0;
+                const repl = shiftClosed.total_replenishment_php ?? 0;
+                const petty = shiftClosed.total_petty_cash_php ?? 0;
+                rows = [
+                  ['Transactions',      String(shiftClosed.txn_count ?? 0)],
+                  ['Total Sold (PHP)',   php(shiftClosed.total_sold_php ?? 0),              'var(--accent-gold)'],
+                  ['Total Bought (PHP)', php((shiftClosed.total_bought_php ?? 0) + comm),   'var(--accent-sky)'],
+                  ['Replenishment',      '+' + php(repl), 'var(--teal-300)'],
+                  ['Petty Cash',         '-' + php(petty), 'var(--accent-coral)'],
+                  ['Opening Cash',       php(shiftClosed.opening_cash_php)],
+                  ['Expected Cash',      php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
+                  ['Actual Cash',        php(shiftClosed.closing_cash_php ?? 0)],
+                  ['Variance',           php(variance), variance === 0 ? 'var(--teal-300)' : 'var(--accent-coral)', 700],
+                ];
+              }
               return rows.map(([k, v, color, fw]) => (
                 <div key={k} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1200,16 +1242,31 @@ export default function CounterShell({
 
             {/* Shift summary so far */}
             {(() => {
-              const comm      = shift.total_commission ?? totalCommission;
-              const boughtRaw = shift.total_bought_php ?? myTxns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
-              const rows: [string, string, string?][] = [
-                ['Transactions',       String(shift.txn_count ?? myTxns.length)],
-                ['Total Sold (PHP)',   php(shift.total_sold_php ?? myTxns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
-                ['Total Bought (PHP)', php(boughtRaw + comm)],
-                ['Replenishment',      '+' + php(shift.total_replenishment_php ?? 0), 'var(--teal-300)'],
-                ['Petty Cash',         '-' + php(shift.total_petty_cash_php ?? 0), 'var(--accent-coral)'],
-                ['Opening Cash',       php(shift.opening_cash_php)],
-              ];
+              const isTreasurer = shift.is_treasurer_shift ?? false;
+              let rows: [string, string, string?][];
+              if (isTreasurer) {
+                const overallBought = shift.overall_total_bought_php ?? 0;
+                const overallSold   = shift.overall_total_sold_php   ?? 0;
+                rows = [
+                  ['Total Bought (overall)',   php(overallBought),               'var(--accent-sky)'],
+                  ['Total Sold (overall)',     php(overallSold),                 'var(--accent-gold)'],
+                  ['Difference (overall)',     php(overallSold - overallBought), 'var(--text-strong)'],
+                  ['From Dispatches',          '+' + php(shift.from_dispatches_php ?? 0), 'var(--teal-300)'],
+                  ['From Cashier',             '+' + php(shift.from_cashier_php    ?? 0), 'var(--teal-300)'],
+                  ['Opening Cash',             php(shift.opening_cash_php)],
+                ];
+              } else {
+                const comm      = shift.total_commission ?? totalCommission;
+                const boughtRaw = shift.total_bought_php ?? myTxns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
+                rows = [
+                  ['Transactions',       String(shift.txn_count ?? myTxns.length)],
+                  ['Total Sold (PHP)',   php(shift.total_sold_php ?? myTxns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0))],
+                  ['Total Bought (PHP)', php(boughtRaw + comm)],
+                  ['Replenishment',      '+' + php(shift.total_replenishment_php ?? 0), 'var(--teal-300)'],
+                  ['Petty Cash',         '-' + php(shift.total_petty_cash_php ?? 0), 'var(--accent-coral)'],
+                  ['Opening Cash',       php(shift.opening_cash_php)],
+                ];
+              }
               return rows.map(([k, v, color]) => (
                 <div key={k} style={{
                   display: 'flex', justifyContent: 'space-between',
@@ -1253,23 +1310,49 @@ export default function CounterShell({
               );
             })()}
 
-            {/* Expected closing cash — cashier compares this against their physical count */}
+            {/* Expected closing cash — actor compares this against their physical count */}
             {(() => {
-              const comm      = shift.total_commission ?? totalCommission;
-              const repl      = shift.total_replenishment_php ?? 0;
-              const petty     = shift.total_petty_cash_php ?? 0;
-              const soldAmt   = shift.total_sold_php   ?? myTxns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0);
-              const boughtAmt = shift.total_bought_php ?? myTxns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
-              const expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt - comm + repl - petty;
+              const isTreasurer = shift.is_treasurer_shift ?? false;
+              let expected: number;
+              let bale = 0;
+              if (isTreasurer) {
+                expected = (shift.opening_cash_php ?? 0)
+                  + (shift.from_dispatches_php ?? 0)
+                  + (shift.from_cashier_php    ?? 0);
+                bale = shift.bale_peso_php ?? 0;
+              } else {
+                const comm      = shift.total_commission ?? totalCommission;
+                const repl      = shift.total_replenishment_php ?? 0;
+                const petty     = shift.total_petty_cash_php ?? 0;
+                const soldAmt   = shift.total_sold_php   ?? myTxns.filter(t=>t.type==='SELL').reduce((s,t)=>s+t.phpAmt,0);
+                const boughtAmt = shift.total_bought_php ?? myTxns.filter(t=>t.type==='BUY').reduce((s,t)=>s+t.phpAmt,0);
+                expected  = (shift.opening_cash_php ?? 0) + soldAmt - boughtAmt - comm + repl - petty;
+              }
               return (
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '10px 14px', marginTop: 12, borderRadius: 8,
-                  background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.3)',
-                }}>
-                  <span style={{ ...M, fontSize: 11, color: 'var(--accent-gold)', letterSpacing: '0.1em' }}>EXPECTED CASH</span>
-                  <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: 'var(--accent-gold)' }}>{php(expected)}</span>
-                </div>
+                <>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '10px 14px', marginTop: 12, borderRadius: 8,
+                    background: 'rgba(212,166,74,0.08)', border: '1px solid rgba(212,166,74,0.3)',
+                  }}>
+                    <span style={{ ...M, fontSize: 11, color: 'var(--accent-gold)', letterSpacing: '0.1em' }}>EXPECTED CASH</span>
+                    <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: 'var(--accent-gold)' }}>{php(expected)}</span>
+                  </div>
+                  {isTreasurer && (
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '8px 14px', marginTop: 6, borderRadius: 8,
+                      background: 'rgba(255,107,107,0.06)', border: '1px solid rgba(255,107,107,0.25)',
+                    }}>
+                      <span style={{ ...M, fontSize: 11, color: 'var(--accent-coral)', letterSpacing: '0.1em' }}>
+                        BALE PESO (vault liability)
+                      </span>
+                      <span style={{ ...Y, fontSize: 14, fontWeight: 700, color: 'var(--accent-coral)' }}>
+                        -{php(bale)}
+                      </span>
+                    </div>
+                  )}
+                </>
               );
             })()}
 

@@ -252,10 +252,30 @@ const SHIFTS = new Map([
   }],
 ]);
 
+function withTreasurerView(s) {
+  if (!s) return s;
+  const isTreasurer = USERS[s.cashier]?.role === 'supervisor';
+  if (!isTreasurer) {
+    return { ...s, is_treasurer_shift: false };
+  }
+  const bale = (s.replenishments ?? [])
+    .filter(r => r.source === 'SAFE')
+    .reduce((sum, r) => sum + r.amount_php, 0);
+  return {
+    ...s,
+    is_treasurer_shift:        true,
+    overall_total_bought_php:  s.overall_total_bought_php ?? 0,
+    overall_total_sold_php:    s.overall_total_sold_php   ?? 0,
+    from_dispatches_php:       s.from_dispatches_php       ?? 0,
+    from_cashier_php:          s.from_cashier_php          ?? 0,
+    bale_peso_php:             bale,
+  };
+}
+
 function makeShiftOut(cashier) {
   const s = SHIFTS.get(cashier);
   if (!s || s.status !== 'OPEN') return null;
-  return s;
+  return withTreasurerView(s);
 }
 
 // ── Server ────────────────────────────────────────────────────────────────────
@@ -999,7 +1019,7 @@ const server = createServer(async (req, res) => {
       notes: body.notes ?? null,
     };
     SHIFTS.set(cashier, shift);
-    return json(res, shift, 201);
+    return json(res, withTreasurerView(shift), 201);
   }
 
   // POST /api/v1/shifts/close
@@ -1012,9 +1032,21 @@ const server = createServer(async (req, res) => {
     if (!shift || shift.status !== 'OPEN') {
       return json(res, { detail: 'No open shift found for today.' }, 404);
     }
+    const isTreasurer = USERS[cashier]?.role === 'supervisor';
     const petty = shift.total_petty_cash_php ?? 0;
-    const expected = Math.round((shift.opening_cash_php + shift.total_sold_php - shift.total_bought_php - petty) * 100) / 100;
-    const variance = Math.round((body.closing_cash_php - expected) * 100) / 100;
+    let expected, variance;
+    if (isTreasurer) {
+      const fromDisp = shift.from_dispatches_php ?? 0;
+      const fromCash = shift.from_cashier_php    ?? 0;
+      const bale     = (shift.replenishments ?? [])
+        .filter(r => r.source === 'SAFE')
+        .reduce((sum, r) => sum + r.amount_php, 0);
+      expected = Math.round((shift.opening_cash_php + fromDisp + fromCash) * 100) / 100;
+      variance = Math.round((body.closing_cash_php - (expected + bale)) * 100) / 100;
+    } else {
+      expected = Math.round((shift.opening_cash_php + shift.total_sold_php - shift.total_bought_php - petty) * 100) / 100;
+      variance = Math.round((body.closing_cash_php - expected) * 100) / 100;
+    }
     Object.assign(shift, {
       status: 'CLOSED',
       closed_at: new Date().toISOString(),
@@ -1022,12 +1054,12 @@ const server = createServer(async (req, res) => {
       expected_cash_php: expected,
       cash_variance: variance,
     });
-    return json(res, shift);
+    return json(res, withTreasurerView(shift));
   }
 
   // GET /api/v1/shifts/today — admin view
   if (method === 'GET' && url === '/api/v1/shifts/today') {
-    return json(res, [...SHIFTS.values()]);
+    return json(res, [...SHIFTS.values()].map(withTreasurerView));
   }
 
   // POST /api/v1/shifts/replenish — also writes a paired safe movement when source=SAFE
@@ -1050,6 +1082,8 @@ const server = createServer(async (req, res) => {
     };
     shift.replenishments = [...(shift.replenishments ?? []), r];
     shift.total_replenishment_php = (shift.total_replenishment_php ?? 0) + body.amount_php;
+    // Replenish handler returns the shift; route the response through withTreasurerView
+    // so the bale_peso_php aggregate stays current after each SAFE pull.
     if (source === 'SAFE') {
       SAFE_MOVEMENTS.push({
         id: `sm-${Date.now()}`,
@@ -1063,7 +1097,7 @@ const server = createServer(async (req, res) => {
         created_at: new Date().toISOString(),
       });
     }
-    return json(res, shift);
+    return json(res, withTreasurerView(shift));
   }
 
   // ── Safe / Vault ─────────────────────────────────────────────────────────
