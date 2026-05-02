@@ -1605,7 +1605,15 @@ export default function CounterShell({
               REPL
             </button>
             <button
-              onClick={() => { setShiftError(null); setShowEndModal(true); }}
+              onClick={async () => {
+                setShiftError(null);
+                // Refetch shift so totals (sold, bought, expected) are current, not stale from page load
+                try {
+                  const r = await fetch('/api/counter/shift', { cache: 'no-store' });
+                  if (r.ok) { const d = await r.json(); if (d.status === 'OPEN') setShift(d); }
+                } catch { /* show modal anyway with what we have */ }
+                setShowEndModal(true);
+              }}
               style={{
                 padding: '5px 14px', borderRadius: 6,
                 border: '1px solid rgba(212,166,74,0.4)',
