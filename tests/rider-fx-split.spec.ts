@@ -77,9 +77,9 @@ test.describe('Rider PHP-in-hand display', () => {
     // Per Ken: End Day FCY should show what was sourced today (gross BUYS).
     // Sells are reconciled against the txn log, not deducted from the FCY input.
     await expect(page.getByText('TOTAL PHP IN HAND')).toBeVisible();
-    await page.getByRole('button', { name: 'End Day' }).click();
+    await page.getByRole('button', { name: 'End Transaction' }).click();
 
-    const modal = page.getByText('End of Day — Remit').locator('..');
+    const modal = page.getByText('End Transaction — Remit').locator('..');
 
     // USD input defaults to 350.00 (the gross BOUGHT), not -150 (350 - 500 sold).
     await expect(modal.getByTestId('endday-fcy-USD')).toHaveValue('350.00');
@@ -92,10 +92,10 @@ test.describe('Rider PHP-in-hand display', () => {
 
   test('End Day input pre-fills with carry only — FX proceeds shown as a separate row', async ({ page }) => {
     await expect(page.getByText('TOTAL PHP IN HAND')).toBeVisible();
-    await page.getByRole('button', { name: 'End Day' }).click();
+    await page.getByRole('button', { name: 'End Transaction' }).click();
 
     // Scope to the End Day modal — same labels exist on the balance card too.
-    const modal = page.getByText('End of Day — Remit').locator('..');
+    const modal = page.getByText('End Transaction — Remit').locator('..');
 
     // Input pre-fills with carry = 30,000.00 (comma-formatted, no ₱)
     const phpReturnSection = modal.getByText('PHP CASH RETURNING').locator('..');

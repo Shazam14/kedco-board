@@ -511,7 +511,7 @@ export default function RiderShell({
           ))}
           {dispatch && dispatch.status === 'IN_FIELD' && (
             <button onClick={() => { setTab('endday'); setRemitAdjust({}); setRemitPhpOverride(''); }} style={{ ...M, fontSize: 11, background: tab === 'endday' ? 'rgba(212,166,74,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${tab === 'endday' ? 'rgba(212,166,74,0.4)' : 'var(--border-subtle)'}`, borderRadius: 8, padding: '6px 12px', color: tab === 'endday' ? 'var(--accent-gold)' : 'var(--text-muted)', cursor: 'pointer' }}>
-              End Day
+              End Transaction
             </button>
           )}
           <button onClick={handleLogout} style={{ ...M, fontSize: 11, background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '6px 12px', color: 'var(--text-muted)', cursor: 'pointer' }}>
@@ -783,7 +783,7 @@ export default function RiderShell({
             </div>
           ) : (
             <>
-              <div style={{ ...Y, fontSize: 14, fontWeight: 800, marginBottom: 4 }}>End of Day — Remit</div>
+              <div style={{ ...Y, fontSize: 14, fontWeight: 800, marginBottom: 4 }}>End Transaction — Remit</div>
               <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 16 }}>
                 Review your holdings below. Adjust any amount if it differs from your physical count, then confirm.
               </div>
