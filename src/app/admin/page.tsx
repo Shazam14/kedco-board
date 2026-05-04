@@ -87,6 +87,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     color: '#00d4aa',
   },
   {
+    href:  '/admin/capital',
+    icon:  '🏛️',
+    title: 'PHP Capital',
+    desc:  'Owner-contributed PHP principal — the capital that funds the business.',
+    color: '#00d4aa',
+  },
+  {
     href:  '/admin/commissions',
     icon:  '💸',
     title: 'Commission Log',

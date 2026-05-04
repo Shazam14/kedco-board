@@ -372,11 +372,13 @@ export default function ReportShell({
   selectedDate,
   hideThan = false,
   role = 'admin',
+  phpCapital = null,
 }: {
   report: Report | null;
   selectedDate: string;
   hideThan?: boolean;
   role?: string;
+  phpCapital?: number | null;
 }) {
   const isTreasurer = role === 'supervisor';
   const router  = useRouter();
@@ -530,6 +532,16 @@ export default function ReportShell({
               <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
                 Generated {report.generated_at} · {report.total_transactions} transactions
               </div>
+              {phpCapital !== null && (
+                <div data-testid="php-capital-chip" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  marginTop: 12, padding: '6px 14px', borderRadius: 999,
+                  background: 'rgba(0,212,170,0.10)', border: '1px solid rgba(0,212,170,0.35)',
+                }}>
+                  <span style={{ ...M, fontSize: 9, color: '#00d4aa', letterSpacing: '0.18em', fontWeight: 700 }}>PHP CAPITAL</span>
+                  <span style={{ ...Y, fontSize: 13, fontWeight: 800, color: '#00d4aa' }}>{php(phpCapital)}</span>
+                </div>
+              )}
             </div>
 
             {/* ── SUMMARY BOXES ── */}

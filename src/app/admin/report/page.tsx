@@ -20,6 +20,19 @@ async function fetchReport(dateParam?: string) {
   return res.json();
 }
 
+async function fetchCapitalTotal(): Promise<number | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_COOKIE)?.value;
+  if (!token) return null;
+  const res = await fetch(`${API_URL}/api/v1/capital/php`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return typeof data?.running_total === 'number' ? data.running_total : null;
+}
+
 export default async function ReportPage({
   searchParams,
 }: {
@@ -31,6 +44,7 @@ export default async function ReportPage({
 
   const { date: dateParam } = await searchParams;
   const report = await fetchReport(dateParam);
+  const phpCapital = role === 'admin' ? await fetchCapitalTotal() : null;
 
-  return <ReportShell report={report} selectedDate={dateParam ?? ''} hideThan={role !== 'admin'} role={role} />;
+  return <ReportShell report={report} selectedDate={dateParam ?? ''} hideThan={role !== 'admin'} role={role} phpCapital={phpCapital} />;
 }

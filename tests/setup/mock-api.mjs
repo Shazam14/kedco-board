@@ -192,6 +192,9 @@ let mockTestDate = null;
 // ── Safe / vault movements (mutable, resets on each mock-api start) ──────────
 const SAFE_MOVEMENTS = [];
 
+// ── PHP Capital ledger (mutable, resets on each mock-api start) ──────────────
+const CAPITAL_ENTRIES = [];
+
 // ── Shift state (mutable, resets on each mock-api process start) ─────────────
 const today = new Date().toISOString().split('T')[0];
 
@@ -1130,6 +1133,32 @@ const server = createServer(async (req, res) => {
     return json(res, m, 201);
   }
 
+  // ── PHP Capital ──────────────────────────────────────────────────────────
+  if (method === 'GET' && url === '/api/v1/capital/php') {
+    const running_total = Math.round(CAPITAL_ENTRIES.reduce((s, e) => s + e.amount_php, 0) * 100) / 100;
+    const sorted = [...CAPITAL_ENTRIES].sort((a, b) =>
+      a.entry_date < b.entry_date ? 1 : a.entry_date > b.entry_date ? -1 :
+      a.created_at < b.created_at ? 1 : -1
+    );
+    return json(res, { running_total, entries: sorted });
+  }
+  if (method === 'POST' && url === '/api/v1/capital/php') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const body    = JSON.parse(await readBody(req));
+    if (!body.amount_php) return json(res, { detail: 'Amount cannot be zero.' }, 400);
+    const entry = {
+      id: `cap-${Date.now()}`,
+      amount_php: body.amount_php,
+      note: body.note ?? null,
+      entry_date: body.entry_date ?? today,
+      created_by: payload.sub ?? 'admin',
+      created_at: new Date().toISOString(),
+    };
+    CAPITAL_ENTRIES.push(entry);
+    return json(res, entry, 201);
+  }
+
   // ── Date override (test mode) ────────────────────────────────────────────
   if (method === 'GET' && url === '/api/v1/config/test-date') {
     return json(res, { test_date: mockTestDate });
@@ -1152,6 +1181,7 @@ const server = createServer(async (req, res) => {
     CREDITS = makeInitialCredits();
     LEDGER = { 'credit-001': [] };
     CUSTOMERS = makeInitialCustomers();
+    CAPITAL_ENTRIES.length = 0;
     // Restore both shifts to OPEN state
     SHIFTS.set('cashier1', {
       id: 'shift-cashier1-today', date: today,
