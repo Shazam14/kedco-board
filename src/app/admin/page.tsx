@@ -94,6 +94,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     color: '#00d4aa',
   },
   {
+    href:  '/admin/investor-share',
+    icon:  '📐',
+    title: 'Investor Share',
+    desc:  'Estimator: low / mid / high payout bands off PHP gross and off net.',
+    color: '#a78bfa',
+  },
+  {
     href:  '/admin/commissions',
     icon:  '💸',
     title: 'Commission Log',
