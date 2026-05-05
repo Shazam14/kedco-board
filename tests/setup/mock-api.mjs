@@ -195,6 +195,9 @@ const SAFE_MOVEMENTS = [];
 // ── PHP Capital ledger (mutable, resets on each mock-api start) ──────────────
 const CAPITAL_ENTRIES = [];
 
+// ── Investors (mutable, resets on each mock-api start) ──────────────────────
+const INVESTORS = [];
+
 // ── Shift state (mutable, resets on each mock-api process start) ─────────────
 const today = new Date().toISOString().split('T')[0];
 
@@ -1157,6 +1160,53 @@ const server = createServer(async (req, res) => {
     };
     CAPITAL_ENTRIES.push(entry);
     return json(res, entry, 201);
+  }
+
+  // ── Investors ─────────────────────────────────────────────────────────────
+  if (method === 'GET' && url === '/api/v1/investors') {
+    return json(res, INVESTORS);
+  }
+  if (method === 'POST' && url === '/api/v1/investors') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const body    = JSON.parse(await readBody(req));
+    if (!body.name || !body.name.trim())  return json(res, { detail: 'Name cannot be blank.' }, 400);
+    if (!body.capital_php || body.capital_php <= 0) return json(res, { detail: 'Capital must be positive.' }, 400);
+    if (body.monthly_rate_pct < 0)        return json(res, { detail: 'Rate cannot be negative.' }, 400);
+    const inv = {
+      id: `inv-${Date.now()}`,
+      name: body.name.trim(),
+      capital_php: body.capital_php,
+      monthly_rate_pct: body.monthly_rate_pct,
+      note: body.note ?? null,
+      created_by: payload.sub ?? 'admin',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    INVESTORS.push(inv);
+    return json(res, inv, 201);
+  }
+  {
+    const m = url.match(/^\/api\/v1\/investors\/([^/]+)$/);
+    if (m) {
+      const id = m[1];
+      const idx = INVESTORS.findIndex(i => i.id === id);
+      if (idx < 0) return json(res, { detail: 'Investor not found.' }, 404);
+      if (method === 'PATCH') {
+        const body = JSON.parse(await readBody(req));
+        const inv = INVESTORS[idx];
+        if (body.name !== undefined)             inv.name = body.name.trim();
+        if (body.capital_php !== undefined)      inv.capital_php = body.capital_php;
+        if (body.monthly_rate_pct !== undefined) inv.monthly_rate_pct = body.monthly_rate_pct;
+        if (body.note !== undefined)             inv.note = body.note?.trim() || null;
+        inv.updated_at = new Date().toISOString();
+        return json(res, inv);
+      }
+      if (method === 'DELETE') {
+        INVESTORS.splice(idx, 1);
+        res.statusCode = 204; res.end(); return;
+      }
+    }
   }
 
   // ── Date override (test mode) ────────────────────────────────────────────
