@@ -27,6 +27,13 @@ async function getPesoKen(token: string) {
   return res.ok ? res.json() : { running_total: 0, entries: [] };
 }
 
+async function getMisc(token: string) {
+  const res = await fetch(`${API_URL}/api/v1/capital/misc`, {
+    headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+  });
+  return res.ok ? res.json() : { running_total: 0, entries: [] };
+}
+
 async function getReconciliation(token: string) {
   const res = await fetch(`${API_URL}/api/v1/capital/reconciliation`, {
     headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
@@ -52,14 +59,15 @@ export default async function CapitalPage() {
 
   const cookieStore = await cookies();
   const token = cookieStore.get(AUTH_COOKIE)?.value!;
-  const [ledger, today, branchInitial, pesoKenInitial, reconInitial] = await Promise.all([
-    getCapital(token), getToday(token), getBranchCapital(token), getPesoKen(token), getReconciliation(token),
+  const [ledger, today, branchInitial, pesoKenInitial, miscInitial, reconInitial] = await Promise.all([
+    getCapital(token), getToday(token), getBranchCapital(token), getPesoKen(token), getMisc(token), getReconciliation(token),
   ]);
   return <CapitalShell
     initial={ledger}
     today={today}
     branchInitial={branchInitial}
     pesoKenInitial={pesoKenInitial}
+    miscInitial={miscInitial}
     reconInitial={reconInitial}
   />;
 }

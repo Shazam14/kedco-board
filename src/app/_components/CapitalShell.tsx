@@ -31,12 +31,13 @@ interface Reconciliation {
   payables_php:   number;
   branches_php:   number;
   peso_ken_php:   number;
+  misc_php:       number;
   peso_merly_php: number;
   available_php:  number;
   investor_php:   number;
 }
 
-type Tab = 'php' | 'branches' | 'peso-ken' | 'reconciliation';
+type Tab = 'php' | 'branches' | 'peso-ken' | 'misc' | 'reconciliation';
 
 const php = (n: number) =>
   '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -279,6 +280,7 @@ function ReconciliationPanel({ initial, today }: {
     { label: 'Payables',       amount: recon.payables_php,   hint: 'CHEQUE / BANK customer payments not yet cleared' },
     { label: 'Branches',       amount: recon.branches_php,   hint: 'Per-branch peso allocation (admin-set)' },
     { label: 'Peso Ken',       amount: recon.peso_ken_php,   hint: "Ken's personal float — source of THAN" },
+    { label: 'Misc',           amount: recon.misc_php,       hint: 'Catch-all peso pool — uncategorized cash' },
     { label: 'Peso Merly',     amount: recon.peso_merly_php, hint: 'Treasurer1 + Treasurer2 expected drawer cash' },
   ] : [];
 
@@ -343,11 +345,12 @@ function ReconciliationPanel({ initial, today }: {
   );
 }
 
-export default function CapitalShell({ initial, today, branchInitial, pesoKenInitial, reconInitial }: {
+export default function CapitalShell({ initial, today, branchInitial, pesoKenInitial, miscInitial, reconInitial }: {
   initial:        Ledger;
   today?:         string;
   branchInitial:  BranchInitial;
   pesoKenInitial: Ledger;
+  miscInitial:    Ledger;
   reconInitial:   Reconciliation | null;
 }) {
   const [tab, setTab] = useState<Tab>('php');
@@ -374,6 +377,7 @@ export default function CapitalShell({ initial, today, branchInitial, pesoKenIni
             { key: 'php',            label: 'PHP CAPITAL'    },
             { key: 'branches',       label: 'BRANCH CAPITAL' },
             { key: 'peso-ken',       label: 'PESO KEN'       },
+            { key: 'misc',           label: 'MISC'           },
             { key: 'reconciliation', label: 'RECONCILIATION' },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
@@ -408,6 +412,12 @@ export default function CapitalShell({ initial, today, branchInitial, pesoKenIni
           <LedgerPanel initial={pesoKenInitial} endpoint="/api/admin/peso-ken" today={today}
             description="Ken's personal peso float (~₱300k–₱500k) — the pool he draws from to pay THAN. Distinct from owner principal; subtracted in the reconciliation formula."
             placeholder="e.g. Top up · withdraw for THAN" />
+        )}
+
+        {tab === 'misc' && (
+          <LedgerPanel initial={miscInitial} endpoint="/api/admin/misc" today={today}
+            description="Catch-all peso pool — anything that doesn't fit PHP Capital, Peso Ken, Branches, or Treasurer. Subtracted in the reconciliation formula."
+            placeholder="e.g. Loose cash held by …" />
         )}
 
         {tab === 'reconciliation' && (

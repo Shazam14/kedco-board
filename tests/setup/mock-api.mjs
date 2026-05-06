@@ -201,6 +201,9 @@ const BRANCH_CAPITAL = [];
 // ── Peso Ken ledger (mutable, resets on each mock-api start) ────────────────
 const PESO_KEN_ENTRIES = [];
 
+// ── Misc ledger (mutable, resets on each mock-api start) ────────────────────
+const MISC_ENTRIES = [];
+
 // ── Investors (mutable, resets on each mock-api start) ──────────────────────
 const INVESTORS = [];
 
@@ -1264,6 +1267,49 @@ const server = createServer(async (req, res) => {
     }
   }
 
+  // ── Misc ledger ──────────────────────────────────────────────────────────
+  if (method === 'GET' && url === '/api/v1/capital/misc') {
+    const running_total = Math.round(MISC_ENTRIES.reduce((s, e) => s + e.amount_php, 0) * 100) / 100;
+    const sorted = [...MISC_ENTRIES].sort((a, b) =>
+      a.entry_date < b.entry_date ? 1 : a.entry_date > b.entry_date ? -1 :
+      a.created_at < b.created_at ? 1 : -1
+    );
+    return json(res, { running_total, entries: sorted });
+  }
+  if (method === 'POST' && url === '/api/v1/capital/misc') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const body    = JSON.parse(await readBody(req));
+    if (!body.amount_php) return json(res, { detail: 'Amount cannot be zero.' }, 400);
+    const entry = {
+      id: `misc-${Date.now()}`,
+      amount_php: body.amount_php,
+      note: body.note ?? null,
+      entry_date: body.entry_date ?? today,
+      created_by: payload.sub ?? 'admin',
+      created_at: new Date().toISOString(),
+    };
+    MISC_ENTRIES.push(entry);
+    return json(res, entry, 201);
+  }
+  {
+    const m = url.match(/^\/api\/v1\/capital\/misc\/([^/?]+)$/);
+    if (m && method === 'PATCH') {
+      const idx = MISC_ENTRIES.findIndex(e => e.id === m[1]);
+      if (idx < 0) return json(res, { detail: 'Entry not found.' }, 404);
+      const body = JSON.parse(await readBody(req));
+      if (!body.amount_php) return json(res, { detail: 'Amount cannot be zero.' }, 400);
+      MISC_ENTRIES[idx] = { ...MISC_ENTRIES[idx], amount_php: body.amount_php, note: body.note ?? null, entry_date: body.entry_date ?? MISC_ENTRIES[idx].entry_date };
+      return json(res, MISC_ENTRIES[idx]);
+    }
+    if (m && method === 'DELETE') {
+      const idx = MISC_ENTRIES.findIndex(e => e.id === m[1]);
+      if (idx < 0) return json(res, { detail: 'Entry not found.' }, 404);
+      MISC_ENTRIES.splice(idx, 1);
+      res.statusCode = 204; return res.end();
+    }
+  }
+
   // ── Peso Merly (treasurer1 + treasurer2 expected drawer cash) ────────────
   if (method === 'GET' && url.startsWith('/api/v1/capital/peso-merly')) {
     return json(res, { date: today, total_php: 0, lines: [] });
@@ -1274,7 +1320,7 @@ const server = createServer(async (req, res) => {
     return json(res, {
       date: today,
       capital_php: 0, stocks_php: 0, payables_php: 0, branches_php: 0,
-      peso_ken_php: 0, peso_merly_php: 0, available_php: 0, investor_php: 0,
+      peso_ken_php: 0, misc_php: 0, peso_merly_php: 0, available_php: 0, investor_php: 0,
     });
   }
 
