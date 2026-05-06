@@ -46,6 +46,19 @@ const fmtDate = (iso: string) =>
     year: 'numeric', month: 'short', day: 'numeric',
   });
 
+function formatAmountInput(raw: string): string {
+  if (!raw) return '';
+  const negative = raw.trimStart().startsWith('-');
+  const cleaned = raw.replace(/[^0-9.]/g, '');
+  if (!cleaned) return negative ? '-' : '';
+  const [intRaw, decRaw] = cleaned.split('.');
+  const intFormatted = intRaw ? Number(intRaw).toLocaleString('en-PH') : '';
+  const out = decRaw !== undefined ? `${intFormatted}.${decRaw.slice(0, 2)}` : intFormatted;
+  return (negative ? '-' : '') + out;
+}
+
+const parseAmountInput = (raw: string) => parseFloat(raw.replace(/,/g, ''));
+
 function LedgerPanel({ initial, endpoint, today, description, placeholder }: {
   initial:     Ledger;
   endpoint:    string;
@@ -66,7 +79,7 @@ function LedgerPanel({ initial, endpoint, today, description, placeholder }: {
   }
 
   async function addEntry() {
-    const num = parseFloat(amount);
+    const num = parseAmountInput(amount);
     if (!num || isNaN(num)) { setError('Enter a non-zero amount.'); return; }
     setSaving(true); setError(null);
     const res = await fetch(endpoint, {
@@ -98,7 +111,7 @@ function LedgerPanel({ initial, endpoint, today, description, placeholder }: {
         <div style={{ display: 'grid', gridTemplateColumns: '160px 140px 1fr auto', gap: 10, alignItems: 'flex-start' }}>
           <div>
             <div style={{ ...M, fontSize: 9, color: 'var(--muted)', marginBottom: 4 }}>AMOUNT (₱)</div>
-            <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="e.g. 500000 or -50000" inputMode="decimal"
+            <input value={amount} onChange={e => setAmount(formatAmountInput(e.target.value))} placeholder="e.g. 500,000 or -50,000" inputMode="decimal"
               style={{ width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
           </div>
           <div>
@@ -131,22 +144,111 @@ function LedgerPanel({ initial, endpoint, today, description, placeholder }: {
         {ledger.entries.length === 0 && (
           <div style={{ ...M, fontSize: 11, color: 'var(--muted)', padding: '16px 20px' }}>No entries yet.</div>
         )}
-        {ledger.entries.map((e, i) => {
-          const positive = e.amount_php >= 0;
-          const sign = positive ? '+' : '−';
-          return (
-            <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 160px 120px', gap: 12, alignItems: 'center', padding: '12px 20px', borderBottom: i < ledger.entries.length - 1 ? '1px solid var(--border)' : 'none', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
-              <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{fmtDate(e.entry_date)}</span>
-              <span style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>{e.note ?? '—'}</span>
-              <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>by {e.created_by}</span>
-              <span style={{ ...Y, fontSize: 14, fontWeight: 800, color: positive ? '#00d4aa' : '#ff5c5c', textAlign: 'right' }}>
-                {sign}{php(Math.abs(e.amount_php))}
-              </span>
-            </div>
-          );
-        })}
+        {ledger.entries.map((e, i) => (
+          <EntryRow key={e.id} entry={e} endpoint={endpoint} onChanged={refresh}
+            isLast={i === ledger.entries.length - 1} striped={i % 2 === 1} />
+        ))}
       </div>
     </>
+  );
+}
+
+function EntryRow({ entry, endpoint, onChanged, isLast, striped }: {
+  entry:     Entry;
+  endpoint:  string;
+  onChanged: () => Promise<void>;
+  isLast:    boolean;
+  striped:   boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy]       = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+  const [amount, setAmount]   = useState(formatAmountInput(String(entry.amount_php)));
+  const [note, setNote]       = useState(entry.note ?? '');
+  const [date, setDate]       = useState(entry.entry_date);
+
+  async function save() {
+    const num = parseAmountInput(amount);
+    if (!num || isNaN(num)) { setError('Non-zero amount.'); return; }
+    setBusy(true); setError(null);
+    const res = await fetch(`${endpoint}/${entry.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount_php: num, note: note.trim() || null, entry_date: date }),
+    });
+    if (res.ok) { setEditing(false); await onChanged(); }
+    else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.detail ?? 'Save failed.');
+    }
+    setBusy(false);
+  }
+
+  async function remove() {
+    if (!confirm(`Delete this entry? This cannot be undone.\n\n${fmtDate(entry.entry_date)} · ${entry.note ?? '—'} · ${entry.amount_php >= 0 ? '+' : '−'}${php(Math.abs(entry.amount_php))}`)) return;
+    setBusy(true); setError(null);
+    const res = await fetch(`${endpoint}/${entry.id}`, { method: 'DELETE' });
+    if (res.ok || res.status === 204) await onChanged();
+    else {
+      const d = await res.json().catch(() => ({}));
+      setError(d.detail ?? 'Delete failed.');
+      setBusy(false);
+    }
+  }
+
+  const rowStyle: React.CSSProperties = {
+    padding: '12px 20px',
+    borderBottom: isLast ? 'none' : '1px solid var(--border)',
+    background: striped ? 'rgba(255,255,255,0.012)' : 'transparent',
+  };
+
+  if (editing) {
+    return (
+      <div style={rowStyle}>
+        <div style={{ display: 'grid', gridTemplateColumns: '120px 130px 1fr auto', gap: 8, alignItems: 'center' }}>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: '#e2e6f0', ...M, fontSize: 11, outline: 'none' }} />
+          <input value={amount} onChange={e => setAmount(formatAmountInput(e.target.value))} placeholder="amount" inputMode="decimal"
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: '#e2e6f0', ...M, fontSize: 11, outline: 'none', textAlign: 'right' }} />
+          <input value={note} onChange={e => setNote(e.target.value)} placeholder="note"
+            style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: '#e2e6f0', ...M, fontSize: 11, outline: 'none' }} />
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button onClick={save} disabled={busy}
+              style={{ padding: '6px 10px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg,#00d4aa,#00a884)', color: '#000', ...Y, fontSize: 10, fontWeight: 800, cursor: busy ? 'default' : 'pointer' }}>
+              {busy ? '…' : 'SAVE'}
+            </button>
+            <button onClick={() => { setEditing(false); setAmount(formatAmountInput(String(entry.amount_php))); setNote(entry.note ?? ''); setDate(entry.entry_date); setError(null); }} disabled={busy}
+              style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 10, cursor: busy ? 'default' : 'pointer' }}>
+              CANCEL
+            </button>
+          </div>
+        </div>
+        {error && <div style={{ ...M, fontSize: 10, color: '#ff5c5c', marginTop: 6 }}>{error}</div>}
+      </div>
+    );
+  }
+
+  const positive = entry.amount_php >= 0;
+  const sign = positive ? '+' : '−';
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 130px 76px', gap: 12, alignItems: 'center', ...rowStyle }}>
+      <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>{fmtDate(entry.entry_date)}</span>
+      <span style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>{entry.note ?? '—'}</span>
+      <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>by {entry.created_by}</span>
+      <span style={{ ...Y, fontSize: 14, fontWeight: 800, color: positive ? '#00d4aa' : '#ff5c5c', textAlign: 'right' }}>
+        {sign}{php(Math.abs(entry.amount_php))}
+      </span>
+      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+        <button onClick={() => setEditing(true)} disabled={busy} title="Edit"
+          style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', ...M, fontSize: 11, cursor: 'pointer' }}>
+          ✎
+        </button>
+        <button onClick={remove} disabled={busy} title="Delete"
+          style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: '#ff5c5c', ...M, fontSize: 11, cursor: busy ? 'default' : 'pointer' }}>
+          {busy ? '…' : '🗑'}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -252,7 +354,7 @@ export default function CapitalShell({ initial, today, branchInitial, pesoKenIni
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '56px', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg)', position: 'sticky', top: 0, zIndex: 100 }}>
+      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '56px', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#00d4aa,#00a884)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#000' }}>K</div>
           <div>

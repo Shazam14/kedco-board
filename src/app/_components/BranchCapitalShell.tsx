@@ -36,10 +36,23 @@ const fmtWhen = (iso: string | null) => {
   return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+function formatAmountInput(raw: string): string {
+  if (!raw) return '';
+  const negative = raw.trimStart().startsWith('-');
+  const cleaned = raw.replace(/[^0-9.]/g, '');
+  if (!cleaned) return negative ? '-' : '';
+  const [intRaw, decRaw] = cleaned.split('.');
+  const intFormatted = intRaw ? Number(intRaw).toLocaleString('en-PH') : '';
+  const out = decRaw !== undefined ? `${intFormatted}.${decRaw.slice(0, 2)}` : intFormatted;
+  return (negative ? '-' : '') + out;
+}
+
+const parseAmountInput = (raw: string) => parseFloat(raw.replace(/,/g, ''));
+
 export default function BranchCapitalShell({ initial, embedded = false }: { initial: Initial; embedded?: boolean }) {
   const [data, setData] = useState<Initial>(initial);
   const [drafts, setDrafts] = useState<Record<string, string>>(() =>
-    Object.fromEntries(initial.rows.map(r => [r.branch_code, String(r.amount_php)]))
+    Object.fromEntries(initial.rows.map(r => [r.branch_code, formatAmountInput(String(r.amount_php))]))
   );
   const [savingCode, setSavingCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,14 +77,14 @@ export default function BranchCapitalShell({ initial, embedded = false }: { init
         {BRANCHES.map((b, i) => {
           const row = byCode[b.code];
           const draft = drafts[b.code] ?? '';
-          const dirty = (row?.amount_php ?? 0).toString() !== draft;
+          const dirty = formatAmountInput(String(row?.amount_php ?? 0)) !== draft;
           return (
             <div key={b.code} style={{ display: 'grid', gridTemplateColumns: '160px 1fr 160px 130px 100px', gap: 12, alignItems: 'center', padding: '12px 20px', borderBottom: i < BRANCHES.length - 1 ? '1px solid var(--border)' : 'none', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
               <div>
                 <div style={{ ...Y, fontSize: 13, fontWeight: 700 }}>{b.name}</div>
                 <div style={{ ...M, fontSize: 9, color: 'var(--muted)' }}>{b.code}</div>
               </div>
-              <input value={draft} onChange={e => setDrafts(d => ({ ...d, [b.code]: e.target.value }))}
+              <input value={draft} onChange={e => setDrafts(d => ({ ...d, [b.code]: formatAmountInput(e.target.value) }))}
                 placeholder="0" inputMode="decimal"
                 style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: '#e2e6f0', ...M, fontSize: 12, outline: 'none' }} />
               <span style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>
@@ -98,12 +111,12 @@ export default function BranchCapitalShell({ initial, embedded = false }: { init
     if (res.ok) {
       const fresh = await res.json();
       setData(fresh);
-      setDrafts(Object.fromEntries(fresh.rows.map((r: Row) => [r.branch_code, String(r.amount_php)])));
+      setDrafts(Object.fromEntries(fresh.rows.map((r: Row) => [r.branch_code, formatAmountInput(String(r.amount_php))])));
     }
   }
 
   async function save(code: string) {
-    const num = parseFloat(drafts[code] ?? '');
+    const num = parseAmountInput(drafts[code] ?? '');
     if (isNaN(num) || num < 0) { setError(`${code}: enter a non-negative number.`); return; }
     setSavingCode(code); setError(null);
     const res = await fetch(`/api/admin/branch-capital/${encodeURIComponent(code)}`, {
@@ -123,7 +136,7 @@ export default function BranchCapitalShell({ initial, embedded = false }: { init
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '56px', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg)', position: 'sticky', top: 0, zIndex: 100 }}>
+      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 32px', height: '56px', borderBottom: '1px solid var(--border)', background: 'var(--nav-bg)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#00d4aa,#00a884)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#000' }}>K</div>
           <div>

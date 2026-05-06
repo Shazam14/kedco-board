@@ -1167,6 +1167,24 @@ const server = createServer(async (req, res) => {
     CAPITAL_ENTRIES.push(entry);
     return json(res, entry, 201);
   }
+  // PATCH /api/v1/capital/php/{id}
+  {
+    const m = url.match(/^\/api\/v1\/capital\/php\/([^/?]+)$/);
+    if (m && method === 'PATCH') {
+      const idx = CAPITAL_ENTRIES.findIndex(e => e.id === m[1]);
+      if (idx < 0) return json(res, { detail: 'Entry not found.' }, 404);
+      const body = JSON.parse(await readBody(req));
+      if (!body.amount_php) return json(res, { detail: 'Amount cannot be zero.' }, 400);
+      CAPITAL_ENTRIES[idx] = { ...CAPITAL_ENTRIES[idx], amount_php: body.amount_php, note: body.note ?? null, entry_date: body.entry_date ?? CAPITAL_ENTRIES[idx].entry_date };
+      return json(res, CAPITAL_ENTRIES[idx]);
+    }
+    if (m && method === 'DELETE') {
+      const idx = CAPITAL_ENTRIES.findIndex(e => e.id === m[1]);
+      if (idx < 0) return json(res, { detail: 'Entry not found.' }, 404);
+      CAPITAL_ENTRIES.splice(idx, 1);
+      res.statusCode = 204; return res.end();
+    }
+  }
 
   // ── Branch Capital ────────────────────────────────────────────────────────
   if (method === 'GET' && url === '/api/v1/capital/branches') {
@@ -1226,6 +1244,24 @@ const server = createServer(async (req, res) => {
     };
     PESO_KEN_ENTRIES.push(entry);
     return json(res, entry, 201);
+  }
+  // PATCH /api/v1/capital/peso-ken/{id}
+  {
+    const m = url.match(/^\/api\/v1\/capital\/peso-ken\/([^/?]+)$/);
+    if (m && method === 'PATCH') {
+      const idx = PESO_KEN_ENTRIES.findIndex(e => e.id === m[1]);
+      if (idx < 0) return json(res, { detail: 'Entry not found.' }, 404);
+      const body = JSON.parse(await readBody(req));
+      if (!body.amount_php) return json(res, { detail: 'Amount cannot be zero.' }, 400);
+      PESO_KEN_ENTRIES[idx] = { ...PESO_KEN_ENTRIES[idx], amount_php: body.amount_php, note: body.note ?? null, entry_date: body.entry_date ?? PESO_KEN_ENTRIES[idx].entry_date };
+      return json(res, PESO_KEN_ENTRIES[idx]);
+    }
+    if (m && method === 'DELETE') {
+      const idx = PESO_KEN_ENTRIES.findIndex(e => e.id === m[1]);
+      if (idx < 0) return json(res, { detail: 'Entry not found.' }, 404);
+      PESO_KEN_ENTRIES.splice(idx, 1);
+      res.statusCode = 204; return res.end();
+    }
   }
 
   // ── Peso Merly (treasurer1 + treasurer2 expected drawer cash) ────────────
