@@ -24,7 +24,19 @@ interface BranchInitial {
   rows: { branch_code: string; amount_php: number; updated_by: string | null; updated_at: string | null }[];
 }
 
-type Tab = 'php' | 'branches' | 'peso-ken';
+interface Reconciliation {
+  date:           string;
+  capital_php:    number;
+  stocks_php:     number;
+  payables_php:   number;
+  branches_php:   number;
+  peso_ken_php:   number;
+  peso_merly_php: number;
+  available_php:  number;
+  investor_php:   number;
+}
+
+type Tab = 'php' | 'branches' | 'peso-ken' | 'reconciliation';
 
 const php = (n: number) =>
   '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -138,11 +150,103 @@ function LedgerPanel({ initial, endpoint, today, description, placeholder }: {
   );
 }
 
-export default function CapitalShell({ initial, today, branchInitial, pesoKenInitial }: {
+function ReconciliationPanel({ initial, today }: {
+  initial: Reconciliation | null;
+  today?:  string;
+}) {
+  const [recon, setRecon] = useState<Reconciliation | null>(initial);
+  const [date, setDate]   = useState(initial?.date ?? today ?? new Date().toISOString().slice(0, 10));
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  async function load(forDate: string) {
+    setLoading(true); setError(null);
+    const res = await fetch(`/api/admin/reconciliation?date=${forDate}`, { cache: 'no-store' });
+    if (res.ok) setRecon(await res.json());
+    else setError('Failed to load reconciliation.');
+    setLoading(false);
+  }
+
+  function onDateChange(d: string) {
+    setDate(d);
+    load(d);
+  }
+
+  const subtractions: { label: string; amount: number; hint?: string }[] = recon ? [
+    { label: 'Stocks',         amount: recon.stocks_php,     hint: 'FCY left × next-day carry-in rate' },
+    { label: 'Payables',       amount: recon.payables_php,   hint: 'CHEQUE / BANK customer payments not yet cleared' },
+    { label: 'Branches',       amount: recon.branches_php,   hint: 'Per-branch peso allocation (admin-set)' },
+    { label: 'Peso Ken',       amount: recon.peso_ken_php,   hint: "Ken's personal float — source of THAN" },
+    { label: 'Peso Merly',     amount: recon.peso_merly_php, hint: 'Treasurer1 + Treasurer2 expected drawer cash' },
+  ] : [];
+
+  return (
+    <>
+      <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 18, lineHeight: 1.6 }}>
+        Ken&apos;s peso reconciliation: <code>Capital − Stocks − Payables − Branches − Peso Ken − Peso Merly = Available</code>.
+        Investor share is shown as a separate line.
+      </div>
+
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 20px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ ...M, fontSize: 9, color: 'var(--muted)' }}>RECONCILE FOR</div>
+        <input type="date" value={date} onChange={e => onDateChange(e.target.value)}
+          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: '#e2e6f0', ...M, fontSize: 13, outline: 'none' }} />
+        {loading && <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>loading…</span>}
+        {error && <span style={{ ...M, fontSize: 11, color: '#ff5c5c' }}>{error}</span>}
+      </div>
+
+      {!recon && (
+        <div style={{ ...M, fontSize: 11, color: 'var(--muted)', padding: '20px' }}>
+          Pick a date to load the reconciliation.
+        </div>
+      )}
+
+      {recon && (
+        <>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', marginBottom: 22 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 12, alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'rgba(0,212,170,0.06)' }}>
+              <div>
+                <div style={{ ...Y, fontSize: 14, fontWeight: 800, color: '#00d4aa' }}>Capital (owner principal)</div>
+                <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>Total injected via /admin/capital → PHP CAPITAL tab</div>
+              </div>
+              <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: '#00d4aa', textAlign: 'right' }}>{php(recon.capital_php)}</span>
+            </div>
+
+            {subtractions.map((s, i) => (
+              <div key={s.label} style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 12, alignItems: 'center', padding: '12px 20px', borderBottom: i < subtractions.length - 1 ? '1px solid var(--border)' : '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.012)' }}>
+                <div>
+                  <div style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>− {s.label}</div>
+                  {s.hint && <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>{s.hint}</div>}
+                </div>
+                <span style={{ ...Y, fontSize: 14, fontWeight: 700, color: '#e2e6f0', textAlign: 'right' }}>−{php(s.amount)}</span>
+              </div>
+            ))}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 12, alignItems: 'center', padding: '16px 20px', background: recon.available_php >= 0 ? 'rgba(0,212,170,0.10)' : 'rgba(255,92,92,0.10)' }}>
+              <div style={{ ...Y, fontSize: 15, fontWeight: 800, color: recon.available_php >= 0 ? '#00d4aa' : '#ff5c5c' }}>= AVAILABLE</div>
+              <span style={{ ...Y, fontSize: 20, fontWeight: 800, color: recon.available_php >= 0 ? '#00d4aa' : '#ff5c5c', textAlign: 'right' }}>{php(recon.available_php)}</span>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 20px', display: 'grid', gridTemplateColumns: '1fr 200px', gap: 12, alignItems: 'center' }}>
+            <div>
+              <div style={{ ...M, fontSize: 12, color: '#e2e6f0' }}>Pending Peso for Investor</div>
+              <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>Sum of investor capital — separate line, not subtracted</div>
+            </div>
+            <span style={{ ...Y, fontSize: 14, fontWeight: 700, color: '#e2e6f0', textAlign: 'right' }}>{php(recon.investor_php)}</span>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+export default function CapitalShell({ initial, today, branchInitial, pesoKenInitial, reconInitial }: {
   initial:        Ledger;
   today?:         string;
   branchInitial:  BranchInitial;
   pesoKenInitial: Ledger;
+  reconInitial:   Reconciliation | null;
 }) {
   const [tab, setTab] = useState<Tab>('php');
 
@@ -165,9 +269,10 @@ export default function CapitalShell({ initial, today, branchInitial, pesoKenIni
 
         <div style={{ display: 'flex', gap: 4, marginBottom: 22, borderBottom: '1px solid var(--border)' }}>
           {([
-            { key: 'php',      label: 'PHP CAPITAL'    },
-            { key: 'branches', label: 'BRANCH CAPITAL' },
-            { key: 'peso-ken', label: 'PESO KEN'       },
+            { key: 'php',            label: 'PHP CAPITAL'    },
+            { key: 'branches',       label: 'BRANCH CAPITAL' },
+            { key: 'peso-ken',       label: 'PESO KEN'       },
+            { key: 'reconciliation', label: 'RECONCILIATION' },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               style={{
@@ -201,6 +306,10 @@ export default function CapitalShell({ initial, today, branchInitial, pesoKenIni
           <LedgerPanel initial={pesoKenInitial} endpoint="/api/admin/peso-ken" today={today}
             description="Ken's personal peso float (~₱300k–₱500k) — the pool he draws from to pay THAN. Distinct from owner principal; subtracted in the reconciliation formula."
             placeholder="e.g. Top up · withdraw for THAN" />
+        )}
+
+        {tab === 'reconciliation' && (
+          <ReconciliationPanel initial={reconInitial} today={today} />
         )}
       </div>
     </div>

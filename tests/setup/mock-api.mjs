@@ -1228,6 +1228,20 @@ const server = createServer(async (req, res) => {
     return json(res, entry, 201);
   }
 
+  // ── Peso Merly (treasurer1 + treasurer2 expected drawer cash) ────────────
+  if (method === 'GET' && url.startsWith('/api/v1/capital/peso-merly')) {
+    return json(res, { date: today, total_php: 0, lines: [] });
+  }
+
+  // ── Reconciliation (composes all 6 components) ───────────────────────────
+  if (method === 'GET' && url.startsWith('/api/v1/capital/reconciliation')) {
+    return json(res, {
+      date: today,
+      capital_php: 0, stocks_php: 0, payables_php: 0, branches_php: 0,
+      peso_ken_php: 0, peso_merly_php: 0, available_php: 0, investor_php: 0,
+    });
+  }
+
   // ── Investors ─────────────────────────────────────────────────────────────
   if (method === 'GET' && url === '/api/v1/investors') {
     return json(res, INVESTORS);
