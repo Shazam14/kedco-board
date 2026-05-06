@@ -90,7 +90,7 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     href:  '/admin/capital',
     icon:  '🏛️',
     title: 'PHP Capital',
-    desc:  'Owner-contributed PHP principal — the capital that funds the business.',
+    desc:  'Owner principal, branch allocation, and Ken\'s personal float — all in one place.',
     color: '#00d4aa',
   },
   {

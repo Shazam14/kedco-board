@@ -195,6 +195,9 @@ const SAFE_MOVEMENTS = [];
 // ── PHP Capital ledger (mutable, resets on each mock-api start) ──────────────
 const CAPITAL_ENTRIES = [];
 
+// ── Branch Capital (mutable, resets on each mock-api start) ─────────────────
+const BRANCH_CAPITAL = [];
+
 // ── Investors (mutable, resets on each mock-api start) ──────────────────────
 const INVESTORS = [];
 
@@ -1162,6 +1165,40 @@ const server = createServer(async (req, res) => {
     return json(res, entry, 201);
   }
 
+  // ── Branch Capital ────────────────────────────────────────────────────────
+  if (method === 'GET' && url === '/api/v1/capital/branches') {
+    const total_php = Math.round(BRANCH_CAPITAL.reduce((s, r) => s + r.amount_php, 0) * 100) / 100;
+    return json(res, { total_php, rows: [...BRANCH_CAPITAL].sort((a, b) => a.branch_code.localeCompare(b.branch_code)) });
+  }
+  {
+    const m = url.match(/^\/api\/v1\/capital\/branches\/([^/]+)$/);
+    if (m) {
+      const code = decodeURIComponent(m[1]);
+      const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+      const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+      if (method === 'PUT') {
+        const body = JSON.parse(await readBody(req));
+        const now = new Date().toISOString();
+        const existing = BRANCH_CAPITAL.find(r => r.branch_code === code);
+        if (existing) {
+          existing.amount_php = body.amount_php;
+          existing.updated_by = payload.sub ?? 'admin';
+          existing.updated_at = now;
+          return json(res, existing);
+        }
+        const fresh = { branch_code: code, amount_php: body.amount_php, updated_by: payload.sub ?? 'admin', updated_at: now };
+        BRANCH_CAPITAL.push(fresh);
+        return json(res, fresh);
+      }
+      if (method === 'DELETE') {
+        const idx = BRANCH_CAPITAL.findIndex(r => r.branch_code === code);
+        if (idx === -1) return json(res, { detail: 'Branch capital row not found.' }, 404);
+        BRANCH_CAPITAL.splice(idx, 1);
+        res.statusCode = 204; return res.end();
+      }
+    }
+  }
+
   // ── Investors ─────────────────────────────────────────────────────────────
   if (method === 'GET' && url === '/api/v1/investors') {
     return json(res, INVESTORS);
@@ -1210,6 +1247,10 @@ const server = createServer(async (req, res) => {
   }
 
   // ── Date override (test mode) ────────────────────────────────────────────
+  if (method === 'GET' && url === '/api/v1/config/today') {
+    const t = mockTestDate ?? new Date().toISOString().slice(0, 10);
+    return json(res, { today: t });
+  }
   if (method === 'GET' && url === '/api/v1/config/test-date') {
     return json(res, { test_date: mockTestDate });
   }

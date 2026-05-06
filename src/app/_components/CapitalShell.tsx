@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import BranchCapitalShell from './BranchCapitalShell';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -18,6 +19,13 @@ interface Ledger {
   entries: Entry[];
 }
 
+interface BranchInitial {
+  total_php: number;
+  rows: { branch_code: string; amount_php: number; updated_by: string | null; updated_at: string | null }[];
+}
+
+type Tab = 'php' | 'branches';
+
 const php = (n: number) =>
   '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -26,11 +34,16 @@ const fmtDate = (iso: string) =>
     year: 'numeric', month: 'short', day: 'numeric',
   });
 
-export default function CapitalShell({ initial }: { initial: Ledger }) {
+export default function CapitalShell({ initial, today, branchInitial }: {
+  initial: Ledger;
+  today?: string;
+  branchInitial: BranchInitial;
+}) {
+  const [tab, setTab]         = useState<Tab>('php');
   const [ledger, setLedger]   = useState<Ledger>(initial);
   const [amount, setAmount]   = useState('');
   const [note, setNote]       = useState('');
-  const [date, setDate]       = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate]       = useState(today ?? new Date().toISOString().slice(0, 10));
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
@@ -78,7 +91,38 @@ export default function CapitalShell({ initial }: { initial: Ledger }) {
 
       <div style={{ padding: '28px 32px', maxWidth: 880 }}>
         <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.2em', marginBottom: 4 }}>ADMIN · CAPITAL</div>
-        <div style={{ ...Y, fontSize: 24, fontWeight: 800, marginBottom: 6 }}>PHP Capital Ledger</div>
+        <div style={{ ...Y, fontSize: 24, fontWeight: 800, marginBottom: 18 }}>Capital Management</div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 22, borderBottom: '1px solid var(--border)' }}>
+          {([
+            { key: 'php',      label: 'PHP CAPITAL'    },
+            { key: 'branches', label: 'BRANCH CAPITAL' },
+          ] as const).map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              style={{
+                ...M, fontSize: 11, letterSpacing: '0.12em', fontWeight: 700,
+                padding: '10px 18px', cursor: 'pointer', background: 'transparent',
+                border: 'none', borderBottom: tab === t.key ? '2px solid #00d4aa' : '2px solid transparent',
+                color: tab === t.key ? '#00d4aa' : 'var(--muted)', marginBottom: -1,
+              }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'branches' && (
+          <>
+            <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 18, lineHeight: 1.6 }}>
+              Per-branch peso allocation. Set the number you&apos;ve earmarked for each branch — this is subtracted
+              from total Capital in the reconciliation formula.
+            </div>
+            <BranchCapitalShell initial={branchInitial} embedded />
+          </>
+        )}
+
+        {tab === 'php' && (<>
+
         <div style={{ ...M, fontSize: 11, color: 'var(--muted)', marginBottom: 24, lineHeight: 1.6 }}>
           Owner-contributed PHP principal — the capital that funds the business.
           Distinct from safe movements (operational vault flow) and bale.
@@ -145,6 +189,7 @@ export default function CapitalShell({ initial }: { initial: Ledger }) {
             );
           })}
         </div>
+        </>)}
       </div>
     </div>
   );
