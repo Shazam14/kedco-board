@@ -198,6 +198,9 @@ const CAPITAL_ENTRIES = [];
 // ── Branch Capital (mutable, resets on each mock-api start) ─────────────────
 const BRANCH_CAPITAL = [];
 
+// ── Peso Ken ledger (mutable, resets on each mock-api start) ────────────────
+const PESO_KEN_ENTRIES = [];
+
 // ── Investors (mutable, resets on each mock-api start) ──────────────────────
 const INVESTORS = [];
 
@@ -1197,6 +1200,32 @@ const server = createServer(async (req, res) => {
         res.statusCode = 204; return res.end();
       }
     }
+  }
+
+  // ── Peso Ken ledger ───────────────────────────────────────────────────────
+  if (method === 'GET' && url === '/api/v1/capital/peso-ken') {
+    const running_total = Math.round(PESO_KEN_ENTRIES.reduce((s, e) => s + e.amount_php, 0) * 100) / 100;
+    const sorted = [...PESO_KEN_ENTRIES].sort((a, b) =>
+      a.entry_date < b.entry_date ? 1 : a.entry_date > b.entry_date ? -1 :
+      a.created_at < b.created_at ? 1 : -1
+    );
+    return json(res, { running_total, entries: sorted });
+  }
+  if (method === 'POST' && url === '/api/v1/capital/peso-ken') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const body    = JSON.parse(await readBody(req));
+    if (!body.amount_php) return json(res, { detail: 'Amount cannot be zero.' }, 400);
+    const entry = {
+      id: `pk-${Date.now()}`,
+      amount_php: body.amount_php,
+      note: body.note ?? null,
+      entry_date: body.entry_date ?? today,
+      created_by: payload.sub ?? 'admin',
+      created_at: new Date().toISOString(),
+    };
+    PESO_KEN_ENTRIES.push(entry);
+    return json(res, entry, 201);
   }
 
   // ── Investors ─────────────────────────────────────────────────────────────
