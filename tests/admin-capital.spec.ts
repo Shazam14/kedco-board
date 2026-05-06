@@ -61,14 +61,14 @@ test.describe('PHP Capital — admin', () => {
     await expect(page.getByText('No entries yet.')).toBeVisible();
 
     // Record a positive injection
-    await page.getByPlaceholder('e.g. 500000 or -50000').fill('500000');
+    await page.getByPlaceholder('e.g. 500,000 or -50,000').fill('500000');
     await page.getByPlaceholder('e.g. Owner injection · withdrawal').fill('Initial principal');
     await page.getByRole('button', { name: '+ RECORD' }).click();
     await expect(page.getByText('Initial principal')).toBeVisible();
     await expect(page.getByText('+₱500,000.00').first()).toBeVisible();
 
     // Record a withdrawal
-    await page.getByPlaceholder('e.g. 500000 or -50000').fill('-50000');
+    await page.getByPlaceholder('e.g. 500,000 or -50,000').fill('-50000');
     await page.getByPlaceholder('e.g. Owner injection · withdrawal').fill('Owner draw');
     await page.getByRole('button', { name: '+ RECORD' }).click();
     await expect(page.getByText('Owner draw')).toBeVisible();
