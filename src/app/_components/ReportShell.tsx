@@ -77,6 +77,10 @@ interface SafeBlock {
   movements: SafeMovementRow[];
   today_net: number;
 }
+interface PesoBlock {
+  opening_php: number | null;
+  closing_php: number | null;
+}
 interface Report {
   date: string;
   generated_at: string;
@@ -98,6 +102,7 @@ interface Report {
   by_cashier: CashierRow[];
   by_payment_method?: PaymentMethodRow[];
   safe?: SafeBlock;
+  peso?: PesoBlock;
   transactions: TxnRow[];
 }
 
@@ -265,6 +270,11 @@ function printReport(report: Report, hideThan = false) {
       ${hideThan ? '' : `<div class="summary-box"><div class="label">TOTAL THAN</div><div class="value" style="color:#007a55">${php(report.total_than)}</div>${(report.total_than_pending ?? 0) > 0 ? `<div style="font-size:10px;color:#c47000;font-weight:700;margin-top:6px">⏳ pending: ${php(report.total_than_pending!)}</div>` : ''}</div>`}
       ${hasComm ? `<div class="summary-box"><div class="label">TOTAL COMM</div><div class="value" style="color:#007a55">${report.total_commission > 0 ? '+' : ''}${php(report.total_commission)}</div></div>` : ''}
     </div>
+    ${report.peso && (report.peso.opening_php !== null || report.peso.closing_php !== null) ? `
+    <div class="summary">
+      <div class="summary-box"><div class="label">OPENING PESO</div><div class="value" style="color:#555">${report.peso.opening_php !== null ? php(report.peso.opening_php) : '—'}</div></div>
+      <div class="summary-box"><div class="label">CLOSING PESO</div><div class="value" style="color:#007a55">${report.peso.closing_php !== null ? php(report.peso.closing_php) : '—'}</div></div>
+    </div>` : ''}
     <div class="flow">
       <div class="flow-item"><div class="fl">OPENING STOCK</div><div class="fv" style="color:#555">${php(openingStockPhp)}</div></div>
       <div class="flow-op">+</div>
@@ -1046,6 +1056,34 @@ export default function ReportShell({
                 </div>
               );
             })()}
+
+            {/* ── PESO (treasurer drawer bookends) ── */}
+            {report.peso && (report.peso.opening_php !== null || report.peso.closing_php !== null) && (
+              <div data-testid="report-peso" className="print-card" style={{
+                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden',
+              }}>
+                <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>Peso</div>
+                  <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                    Treasurer drawer — opening and closing
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: 'var(--border)' }}>
+                  <div style={{ background: 'var(--surface)', padding: '18px 24px' }}>
+                    <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>OPENING PESO</div>
+                    <div className="print-accent" style={{ ...Y, fontSize: 22, fontWeight: 800, color: '#aab4c8' }} data-testid="peso-opening">
+                      {report.peso.opening_php !== null ? php(report.peso.opening_php) : '—'}
+                    </div>
+                  </div>
+                  <div style={{ background: 'var(--surface)', padding: '18px 24px' }}>
+                    <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>CLOSING PESO</div>
+                    <div className="print-accent" style={{ ...Y, fontSize: 22, fontWeight: 800, color: '#00d4aa' }} data-testid="peso-closing">
+                      {report.peso.closing_php !== null ? php(report.peso.closing_php) : '—'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ── SAFE / VAULT MOVEMENTS ── */}
             {report.safe && (report.safe.movements.length > 0 || report.safe.today_net !== 0) && (() => {

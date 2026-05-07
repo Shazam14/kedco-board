@@ -986,6 +986,10 @@ const server = createServer(async (req, res) => {
         total_cash_in: 0,
         interest_income: 2500,
       },
+      peso: {
+        opening_php: 2500000,
+        closing_php: 2750000,
+      },
     });
   }
 
