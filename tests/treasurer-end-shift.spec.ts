@@ -71,9 +71,9 @@ test.describe('Treasurer end-shift — supervisor view', () => {
     await expect(page.getByText('Remitted In (riders)')).toBeVisible();
     await expect(page.getByText('From Cashier')).toBeVisible();
 
-    // Bale peso row appears as a deduction (subtracted from expected)
-    await expect(page.getByText(/Bale Peso/)).toBeVisible();
-    await expect(page.getByText('-₱200,000.00')).toBeVisible();
+    // Bale peso row appears as cash-in (vault → drawer); Vault Return shown only when > 0
+    await expect(page.getByText('Bale Peso (vault → drawer)')).toBeVisible();
+    await expect(page.getByText('+₱200,000.00')).toBeVisible();
   });
 
   test('cashier-style rows are NOT shown for treasurer', async ({ page }) => {

@@ -117,6 +117,8 @@ export default function CounterShell({
     bale_peso_php?: number;
     vault_returns_php?: number;
     dispatches_out_php?: number;
+    expenses_php?: number;
+    cheques_cleared_php?: number;
   };
   const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
   const openingCashInput = useNumberInput('', 2);
@@ -770,7 +772,10 @@ export default function CounterShell({
         <div class="row"><span class="label">Dispatched Out</span><span class="val" style="color:#cc0000">-${phpFmt(s.dispatches_out_php ?? 0)}</span></div>
         <div class="row"><span class="label">Remitted In (riders)</span><span class="val" style="color:#007a55">+${phpFmt(s.from_dispatches_php ?? 0)}</span></div>
         <div class="row"><span class="label">From Cashier</span><span class="val" style="color:#007a55">+${phpFmt(s.from_cashier_php ?? 0)}</span></div>
-        <div class="row"><span class="label">Bale Peso (vault liab.)</span><span class="val" style="color:#cc0000">-${phpFmt((s.bale_peso_php ?? 0) - (s.vault_returns_php ?? 0))}</span></div>
+        <div class="row"><span class="label">Bale Peso (vault → drawer)</span><span class="val" style="color:#007a55">+${phpFmt(s.bale_peso_php ?? 0)}</span></div>
+        ${(s.vault_returns_php ?? 0) > 0 ? `<div class="row"><span class="label">Vault Return (drawer → vault)</span><span class="val" style="color:#cc0000">-${phpFmt(s.vault_returns_php ?? 0)}</span></div>` : ''}
+        ${(s.cheques_cleared_php ?? 0) > 0 ? `<div class="row"><span class="label">Cheques Cleared</span><span class="val" style="color:#007a55">+${phpFmt(s.cheques_cleared_php ?? 0)}</span></div>` : ''}
+        ${(s.expenses_php ?? 0) > 0 ? `<div class="row"><span class="label">Expenses</span><span class="val" style="color:#cc0000">-${phpFmt(s.expenses_php ?? 0)}</span></div>` : ''}
         <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
         <div class="highlight">
           <span style="font-size:11px;font-weight:700;letter-spacing:0.1em">EXPECTED CASH</span>
@@ -1060,19 +1065,23 @@ export default function CounterShell({
                 const overallSold   = shiftClosed.overall_total_sold_php   ?? 0;
                 const bale          = shiftClosed.bale_peso_php            ?? 0;
                 const vaultReturns  = shiftClosed.vault_returns_php        ?? 0;
-                const netBale       = bale - vaultReturns;
+                const expenses      = shiftClosed.expenses_php             ?? 0;
+                const cheques       = shiftClosed.cheques_cleared_php      ?? 0;
                 rows = [
-                  ['Total Bought (overall)',   php(overallBought),               'var(--accent-sky)'],
-                  ['Total Sold (overall)',     php(overallSold),                 'var(--accent-gold)'],
-                  ['Difference (overall)',     php(overallSold - overallBought), 'var(--text-strong)'],
-                  ['Dispatched Out',           '-' + php(shiftClosed.dispatches_out_php ?? 0), 'var(--accent-coral)'],
-                  ['Remitted In (riders)',     '+' + php(shiftClosed.from_dispatches_php ?? 0), 'var(--teal-300)'],
-                  ['From Cashier',             '+' + php(shiftClosed.from_cashier_php    ?? 0), 'var(--teal-300)'],
-                  ['Bale Peso (vault liab.)',  '-' + php(netBale),               'var(--accent-coral)'],
-                  ['Opening Cash',             php(shiftClosed.opening_cash_php)],
-                  ['Expected Cash',            php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
-                  ['Actual Cash',              php(shiftClosed.closing_cash_php ?? 0)],
-                  ['Variance',                 php(variance), variance === 0 ? 'var(--teal-300)' : 'var(--accent-coral)', 700],
+                  ['Total Bought (overall)',     php(overallBought),               'var(--accent-sky)'],
+                  ['Total Sold (overall)',       php(overallSold),                 'var(--accent-gold)'],
+                  ['Difference (overall)',       php(overallSold - overallBought), 'var(--text-strong)'],
+                  ['Dispatched Out',             '-' + php(shiftClosed.dispatches_out_php ?? 0), 'var(--accent-coral)'],
+                  ['Remitted In (riders)',       '+' + php(shiftClosed.from_dispatches_php ?? 0), 'var(--teal-300)'],
+                  ['From Cashier',               '+' + php(shiftClosed.from_cashier_php    ?? 0), 'var(--teal-300)'],
+                  ['Bale Peso (vault → drawer)', '+' + php(bale),                  'var(--teal-300)'],
+                  ...(vaultReturns > 0 ? [['Vault Return (drawer → vault)', '-' + php(vaultReturns), 'var(--accent-coral)']] as [string, string, string?, number?][] : []),
+                  ...(cheques > 0      ? [['Cheques Cleared', '+' + php(cheques), 'var(--teal-300)']]      as [string, string, string?, number?][] : []),
+                  ...(expenses > 0     ? [['Expenses',        '-' + php(expenses), 'var(--accent-coral)']] as [string, string, string?, number?][] : []),
+                  ['Opening Cash',               php(shiftClosed.opening_cash_php)],
+                  ['Expected Cash',              php(shiftClosed.expected_cash_php ?? 0), 'var(--accent-gold)'],
+                  ['Actual Cash',                php(shiftClosed.closing_cash_php ?? 0)],
+                  ['Variance',                   php(variance), variance === 0 ? 'var(--teal-300)' : 'var(--accent-coral)', 700],
                 ];
               } else {
                 const comm = shiftClosed.total_commission ?? 0;
@@ -1253,16 +1262,22 @@ export default function CounterShell({
               if (isTreasurer) {
                 const overallBought = shift.overall_total_bought_php ?? 0;
                 const overallSold   = shift.overall_total_sold_php   ?? 0;
-                const netBale       = (shift.bale_peso_php ?? 0) - (shift.vault_returns_php ?? 0);
+                const bale          = shift.bale_peso_php            ?? 0;
+                const vaultReturns  = shift.vault_returns_php        ?? 0;
+                const expenses      = shift.expenses_php             ?? 0;
+                const cheques       = shift.cheques_cleared_php      ?? 0;
                 rows = [
-                  ['Total Bought (overall)',   php(overallBought),               'var(--accent-sky)'],
-                  ['Total Sold (overall)',     php(overallSold),                 'var(--accent-gold)'],
-                  ['Difference (overall)',     php(overallSold - overallBought), 'var(--text-strong)'],
-                  ['Dispatched Out',           '-' + php(shift.dispatches_out_php ?? 0), 'var(--accent-coral)'],
-                  ['Remitted In (riders)',     '+' + php(shift.from_dispatches_php ?? 0), 'var(--teal-300)'],
-                  ['From Cashier',             '+' + php(shift.from_cashier_php    ?? 0), 'var(--teal-300)'],
-                  ['Bale Peso (vault liab.)',  '-' + php(netBale),                          'var(--accent-coral)'],
-                  ['Opening Cash',             php(shift.opening_cash_php)],
+                  ['Total Bought (overall)',     php(overallBought),               'var(--accent-sky)'],
+                  ['Total Sold (overall)',       php(overallSold),                 'var(--accent-gold)'],
+                  ['Difference (overall)',       php(overallSold - overallBought), 'var(--text-strong)'],
+                  ['Dispatched Out',             '-' + php(shift.dispatches_out_php ?? 0), 'var(--accent-coral)'],
+                  ['Remitted In (riders)',       '+' + php(shift.from_dispatches_php ?? 0), 'var(--teal-300)'],
+                  ['From Cashier',               '+' + php(shift.from_cashier_php    ?? 0), 'var(--teal-300)'],
+                  ['Bale Peso (vault → drawer)', '+' + php(bale),                  'var(--teal-300)'],
+                  ...(vaultReturns > 0 ? [['Vault Return (drawer → vault)', '-' + php(vaultReturns), 'var(--accent-coral)']] as [string, string, string?][] : []),
+                  ...(cheques > 0      ? [['Cheques Cleared', '+' + php(cheques), 'var(--teal-300)']]      as [string, string, string?][] : []),
+                  ...(expenses > 0     ? [['Expenses',        '-' + php(expenses), 'var(--accent-coral)']] as [string, string, string?][] : []),
+                  ['Opening Cash',               php(shift.opening_cash_php)],
                 ];
               } else {
                 const comm      = shift.total_commission ?? totalCommission;
@@ -1323,15 +1338,15 @@ export default function CounterShell({
             {(() => {
               const isTreasurer = shift.is_treasurer_shift ?? false;
               let expected: number;
-              let bale = 0;
               if (isTreasurer) {
-                bale = shift.bale_peso_php ?? 0;
                 expected = (shift.opening_cash_php ?? 0)
                   + (shift.from_dispatches_php  ?? 0)
                   - (shift.dispatches_out_php   ?? 0)
                   + (shift.from_cashier_php     ?? 0)
-                  - bale
-                  + (shift.vault_returns_php    ?? 0);
+                  + (shift.bale_peso_php        ?? 0)
+                  - (shift.vault_returns_php    ?? 0)
+                  + (shift.cheques_cleared_php  ?? 0)
+                  - (shift.expenses_php         ?? 0);
               } else {
                 const comm      = shift.total_commission ?? totalCommission;
                 const repl      = shift.total_replenishment_php ?? 0;

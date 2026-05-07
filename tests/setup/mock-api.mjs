@@ -207,6 +207,19 @@ const MISC_ENTRIES = [];
 // ── Investors (mutable, resets on each mock-api start) ──────────────────────
 const INVESTORS = [];
 
+// ── Pending cheques (mutable, resets on each mock-api start) ────────────────
+const PENDING_CHEQUES = [
+  {
+    payment_id: 'pay-cheque-001',
+    txn_id: 'OR-TESTCHEQ',
+    txn_date: new Date().toISOString().split('T')[0],
+    amount_php: 50000,
+    reference_no: 'CHK-12345',
+    customer: 'Acme Corp',
+    cashier: 'cashier1',
+  },
+];
+
 // ── Shift state (mutable, resets on each mock-api process start) ─────────────
 const today = new Date().toISOString().split('T')[0];
 
@@ -996,6 +1009,29 @@ const server = createServer(async (req, res) => {
   // GET /api/v1/treasurer/pending-float — returns null (no pre-fill) in tests
   if (method === 'GET' && url.startsWith('/api/v1/treasurer/pending-float')) {
     return json(res, null);
+  }
+
+  // GET /api/v1/treasurer/cheques/pending — list of uncleared cheques
+  if (method === 'GET' && url === '/api/v1/treasurer/cheques/pending') {
+    return json(res, PENDING_CHEQUES);
+  }
+
+  // POST /api/v1/treasurer/cheques/:id/clear — stamp cleared
+  {
+    const m = method === 'POST' && url.match(/^\/api\/v1\/treasurer\/cheques\/([^/]+)\/clear$/);
+    if (m) {
+      const pid = m[1];
+      const idx = PENDING_CHEQUES.findIndex(c => c.payment_id === pid);
+      if (idx === -1) return json(res, { detail: 'Cheque payment not found' }, 404);
+      const [cleared] = PENDING_CHEQUES.splice(idx, 1);
+      const auth = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+      const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+      return json(res, {
+        payment_id: cleared.payment_id,
+        cleared_at: new Date().toISOString(),
+        cleared_by: payload.sub ?? 'treasurer1',
+      });
+    }
   }
 
   // ── Shifts ───────────────────────────────────────────────────────────────

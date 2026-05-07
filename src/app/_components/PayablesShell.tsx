@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
 
@@ -37,6 +37,16 @@ interface PendingRow {
   slice: PaymentSlice;
 }
 
+interface PendingCheque {
+  payment_id: string;
+  txn_id: string;
+  txn_date: string;
+  amount_php: number;
+  reference_no: string | null;
+  customer: string | null;
+  cashier: string;
+}
+
 export default function PayablesShell({
   transactions, selectedDate, username,
 }: {
@@ -49,6 +59,38 @@ export default function PayablesShell({
 
   const [txns, setTxns] = useState<Txn[]>(transactions);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [tab, setTab] = useState<'payables' | 'cheques'>('payables');
+  const [cheques, setCheques] = useState<PendingCheque[]>([]);
+  const [chequesLoaded, setChequesLoaded] = useState(false);
+  const [clearingId, setClearingId] = useState<string | null>(null);
+  const [chequeError, setChequeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (tab !== 'cheques' || chequesLoaded) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/cheques/pending', { cache: 'no-store' });
+        if (res.ok) setCheques(await res.json());
+      } finally {
+        setChequesLoaded(true);
+      }
+    })();
+  }, [tab, chequesLoaded]);
+
+  async function handleClearCheque(payment_id: string) {
+    setClearingId(payment_id); setChequeError(null);
+    try {
+      const res = await fetch(`/api/admin/cheques/${payment_id}/clear`, { method: 'POST' });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setChequeError(d.detail ?? 'Failed to clear cheque.');
+      } else {
+        setCheques(prev => prev.filter(c => c.payment_id !== payment_id));
+      }
+    } finally {
+      setClearingId(null);
+    }
+  }
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -127,6 +169,26 @@ export default function PayablesShell({
       </nav>
 
       <div style={{ padding: '24px 28px', maxWidth: 1100, margin: '0 auto' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
+          {(['payables', 'cheques'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              data-testid={`tab-${t}`}
+              style={{
+                padding: '10px 18px', background: 'transparent', border: 'none',
+                borderBottom: tab === t ? '2px solid var(--teal-300)' : '2px solid transparent',
+                color: tab === t ? 'var(--text-strong)' : 'var(--text-muted)',
+                ...M, fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em',
+              }}
+            >
+              {t === 'payables' ? `PENDING PAYMENTS (${rows.length})` : `CHEQUES TO CLEAR (${cheques.length})`}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'payables' && (
+        <>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.1em', marginBottom: 4 }}>
@@ -225,6 +287,95 @@ export default function PayablesShell({
         {rows.length > 0 && (
           <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)', marginTop: 16, lineHeight: 1.6 }}>
             Confirming a transaction with multiple pending slices clears all of them. Per-slice confirmation is on the roadmap.
+          </div>
+        )}
+        </>
+        )}
+
+        {tab === 'cheques' && (
+          <div data-testid="cheques-panel">
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.1em', marginBottom: 4 }}>
+                CHEQUES TO CLEAR — mark cleared once the bank confirms
+              </div>
+              <div style={{ ...Y, fontSize: 22, fontWeight: 700, color: 'var(--text-strong)' }}>
+                {cheques.length} cheque{cheques.length === 1 ? '' : 's'} · {php(cheques.reduce((s, c) => s + c.amount_php, 0))}
+              </div>
+            </div>
+
+            {chequeError && (
+              <div style={{
+                background: 'rgba(212,90,90,0.12)', border: '1px solid rgba(212,90,90,0.4)',
+                color: 'var(--accent-coral)', padding: '8px 12px', borderRadius: 8,
+                ...M, fontSize: 11, marginBottom: 12,
+              }}>
+                {chequeError}
+              </div>
+            )}
+
+            {!chequesLoaded ? (
+              <div style={{ ...M, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '60px 0' }}>
+                Loading…
+              </div>
+            ) : cheques.length === 0 ? (
+              <div style={{
+                ...M, fontSize: 12, color: 'var(--text-muted)',
+                textAlign: 'center', padding: '60px 0',
+                background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12,
+              }}>
+                No cheques pending clearance.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {cheques.map(c => {
+                  const isClearing = clearingId === c.payment_id;
+                  return (
+                    <div key={c.payment_id} style={{
+                      background: 'var(--bg-card)', border: '1px solid var(--border)',
+                      borderRadius: 12, padding: '14px 18px',
+                      display: 'grid',
+                      gridTemplateColumns: '90px 1fr 1fr 1fr auto',
+                      alignItems: 'center', gap: 14,
+                    }}>
+                      <div style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>{c.txn_date}</div>
+                      <div>
+                        <div style={{ ...Y, fontSize: 13, fontWeight: 600, color: 'var(--text-strong)' }}>
+                          {c.customer ?? '—'}
+                        </div>
+                        <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)', marginTop: 2 }}>
+                          {c.txn_id} · cashier {c.cashier}
+                        </div>
+                      </div>
+                      <div style={{ ...M, fontSize: 12, color: 'var(--text-strong)' }}>
+                        cheque #{c.reference_no ?? 'n/a'}
+                      </div>
+                      <div style={{ ...M, fontSize: 13, color: 'var(--accent-gold)', fontWeight: 700 }}>
+                        {php(c.amount_php)}
+                      </div>
+                      <button
+                        onClick={() => handleClearCheque(c.payment_id)}
+                        disabled={isClearing}
+                        data-testid={`clear-${c.payment_id}`}
+                        style={{
+                          padding: '8px 16px', borderRadius: 8, border: 'none',
+                          background: 'var(--teal-600)', color: '#fff',
+                          ...M, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                          whiteSpace: 'nowrap', opacity: isClearing ? 0.6 : 1,
+                        }}
+                      >
+                        {isClearing ? '…' : '✓ CLEAR'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {cheques.length > 0 && (
+              <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)', marginTop: 16, lineHeight: 1.6 }}>
+                Clearing a cheque stamps it as bank-confirmed and credits your shift summary.
+              </div>
+            )}
           </div>
         )}
       </div>
