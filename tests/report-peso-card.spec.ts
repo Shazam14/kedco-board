@@ -3,7 +3,8 @@
  *
  * OPENING PESO + CLOSING PESO sit inline with the existing summary boxes.
  * A peso flow row mirrors the stock flow showing the full treasurer formula:
- * OPEN + SOLD − BOUGHT + BALE − RETURNS + CHEQUES − EXPENSES = CLOSE.
+ * OPEN + SOLD − BOUGHT + BALE ± VAULT + CHEQUES − EXPENSES = CLOSE.
+ * VAULT row sign flips drawer-aware: deposit → '−', withdrawal → '+'.
  *
  * PHP Capital chip stays admin-only.
  */
@@ -27,7 +28,7 @@ test.describe('Peso boxes + flow — admin', () => {
     await expect(flow).toContainText('SOLD');
     await expect(flow).toContainText('BOUGHT');
     await expect(flow).toContainText('BALE');
-    await expect(flow).toContainText('RETURNS');
+    await expect(flow).toContainText('VAULT');
     await expect(flow).toContainText('CHEQUES');
     await expect(flow).toContainText('EXPENSES');
     await expect(flow).toContainText('CLOSING PESO');
