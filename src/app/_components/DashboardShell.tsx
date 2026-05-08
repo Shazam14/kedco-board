@@ -1157,7 +1157,10 @@ export default function DashboardShell({ data, role }: { data: DashboardSummary;
               REFRESH
             </button>
             <button
-              onClick={handleLogout}
+              onClick={async () => {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/login';
+              }}
               style={{
                 width: '100%', padding: '10px', borderRadius: 10,
                 border: '1px solid var(--border-subtle)', background: 'transparent',
