@@ -989,6 +989,10 @@ const server = createServer(async (req, res) => {
       peso: {
         opening_php: 2500000,
         closing_php: 2750000,
+        bale_php: 100000,
+        vault_returns_php: 50000,
+        cheques_cleared_php: 25000,
+        expenses_php: 5000,
       },
     });
   }

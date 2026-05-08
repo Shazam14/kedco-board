@@ -1,43 +1,50 @@
 /**
- * Daily Report — Peso card (treasurer drawer bookends).
+ * Daily Report — Peso boxes + flow breakdown.
  *
- * Card sits above the SAFE / Vault Movements block on /admin/report.
- * PHP Capital chip stays admin-only — treasurer role hits the same page but
- * the chip is gated server-side on role==='admin'.
+ * OPENING PESO + CLOSING PESO sit inline with the existing summary boxes.
+ * A peso flow row mirrors the stock flow showing the full treasurer formula:
+ * OPEN + SOLD − BOUGHT + BALE − RETURNS + CHEQUES − EXPENSES = CLOSE.
+ *
+ * PHP Capital chip stays admin-only.
  */
 import { test, expect } from '@playwright/test';
 import path from 'path';
 
-test.describe('Peso card — admin', () => {
+test.describe('Peso boxes + flow — admin', () => {
   test.use({ storageState: path.join('tests', '.auth', 'admin.json') });
 
-  test('renders OPENING + CLOSING peso, sits above SAFE block', async ({ page }) => {
+  test('OPENING/CLOSING PESO render as summary boxes', async ({ page }) => {
     await page.goto('/admin/report');
-
-    const peso = page.getByTestId('report-peso');
-    await expect(peso).toBeVisible();
-    await expect(peso).toContainText('OPENING PESO');
-    await expect(peso).toContainText('CLOSING PESO');
     await expect(page.getByTestId('peso-opening')).toContainText('₱2,500,000.00');
     await expect(page.getByTestId('peso-closing')).toContainText('₱2,750,000.00');
+  });
 
-    const safe = page.getByTestId('report-safe');
-    if (await safe.count()) {
-      const order = await page.evaluate(() => {
-        const p = document.querySelector('[data-testid="report-peso"]');
-        const s = document.querySelector('[data-testid="report-safe"]');
-        if (!p || !s) return null;
-        return (p.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING) ? 'before' : 'after';
-      });
-      expect(order).toBe('before');
-    }
+  test('peso flow shows full breakdown formula', async ({ page }) => {
+    await page.goto('/admin/report');
+    const flow = page.getByTestId('peso-flow');
+    await expect(flow).toBeVisible();
+    await expect(flow).toContainText('OPENING PESO');
+    await expect(flow).toContainText('SOLD');
+    await expect(flow).toContainText('BOUGHT');
+    await expect(flow).toContainText('BALE');
+    await expect(flow).toContainText('RETURNS');
+    await expect(flow).toContainText('CHEQUES');
+    await expect(flow).toContainText('EXPENSES');
+    await expect(flow).toContainText('CLOSING PESO');
   });
 });
 
-test.describe('PHP Capital chip — treasurer cannot see it', () => {
+test.describe('Peso boxes + flow — treasurer', () => {
   test.use({ storageState: path.join('tests', '.auth', 'supervisor.json') });
 
-  test('chip is hidden for supervisor role', async ({ page }) => {
+  test('treasurer sees the same peso boxes + flow', async ({ page }) => {
+    await page.goto('/admin/report');
+    await expect(page.getByTestId('peso-opening')).toContainText('₱2,500,000.00');
+    await expect(page.getByTestId('peso-closing')).toContainText('₱2,750,000.00');
+    await expect(page.getByTestId('peso-flow')).toBeVisible();
+  });
+
+  test('PHP Capital chip is hidden for treasurer', async ({ page }) => {
     await page.goto('/admin/report');
     await expect(page.getByTestId('php-capital-chip')).toHaveCount(0);
   });

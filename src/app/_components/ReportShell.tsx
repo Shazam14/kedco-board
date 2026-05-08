@@ -80,6 +80,10 @@ interface SafeBlock {
 interface PesoBlock {
   opening_php: number | null;
   closing_php: number | null;
+  bale_php?: number;
+  vault_returns_php?: number;
+  cheques_cleared_php?: number;
+  expenses_php?: number;
 }
 interface Report {
   date: string;
@@ -269,12 +273,9 @@ function printReport(report: Report, hideThan = false) {
       <div class="summary-box"><div class="label">TOTAL SOLD</div><div class="value" style="color:#c47000">${php(report.total_sold_php)}</div>${(report.total_sold_php_pending ?? 0) > 0 ? `<div style="font-size:10px;color:#c47000;font-weight:700;margin-top:6px">⏳ pending: ${php(report.total_sold_php_pending!)}</div>` : ''}</div>
       ${hideThan ? '' : `<div class="summary-box"><div class="label">TOTAL THAN</div><div class="value" style="color:#007a55">${php(report.total_than)}</div>${(report.total_than_pending ?? 0) > 0 ? `<div style="font-size:10px;color:#c47000;font-weight:700;margin-top:6px">⏳ pending: ${php(report.total_than_pending!)}</div>` : ''}</div>`}
       ${hasComm ? `<div class="summary-box"><div class="label">TOTAL COMM</div><div class="value" style="color:#007a55">${report.total_commission > 0 ? '+' : ''}${php(report.total_commission)}</div></div>` : ''}
+      <div class="summary-box"><div class="label">OPENING PESO</div><div class="value" style="color:#555">${report.peso?.opening_php != null ? php(report.peso.opening_php) : '—'}</div></div>
+      <div class="summary-box"><div class="label">CLOSING PESO</div><div class="value" style="color:#007a55">${report.peso?.closing_php != null ? php(report.peso.closing_php) : '—'}</div></div>
     </div>
-    ${report.peso && (report.peso.opening_php !== null || report.peso.closing_php !== null) ? `
-    <div class="summary">
-      <div class="summary-box"><div class="label">OPENING PESO</div><div class="value" style="color:#555">${report.peso.opening_php !== null ? php(report.peso.opening_php) : '—'}</div></div>
-      <div class="summary-box"><div class="label">CLOSING PESO</div><div class="value" style="color:#007a55">${report.peso.closing_php !== null ? php(report.peso.closing_php) : '—'}</div></div>
-    </div>` : ''}
     <div class="flow">
       <div class="flow-item"><div class="fl">OPENING STOCK</div><div class="fv" style="color:#555">${php(openingStockPhp)}</div></div>
       <div class="flow-op">+</div>
@@ -284,6 +285,24 @@ function printReport(report: Report, hideThan = false) {
       <div class="flow-op">=</div>
       <div class="flow-item"><div class="fl">CLOSING STOCK EST.</div><div class="fv" style="color:#007a55">${php(closingEstimate)}</div></div>
     </div>
+    ${report.peso && report.peso.opening_php !== null ? `
+    <div class="flow" style="font-size:11px;flex-wrap:wrap">
+      <div class="flow-item"><div class="fl">OPENING PESO</div><div class="fv" style="color:#555">${php(report.peso.opening_php)}</div></div>
+      <div class="flow-op">+</div>
+      <div class="flow-item"><div class="fl">SOLD</div><div class="fv" style="color:#c47000">${php(report.total_sold_php)}</div></div>
+      <div class="flow-op">−</div>
+      <div class="flow-item"><div class="fl">BOUGHT</div><div class="fv" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
+      <div class="flow-op">+</div>
+      <div class="flow-item"><div class="fl">BALE</div><div class="fv" style="color:#555">${php(report.peso.bale_php ?? 0)}</div></div>
+      <div class="flow-op">−</div>
+      <div class="flow-item"><div class="fl">RETURNS</div><div class="fv" style="color:#555">${php(report.peso.vault_returns_php ?? 0)}</div></div>
+      <div class="flow-op">+</div>
+      <div class="flow-item"><div class="fl">CHEQUES</div><div class="fv" style="color:#555">${php(report.peso.cheques_cleared_php ?? 0)}</div></div>
+      <div class="flow-op">−</div>
+      <div class="flow-item"><div class="fl">EXPENSES</div><div class="fv" style="color:#555">${php(report.peso.expenses_php ?? 0)}</div></div>
+      <div class="flow-op">=</div>
+      <div class="flow-item"><div class="fl">CLOSING PESO</div><div class="fv" style="color:#007a55">${report.peso.closing_php != null ? php(report.peso.closing_php) : '—'}</div></div>
+    </div>` : ''}
 
     <h2>OPENING POSITIONS</h2>
     <table>
@@ -556,20 +575,25 @@ export default function ReportShell({
 
             {/* ── SUMMARY BOXES ── */}
             {(() => {
-              const summaryCount = (report.total_commission !== 0 ? 5 : 4) - (hideThan ? 1 : 0);
+              const baseCount = (report.total_commission !== 0 ? 5 : 4) - (hideThan ? 1 : 0);
+              const summaryCount = baseCount + 2; // + OPENING PESO + CLOSING PESO
               const soldPending = report.total_sold_php_pending ?? 0;
               const thanPending = report.total_than_pending ?? 0;
+              const openPeso  = report.peso?.opening_php ?? null;
+              const closePeso = report.peso?.closing_php ?? null;
               const boxes = [
                 { label: 'OPENING STOCK', value: php(openingStock), color: '#aab4c8' },
                 { label: 'TOTAL BOUGHT',  value: php(report.total_bought_php),        color: '#5b8cff' },
                 { label: 'TOTAL SOLD',    value: php(report.total_sold_php),           color: '#f5a623', pending: soldPending },
                 ...(hideThan ? [] : [{ label: 'TOTAL THAN', value: php(report.total_than), color: '#00d4aa', pending: thanPending }]),
                 ...(report.total_commission !== 0 ? [{ label: 'TOTAL COMM', value: (report.total_commission > 0 ? '+' : '') + php(report.total_commission), color: '#00d4aa' }] : []),
+                { label: 'OPENING PESO', value: openPeso  !== null ? php(openPeso)  : '—', color: '#aab4c8', testid: 'peso-opening' },
+                { label: 'CLOSING PESO', value: closePeso !== null ? php(closePeso) : '—', color: '#00d4aa', testid: 'peso-closing' },
               ];
               return (
                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${summaryCount},1fr)`, gap: 16 }}>
                   {boxes.map(s => (
-                    <div key={s.label} className="print-card" style={{
+                    <div key={s.label} className="print-card" data-testid={('testid' in s ? s.testid : undefined)} style={{
                       background: 'var(--surface)', border: '1px solid var(--border)',
                       borderRadius: 12, padding: '18px 24px',
                     }}>
@@ -611,6 +635,45 @@ export default function ReportShell({
                   {item('SOLD', php(report.total_sold_php), '#f5a623')}
                   {op('=')}
                   {item('CLOSING STOCK EST.', php(closing), '#00d4aa')}
+                </div>
+              );
+            })()}
+
+            {/* ── PESO MOVEMENT (treasurer drawer breakdown) ── */}
+            {report.peso && report.peso.opening_php !== null && (() => {
+              const p = report.peso!;
+              const open    = p.opening_php ?? 0;
+              const close   = p.closing_php;
+              const bale    = p.bale_php ?? 0;
+              const ret     = p.vault_returns_php ?? 0;
+              const cheq    = p.cheques_cleared_php ?? 0;
+              const exp     = p.expenses_php ?? 0;
+              const sold    = report.total_sold_php;
+              const bought  = report.total_bought_php;
+              const item = (label: string, value: string, color: string) => (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 4 }}>{label}</div>
+                  <div style={{ ...Y, fontSize: 14, fontWeight: 800, color }}>{value}</div>
+                </div>
+              );
+              const op = (sym: string) => (
+                <div style={{ ...Y, fontSize: 18, fontWeight: 800, color: 'var(--muted)', padding: '0 2px' }}>{sym}</div>
+              );
+              return (
+                <div data-testid="peso-flow" className="print-card" style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 12, padding: '14px 16px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap',
+                }}>
+                  {item('OPENING PESO', php(open), '#aab4c8')}
+                  {op('+')} {item('SOLD', php(sold), '#f5a623')}
+                  {op('−')} {item('BOUGHT', php(bought), '#5b8cff')}
+                  {op('+')} {item('BALE', php(bale), '#aab4c8')}
+                  {op('−')} {item('RETURNS', php(ret), '#aab4c8')}
+                  {op('+')} {item('CHEQUES', php(cheq), '#aab4c8')}
+                  {op('−')} {item('EXPENSES', php(exp), '#aab4c8')}
+                  {op('=')}
+                  {item('CLOSING PESO', close !== null ? php(close) : '—', '#00d4aa')}
                 </div>
               );
             })()}
@@ -1056,34 +1119,6 @@ export default function ReportShell({
                 </div>
               );
             })()}
-
-            {/* ── PESO (treasurer drawer bookends) ── */}
-            {report.peso && (report.peso.opening_php !== null || report.peso.closing_php !== null) && (
-              <div data-testid="report-peso" className="print-card" style={{
-                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden',
-              }}>
-                <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ ...Y, fontSize: 14, fontWeight: 800 }}>Peso</div>
-                  <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
-                    Treasurer drawer — opening and closing
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: 'var(--border)' }}>
-                  <div style={{ background: 'var(--surface)', padding: '18px 24px' }}>
-                    <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>OPENING PESO</div>
-                    <div className="print-accent" style={{ ...Y, fontSize: 22, fontWeight: 800, color: '#aab4c8' }} data-testid="peso-opening">
-                      {report.peso.opening_php !== null ? php(report.peso.opening_php) : '—'}
-                    </div>
-                  </div>
-                  <div style={{ background: 'var(--surface)', padding: '18px 24px' }}>
-                    <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>CLOSING PESO</div>
-                    <div className="print-accent" style={{ ...Y, fontSize: 22, fontWeight: 800, color: '#00d4aa' }} data-testid="peso-closing">
-                      {report.peso.closing_php !== null ? php(report.peso.closing_php) : '—'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* ── SAFE / VAULT MOVEMENTS ── */}
             {report.safe && (report.safe.movements.length > 0 || report.safe.today_net !== 0) && (() => {
