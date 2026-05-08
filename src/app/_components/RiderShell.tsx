@@ -98,6 +98,9 @@ export default function RiderShell({
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState<string | null>(null);
   const [flash,       setFlash]       = useState<(Transaction & { paymentLabel: string }) | null>(null);
+  const [batchFlash,  setBatchFlash]  = useState<Transaction[] | null>(null);
+  type CartItem = { ccy: CurrencyMeta; foreign_amt: number; rate: number };
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [txns,        setTxns]        = useState<Transaction[]>([]);
   const [linkingTxnId,    setLinkingTxnId]    = useState<string | null>(null);
   const [linkPickerName,  setLinkPickerName]  = useState('');
@@ -351,6 +354,60 @@ export default function RiderShell({
         ]);
         await fetchTxns();
         setTimeout(() => setFlash(null), 6000);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function addToBatch() {
+    if (!ccy || !+amtInput.raw || !+rateInput.raw) return;
+    setCart(prev => [...prev, { ccy, foreign_amt: +amtInput.raw, rate: +rateInput.raw }]);
+    setCcy(null); amtInput.setValue(''); rateInput.setValue('');
+  }
+
+  async function handleBatchSubmit() {
+    if (cart.length === 0 || splitMode) return;
+    if (NEEDS_BANK.includes(payMode) && bankId === null) return;
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch('/api/rider/transactions/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          source: 'RIDER',
+          customer: cust || undefined,
+          customer_id: custId || undefined,
+          payment_mode: payMode,
+          bank_id: bankId ?? undefined,
+          branch_id: (type === 'BUY' ? (txnBranch || branch) : branch) || undefined,
+          items: cart.map(it => ({
+            currency: it.ccy.code,
+            foreign_amt: it.foreign_amt,
+            rate: it.rate,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail ?? data.error ?? 'Batch transaction failed');
+      } else {
+        const mapped: Transaction[] = data.map((t: Record<string, unknown>) => ({
+          id: t.id as string, time: t.time as string, type: t.type as 'BUY' | 'SELL', source: t.source as string,
+          currency: t.currency as string, foreignAmt: t.foreign_amt as number,
+          rate: t.rate as number, phpAmt: t.php_amt as number, than: t.than as number,
+          cashier: t.cashier as string, customer: (t.customer as string) ?? undefined,
+          customerId: (t.customer_id as string) ?? undefined,
+          paymentMode: (t.payment_mode as string) ?? payMode,
+          paymentStatus: (t.payment_status as 'RECEIVED' | 'PENDING') ?? 'RECEIVED',
+        }));
+        setBatchFlash(mapped);
+        setCart([]);
+        setCcy(null); amtInput.setValue(''); rateInput.setValue('');
+        setCust(''); setCustId(null); setPayMode('CASH'); setBankId(null); setTxnBranch('');
+        await fetchTxns();
+        setTimeout(() => setBatchFlash(null), 8000);
       }
     } finally {
       setLoading(false);
@@ -1236,22 +1293,127 @@ export default function RiderShell({
             </div>
           )}
 
+          {/* Batch cart — phone-friendly stacked cards. Active when items added via "+ ADD TO BATCH". */}
+          {cart.length > 0 && (
+            <div data-testid="rider-cart" style={{ background: 'var(--surface)', border: `1px solid ${typeColor}44`, borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ ...M, fontSize: 10, color: typeColor, letterSpacing: '0.14em' }}>
+                  BATCH {type} ({cart.length})
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCart([])}
+                  style={{ ...M, fontSize: 9, background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--muted)', padding: '3px 8px', cursor: 'pointer' }}
+                >CLEAR</button>
+              </div>
+              {cart.map((it, i) => {
+                const phpAmt = it.foreign_amt * it.rate;
+                return (
+                  <div key={i} data-testid={`rider-cart-item-${i}`} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                      <div style={{ ...Y, fontSize: 13, fontWeight: 700, color: 'var(--text-strong)' }}>
+                        {it.ccy.flag} {fmtFx(it.foreign_amt, it.ccy.code, currencies)} {it.ccy.code}
+                      </div>
+                      <div style={{ ...M, fontSize: 10, color: 'var(--muted)' }}>
+                        @ {it.rate} = {php(phpAmt)}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      data-testid={`rider-cart-remove-${i}`}
+                      onClick={() => setCart(prev => prev.filter((_, j) => j !== i))}
+                      style={{ ...M, fontSize: 14, background: 'transparent', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--muted)', width: 28, height: 28, cursor: 'pointer', flexShrink: 0 }}
+                    >×</button>
+                  </div>
+                );
+              })}
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px dashed var(--border)' }}>
+                <span style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>BATCH TOTAL</span>
+                <span style={{ ...Y, fontSize: 16, fontWeight: 800, color: typeColor }}>
+                  {php(cart.reduce((s, it) => s + it.foreign_amt * it.rate, 0))}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Batch flash confirmation */}
+          {batchFlash && (
+            <div data-testid="rider-batch-flash" style={{ background: 'rgba(61,199,173,0.08)', border: '1px solid rgba(61,199,173,0.25)', borderRadius: 12, padding: '14px' }}>
+              <div style={{ ...M, fontSize: 10, color: 'var(--teal-300)', marginBottom: 8 }}>✓ BATCH SAVED ({batchFlash.length})</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {batchFlash.map(t => (
+                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', ...M, fontSize: 11 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{fmtFx(t.foreignAmt, t.currency, currencies)} {t.currency}</span>
+                    <span style={{ color: 'var(--text-strong)' }}>{php(t.phpAmt)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Submit */}
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            style={{
-              padding: '20px', borderRadius: 12, border: 'none',
-              background: !canSubmit ? 'var(--bg-raised)' : type === 'BUY'
-                ? 'var(--teal-400)'
-                : 'var(--accent-coral)',
-              color: !canSubmit ? 'var(--text-faint)' : type === 'BUY' ? 'var(--text-on-teal)' : '#fff',
-              ...Y, fontSize: 16, fontWeight: 800, cursor: !canSubmit ? 'not-allowed' : 'pointer',
-              letterSpacing: '0.04em', transition: 'all 0.2s', marginTop: 4,
-            }}
-          >
-            {loading ? 'PROCESSING…' : `CONFIRM ${type}`}
-          </button>
+          {cart.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                data-testid="rider-batch-submit"
+                onClick={handleBatchSubmit}
+                disabled={loading || (NEEDS_BANK.includes(payMode) && bankId === null)}
+                style={{
+                  padding: '20px', borderRadius: 12, border: 'none',
+                  background: loading ? 'var(--bg-raised)' : type === 'BUY' ? 'var(--teal-400)' : 'var(--accent-coral)',
+                  color: loading ? 'var(--text-faint)' : type === 'BUY' ? 'var(--text-on-teal)' : '#fff',
+                  ...Y, fontSize: 16, fontWeight: 800, cursor: loading ? 'not-allowed' : 'pointer',
+                  letterSpacing: '0.04em', transition: 'all 0.2s', marginTop: 4,
+                }}
+              >
+                {loading ? 'PROCESSING…' : `SUBMIT BATCH (${cart.length})`}
+              </button>
+              <button
+                type="button"
+                data-testid="rider-add-to-batch"
+                onClick={addToBatch}
+                disabled={!ccy || !+amtInput.raw || !+rateInput.raw || splitMode}
+                style={{
+                  padding: '12px', borderRadius: 10, cursor: 'pointer',
+                  border: `1px dashed ${typeColor}66`, background: 'transparent',
+                  color: (!ccy || !+amtInput.raw || !+rateInput.raw || splitMode) ? 'var(--text-faint)' : typeColor,
+                  ...M, fontSize: 11, letterSpacing: '0.08em',
+                }}
+              >+ ADD ANOTHER ITEM TO BATCH</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                style={{
+                  padding: '20px', borderRadius: 12, border: 'none',
+                  background: !canSubmit ? 'var(--bg-raised)' : type === 'BUY'
+                    ? 'var(--teal-400)'
+                    : 'var(--accent-coral)',
+                  color: !canSubmit ? 'var(--text-faint)' : type === 'BUY' ? 'var(--text-on-teal)' : '#fff',
+                  ...Y, fontSize: 16, fontWeight: 800, cursor: !canSubmit ? 'not-allowed' : 'pointer',
+                  letterSpacing: '0.04em', transition: 'all 0.2s', marginTop: 4,
+                }}
+              >
+                {loading ? 'PROCESSING…' : `CONFIRM ${type}`}
+              </button>
+              {!splitMode && (
+                <button
+                  type="button"
+                  data-testid="rider-add-to-batch"
+                  onClick={addToBatch}
+                  disabled={!ccy || !+amtInput.raw || !+rateInput.raw}
+                  style={{
+                    padding: '10px', borderRadius: 8, cursor: 'pointer',
+                    border: '1px dashed var(--border)', background: 'transparent',
+                    color: (!ccy || !+amtInput.raw || !+rateInput.raw) ? 'var(--text-faint)' : 'var(--muted)',
+                    ...M, fontSize: 10, letterSpacing: '0.08em',
+                  }}
+                >+ ADD TO BATCH (multi-currency)</button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

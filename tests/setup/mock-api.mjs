@@ -807,13 +807,17 @@ const server = createServer(async (req, res) => {
   if (method === 'GET' && url === '/api/v1/transactions/today') return json(res, TODAY_TRANSACTIONS.map(t => ({ id: t.id, time: t.time, type: t.type, source: t.source, currency: t.currency_code, foreign_amt: t.foreign_amt, rate: t.rate, php_amt: t.php_amt, than: t.than, cashier: t.cashier, customer: t.customer, customer_id: t.customer_id ?? null, payment_mode: t.payment_mode, bank_id: null, payment_status: t.payment_status ?? 'RECEIVED', branch_id: t.branch_id ?? null, payments: [{ id: `${t.id}-p0`, method: t.payment_mode ?? 'CASH', amount_php: t.php_amt, status: t.payment_status ?? 'RECEIVED', reference_no: null, received_at: null, confirmed_by: null }] })));
   if (method === 'GET' && /transactions/.test(url)) return json(res, []);
 
-  // Submit batch counter transaction
+  // Submit batch transaction (counter or rider)
   if (method === 'POST' && url === '/api/v1/transactions/batch') {
     const body = await readBody(req);
     const data = JSON.parse(body);
     const time = new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+    const isRider = data.source === 'RIDER';
+    const pmode = (data.payment_mode ?? 'CASH').toUpperCase();
+    const pending = isRider && pmode !== 'CASH';
+    const idPrefix = isRider ? 'RD' : 'TXN-BATCH';
     return json(res, data.items.map((item, i) => ({
-      id:           `TXN-BATCH-${String(i + 1).padStart(3, '0')}`,
+      id:           `${idPrefix}-${String(i + 1).padStart(3, '0')}`,
       time,
       type:         data.type,
       source:       data.source ?? 'COUNTER',
@@ -822,11 +826,11 @@ const server = createServer(async (req, res) => {
       rate:         item.rate,
       php_amt:      item.foreign_amt * item.rate,
       than:         0,
-      cashier:      'cashier1',
+      cashier:      isRider ? 'rider1' : 'cashier1',
       customer:     data.customer ?? null,
       customer_id:  data.customer_id ?? null,
-      payment_mode: data.payment_mode ?? 'CASH',
-      payment_status: 'RECEIVED',
+      payment_mode: pmode,
+      payment_status: pending ? 'PENDING' : 'RECEIVED',
       batch_id:     'mock-batch-uuid',
     })), 201);
   }
