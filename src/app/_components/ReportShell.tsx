@@ -81,6 +81,7 @@ interface PesoBlock {
   opening_php: number | null;
   closing_php: number | null;
   bale_php?: number;
+  inter_branch_in_php?: number;
   vault_returns_php?: number;
   cheques_cleared_php?: number;
   expenses_php?: number;
@@ -286,6 +287,8 @@ function printReport(report: Report, hideThan = false) {
       <div class="flow-item"><div class="fl">BOUGHT</div><div class="fv" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
       <div class="flow-op">+</div>
       <div class="flow-item"><div class="fl">BALE</div><div class="fv" style="color:#555">${php(report.peso?.bale_php ?? 0)}</div></div>
+      <div class="flow-op">+</div>
+      <div class="flow-item"><div class="fl">FROM BRANCH</div><div class="fv" style="color:#555">${php(report.peso?.inter_branch_in_php ?? 0)}</div></div>
       <div class="flow-op">−</div>
       <div class="flow-item"><div class="fl">RETURNS</div><div class="fv" style="color:#555">${php(report.peso?.vault_returns_php ?? 0)}</div></div>
       <div class="flow-op">+</div>
@@ -635,6 +638,7 @@ export default function ReportShell({
               const open    = p?.opening_php ?? 0;
               const close   = p?.closing_php ?? 0;
               const bale    = p?.bale_php ?? 0;
+              const interIn = p?.inter_branch_in_php ?? 0;
               const ret     = p?.vault_returns_php ?? 0;
               const cheq    = p?.cheques_cleared_php ?? 0;
               const exp     = p?.expenses_php ?? 0;
@@ -659,6 +663,7 @@ export default function ReportShell({
                   {op('+')} {item('SOLD', php(sold), '#f5a623')}
                   {op('−')} {item('BOUGHT', php(bought), '#5b8cff')}
                   {op('+')} {item('BALE', php(bale), '#aab4c8')}
+                  {op('+')} {item('FROM BRANCH', php(interIn), '#aab4c8')}
                   {op('−')} {item('RETURNS', php(ret), '#aab4c8')}
                   {op('+')} {item('CHEQUES', php(cheq), '#aab4c8')}
                   {op('−')} {item('EXPENSES', php(exp), '#aab4c8')}
