@@ -449,22 +449,41 @@ export default function DispatchShell({
                 RETURNED ({returned.length})
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {returned.map(d => (
-                  <div key={d.id} style={{ ...cardStyle, opacity: 0.65 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ ...Y, fontSize: 13, fontWeight: 600, color: 'var(--text-strong)' }}>{d.rider_name}</span>
-                      <span style={{ ...M, fontSize: 10, color: 'var(--teal-300)' }}>✓ RETURNED {d.return_time ?? ''}</span>
+                {returned.map(d => {
+                  const outChip: React.CSSProperties = {
+                    ...M, fontSize: 10, color: 'var(--text-muted)',
+                    padding: '2px 8px', borderRadius: 10, border: '1px solid var(--border)',
+                  };
+                  const backChip: React.CSSProperties = {
+                    ...M, fontSize: 10, color: 'var(--teal-300)',
+                    background: 'rgba(61,199,173,0.06)',
+                    padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(61,199,173,0.2)',
+                  };
+                  return (
+                    <div key={d.id} style={{ ...cardStyle, opacity: 0.75 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{ ...Y, fontSize: 13, fontWeight: 600, color: 'var(--text-strong)' }}>{d.rider_name}</span>
+                        <span style={{ ...M, fontSize: 10, color: 'var(--teal-300)' }}>✓ RETURNED {d.return_time ?? ''}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                        <span style={outChip}>OUT {php(d.cash_php ?? 0)}</span>
+                        {(d.remit_php ?? 0) > 0 && (
+                          <span style={backChip}>BACK {php(d.remit_php ?? 0)}</span>
+                        )}
+                      </div>
+                      {(d.items.length > 0 || d.remit_items.length > 0) && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {d.items.map((it, i) => (
+                            <span key={i} style={outChip}>OUT {fmt(it.amount, it.currency)}</span>
+                          ))}
+                          {d.remit_items.map((it, i) => (
+                            <span key={i} style={backChip}>BACK {fmt(it.amount, it.currency)}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                      {d.items.map((it, i) => (
-                        <span key={i} style={{ ...M, fontSize: 10, color: 'var(--text-muted)' }}>OUT {fmt(it.amount, it.currency)}</span>
-                      ))}
-                      {d.remit_items.map((it, i) => (
-                        <span key={i} style={{ ...M, fontSize: 10, color: 'var(--teal-300)' }}>BACK {fmt(it.amount, it.currency)}</span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

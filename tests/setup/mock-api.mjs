@@ -1055,6 +1055,7 @@ const server = createServer(async (req, res) => {
       peso: {
         opening_php: 2500000,
         closing_php: 2750000,
+        closing_is_live: false,
         bale_php: 100000,
         inter_branch_in_php: 0,
         vault_returns_php: 50000,

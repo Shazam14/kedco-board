@@ -80,6 +80,7 @@ interface SafeBlock {
 interface PesoBlock {
   opening_php: number | null;
   closing_php: number | null;
+  closing_is_live?: boolean;
   bale_php?: number;
   inter_branch_in_php?: number;
   vault_returns_php?: number;
@@ -606,12 +607,13 @@ export default function ReportShell({
 
             {/* ── SUMMARY BOOKEND — 2×2 (peso open/close + stock open/close) ── */}
             {(() => {
-              const openPeso   = report.peso?.opening_php ?? 0;
-              const closePeso  = report.peso?.closing_php ?? 0;
-              const closeStock = report.total_closing_stock_php ?? (openingStock + report.total_bought_php - report.total_sold_php);
-              const cards: { label: string; value: string; color: string; testid?: string }[] = [
+              const openPeso    = report.peso?.opening_php ?? 0;
+              const closePeso   = report.peso?.closing_php ?? 0;
+              const closingLive = report.peso?.closing_is_live === true;
+              const closeStock  = report.total_closing_stock_php ?? (openingStock + report.total_bought_php - report.total_sold_php);
+              const cards: { label: string; value: string; color: string; testid?: string; live?: boolean }[] = [
                 { label: 'OPENING PESO',  value: php(openPeso),     color: '#aab4c8', testid: 'peso-opening' },
-                { label: 'CLOSING PESO',  value: php(closePeso),    color: '#00d4aa', testid: 'peso-closing' },
+                { label: 'CLOSING PESO',  value: php(closePeso),    color: '#00d4aa', testid: 'peso-closing', live: closingLive },
                 { label: 'OPENING STOCK', value: php(openingStock), color: '#aab4c8' },
                 { label: 'CLOSING STOCK', value: php(closeStock),   color: '#00d4aa' },
               ];
@@ -622,7 +624,17 @@ export default function ReportShell({
                       background: 'var(--surface)', border: '1px solid var(--border)',
                       borderRadius: 12, padding: '18px 24px',
                     }}>
-                      <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8 }}>{s.label}</div>
+                      <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>{s.label}</span>
+                        {s.live && (
+                          <span data-testid="peso-closing-live" className="no-print" style={{
+                            ...M, fontSize: 8, fontWeight: 700, letterSpacing: '0.18em',
+                            color: '#00d4aa', background: 'rgba(0,212,170,0.10)',
+                            border: '1px solid rgba(0,212,170,0.35)',
+                            padding: '1px 6px', borderRadius: 999,
+                          }}>● LIVE</span>
+                        )}
+                      </div>
                       <div className="print-accent" style={{ ...Y, fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
                     </div>
                   ))}
@@ -678,7 +690,17 @@ export default function ReportShell({
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '12px 0 4px', marginTop: 4,
                     }}>
-                      <span style={{ ...M, fontSize: 11, color: 'var(--muted)', letterSpacing: '0.15em' }}>= CLOSING PESO</span>
+                      <span style={{ ...M, fontSize: 11, color: 'var(--muted)', letterSpacing: '0.15em', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        = CLOSING PESO
+                        {p?.closing_is_live === true && (
+                          <span className="no-print" style={{
+                            ...M, fontSize: 8, fontWeight: 700, letterSpacing: '0.18em',
+                            color: '#00d4aa', background: 'rgba(0,212,170,0.10)',
+                            border: '1px solid rgba(0,212,170,0.35)',
+                            padding: '1px 6px', borderRadius: 999,
+                          }}>● LIVE</span>
+                        )}
+                      </span>
                       <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: '#00d4aa' }}>{php(close)}</span>
                     </div>
                   </div>
