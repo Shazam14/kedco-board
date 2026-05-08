@@ -939,6 +939,67 @@ const server = createServer(async (req, res) => {
     return json(res, { message: 'Rates copied from carry-in' });
   }
 
+  // BSP Quarterly MC/FX Volume Report (Circular 1222)
+  if (method === 'GET' && /^\/api\/v1\/bsp\/quarterly-volume/.test(url)) {
+    const u = new URL(url, 'http://x');
+    const year    = parseInt(u.searchParams.get('year')    || '2026', 10);
+    const quarter = parseInt(u.searchParams.get('quarter') || '1',    10);
+    const startMonth = (quarter - 1) * 3 + 1;
+    const pad = (n) => String(n).padStart(2, '0');
+    const from = `${year}-${pad(startMonth)}-01`;
+    const lastMonth = startMonth + 2;
+    const lastDay   = lastMonth === 12 ? 31 : new Date(year, lastMonth, 0).getDate();
+    const to = `${year}-${pad(lastMonth)}-${pad(lastDay)}`;
+    return json(res, {
+      period: {
+        year, quarter, from, to,
+        is_current:      false,
+        filing_deadline: `${year}-${pad(lastMonth + 1 > 12 ? 1 : lastMonth + 1)}-14`,
+      },
+      totals: {
+        buy_count: 3, buy_php: 600000.0,
+        sell_count: 2, sell_php: 400000.0,
+        total_count: 5, total_php: 1000000.0,
+      },
+      by_currency: [
+        { currency: 'EUR', buy_count: 1, buy_php: 300000, sell_count: 1, sell_php: 250000, total_count: 2, total_php: 550000 },
+        { currency: 'USD', buy_count: 2, buy_php: 300000, sell_count: 1, sell_php: 150000, total_count: 3, total_php: 450000 },
+      ],
+      by_branch: [
+        { branch_id: 'CTS',  buy_count: 1, buy_php: 200000, sell_count: 1, sell_php: 250000, total_count: 2, total_php: 450000 },
+        { branch_id: 'MAIN', buy_count: 2, buy_php: 400000, sell_count: 1, sell_php: 150000, total_count: 3, total_php: 550000 },
+      ],
+      by_month: [
+        { month: `${year}-${pad(startMonth)}`,     buy_count: 1, buy_php: 100000, sell_count: 1, sell_php: 150000, total_count: 2, total_php: 250000 },
+        { month: `${year}-${pad(startMonth + 1)}`, buy_count: 1, buy_php: 200000, sell_count: 0, sell_php: 0,      total_count: 1, total_php: 200000 },
+        { month: `${year}-${pad(startMonth + 2)}`, buy_count: 1, buy_php: 300000, sell_count: 1, sell_php: 250000, total_count: 2, total_php: 550000 },
+      ],
+    });
+  }
+
+  if (method === 'GET' && /^\/api\/v1\/bsp\/monthly-volume/.test(url)) {
+    return json(res, {
+      threshold_php:        50000000.0,
+      months_above:         0,
+      average_monthly_php:  333333.33,
+      currently_type_f:     true,
+      series: [
+        { month: '2025-06', total_php: 250000, above_type_f: false },
+        { month: '2025-07', total_php: 400000, above_type_f: false },
+        { month: '2025-08', total_php: 350000, above_type_f: false },
+        { month: '2025-09', total_php: 500000, above_type_f: false },
+        { month: '2025-10', total_php: 320000, above_type_f: false },
+        { month: '2025-11', total_php: 410000, above_type_f: false },
+        { month: '2025-12', total_php: 280000, above_type_f: false },
+        { month: '2026-01', total_php: 250000, above_type_f: false },
+        { month: '2026-02', total_php: 200000, above_type_f: false },
+        { month: '2026-03', total_php: 550000, above_type_f: false },
+        { month: '2026-04', total_php: 380000, above_type_f: false },
+        { month: '2026-05', total_php: 110000, above_type_f: false },
+      ],
+    });
+  }
+
   // Daily report (admin report page — server component)
   if (method === 'GET' && /^\/api\/v1\/report\/daily/.test(url)) {
     return json(res, {

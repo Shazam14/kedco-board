@@ -171,6 +171,21 @@ export default async function AdminPage() {
         </div>
 
         <div style={{ marginTop:32 }}>
+          <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:12 }}>COMPLIANCE</div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:16 }}>
+            <a
+              href="/admin/bsp/volume"
+              style={{ background:'var(--surface)', border:'1px solid #f5a62333', borderRadius:14, padding:'24px', textDecoration:'none', display:'block', position:'relative', overflow:'hidden' }}
+            >
+              <div style={{ position:'absolute', top:0, left:0, right:0, height:2, background:'linear-gradient(90deg,#f5a623,transparent)' }} />
+              <div style={{ fontSize:28, marginBottom:12 }}>🏛️</div>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:700, color:'#e2e6f0', marginBottom:6 }}>BSP Quarterly Volume</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:11, color:'var(--muted)', lineHeight:1.6 }}>MC/FX dealing volume per BSP Circular 1222. Type-F threshold check.</div>
+            </a>
+          </div>
+        </div>
+
+        <div style={{ marginTop:32 }}>
           <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:12 }}>SYSTEM</div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:16 }}>
             <DateOverridePanel />
