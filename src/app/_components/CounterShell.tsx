@@ -787,7 +787,7 @@ export default function CounterShell({
         <div class="row"><span class="label">From Cashier</span><span class="val" style="color:#007a55">+${phpFmt(s.from_cashier_php ?? 0)}</span></div>
         <div class="row"><span class="label">Bale Peso (vault → drawer)</span><span class="val" style="color:#007a55">+${phpFmt(s.bale_peso_php ?? 0)}</span></div>
         ${(s.inter_branch_in_php ?? 0) > 0 ? `<div class="row"><span class="label">From Branch (inter-branch in)</span><span class="val" style="color:#007a55">+${phpFmt(s.inter_branch_in_php ?? 0)}</span></div>` : ''}
-        ${(s.vault_returns_php ?? 0) > 0 ? `<div class="row"><span class="label">Vault Return (drawer → vault)</span><span class="val" style="color:#cc0000">-${phpFmt(s.vault_returns_php ?? 0)}</span></div>` : ''}
+        ${(s.vault_returns_php ?? 0) !== 0 ? `<div class="row"><span class="label">Vault Movement (drawer ↔ vault)</span><span class="val" style="color:${(s.vault_returns_php ?? 0) >= 0 ? '#cc0000' : '#007a55'}">${(s.vault_returns_php ?? 0) >= 0 ? '-' : '+'}${phpFmt(Math.abs(s.vault_returns_php ?? 0))}</span></div>` : ''}
         ${(s.cheques_cleared_php ?? 0) > 0 ? `<div class="row"><span class="label">Cheques Cleared</span><span class="val" style="color:#007a55">+${phpFmt(s.cheques_cleared_php ?? 0)}</span></div>` : ''}
         ${(s.expenses_php ?? 0) > 0 ? `<div class="row"><span class="label">Expenses</span><span class="val" style="color:#cc0000">-${phpFmt(s.expenses_php ?? 0)}</span></div>` : ''}
         <div class="row"><span class="label">Opening Cash</span><span class="val">${phpFmt(s.opening_cash_php)}</span></div>
@@ -1114,7 +1114,7 @@ export default function CounterShell({
                   ['From Cashier',               '+' + php(shiftClosed.from_cashier_php    ?? 0), 'var(--teal-300)'],
                   ['Bale Peso (vault → drawer)', '+' + php(bale),                  'var(--teal-300)'],
                   ...(interBranch > 0 ? [['From Branch (inter-branch in)', '+' + php(interBranch), 'var(--teal-300)']] as [string, string, string?, number?][] : []),
-                  ...(vaultReturns > 0 ? [['Vault Return (drawer → vault)', '-' + php(vaultReturns), 'var(--accent-coral)']] as [string, string, string?, number?][] : []),
+                  ...(vaultReturns !== 0 ? [['Vault Movement (drawer ↔ vault)', (vaultReturns >= 0 ? '-' : '+') + php(Math.abs(vaultReturns)), vaultReturns >= 0 ? 'var(--accent-coral)' : 'var(--teal-300)']] as [string, string, string?, number?][] : []),
                   ...(cheques > 0      ? [['Cheques Cleared', '+' + php(cheques), 'var(--teal-300)']]      as [string, string, string?, number?][] : []),
                   ...(expenses > 0     ? [['Expenses',        '-' + php(expenses), 'var(--accent-coral)']] as [string, string, string?, number?][] : []),
                   ['Opening Cash',               php(shiftClosed.opening_cash_php)],
@@ -1342,7 +1342,7 @@ export default function CounterShell({
                   ['From Cashier',               '+' + php(shift.from_cashier_php    ?? 0), 'var(--teal-300)'],
                   ['Bale Peso (vault → drawer)', '+' + php(bale),                  'var(--teal-300)'],
                   ...(interBranch > 0 ? [['From Branch (inter-branch in)', '+' + php(interBranch), 'var(--teal-300)']] as [string, string, string?][] : []),
-                  ...(vaultReturns > 0 ? [['Vault Return (drawer → vault)', '-' + php(vaultReturns), 'var(--accent-coral)']] as [string, string, string?][] : []),
+                  ...(vaultReturns !== 0 ? [['Vault Movement (drawer ↔ vault)', (vaultReturns >= 0 ? '-' : '+') + php(Math.abs(vaultReturns)), vaultReturns >= 0 ? 'var(--accent-coral)' : 'var(--teal-300)']] as [string, string, string?][] : []),
                   ...(cheques > 0      ? [['Cheques Cleared', '+' + php(cheques), 'var(--teal-300)']]      as [string, string, string?][] : []),
                   ...(expenses > 0     ? [['Expenses',        '-' + php(expenses), 'var(--accent-coral)']] as [string, string, string?][] : []),
                   ['Opening Cash',               php(shift.opening_cash_php)],

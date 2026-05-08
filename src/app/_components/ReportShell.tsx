@@ -289,7 +289,12 @@ function printReport(report: Report, hideThan = false) {
         ['From Cashier',                '+', report.peso?.from_cashier_php ?? 0,   '#007a55'],
         ['Bale Peso (vault → drawer)',  '+', report.peso?.bale_php ?? 0,           '#007a55'],
         ['From Branch (inter-branch)',  '+', report.peso?.inter_branch_in_php ?? 0,'#007a55'],
-        ['Vault Return (drawer → vault)', '−', report.peso?.vault_returns_php ?? 0,'#c0392b'],
+        // Signed: + = drawer→vault deposit (subtracts from drawer),
+        //         − = vault→drawer withdrawal (adds to drawer).
+        // Display as drawer impact: invert sign so deposit shows '−' and withdrawal shows '+'.
+        ...(((report.peso?.vault_returns_php ?? 0) >= 0)
+          ? [['Vault Movement (drawer ↔ vault)', '−', report.peso?.vault_returns_php ?? 0, '#c0392b']]
+          : [['Vault Movement (drawer ↔ vault)', '+', Math.abs(report.peso?.vault_returns_php ?? 0), '#007a55']]),
         ['Cheques Cleared',             '+', report.peso?.cheques_cleared_php ?? 0,'#007a55'],
         ['Expenses',                    '−', report.peso?.expenses_php ?? 0,       '#c0392b'],
       ].map(([lbl, sign, val, color]) =>
@@ -317,8 +322,8 @@ function printReport(report: Report, hideThan = false) {
       <div class="flow-item"><div class="fl">BALE</div><div class="fv" style="color:#555">${php(report.peso?.bale_php ?? 0)}</div></div>
       <div class="flow-op">+</div>
       <div class="flow-item"><div class="fl">FROM BRANCH</div><div class="fv" style="color:#555">${php(report.peso?.inter_branch_in_php ?? 0)}</div></div>
-      <div class="flow-op">−</div>
-      <div class="flow-item"><div class="fl">RETURNS</div><div class="fv" style="color:#555">${php(report.peso?.vault_returns_php ?? 0)}</div></div>
+      <div class="flow-op">${(report.peso?.vault_returns_php ?? 0) >= 0 ? '−' : '+'}</div>
+      <div class="flow-item"><div class="fl">VAULT</div><div class="fv" style="color:#555">${php(Math.abs(report.peso?.vault_returns_php ?? 0))}</div></div>
       <div class="flow-op">+</div>
       <div class="flow-item"><div class="fl">CHEQUES</div><div class="fv" style="color:#555">${php(report.peso?.cheques_cleared_php ?? 0)}</div></div>
       <div class="flow-op">−</div>
@@ -655,6 +660,11 @@ export default function ReportShell({
               const ret     = p?.vault_returns_php  ?? 0;
               const cheq    = p?.cheques_cleared_php ?? 0;
               const exp     = p?.expenses_php        ?? 0;
+              // ret is signed: + = drawer→vault deposit (drawer down),
+              //                − = vault→drawer withdrawal (drawer up).
+              const vaultRow = ret >= 0
+                ? { label: 'Vault Movement (drawer ↔ vault)', sign: '−' as const, value: ret,            color: '#f5736a' }
+                : { label: 'Vault Movement (drawer ↔ vault)', sign: '+' as const, value: Math.abs(ret),  color: '#00d4aa' };
               const rows: { label: string; sign: '+' | '−' | ''; value: number; color: string }[] = [
                 { label: 'Opening Peso',                sign: '',  value: open,    color: '#aab4c8' },
                 { label: 'Remitted In (riders)',        sign: '+', value: remit,   color: '#00d4aa' },
@@ -662,7 +672,7 @@ export default function ReportShell({
                 { label: 'From Cashier',                sign: '+', value: fc,      color: '#00d4aa' },
                 { label: 'Bale Peso (vault → drawer)',  sign: '+', value: bale,    color: '#00d4aa' },
                 { label: 'From Branch (inter-branch)',  sign: '+', value: interIn, color: '#00d4aa' },
-                { label: 'Vault Return (drawer → vault)', sign: '−', value: ret,   color: '#f5736a' },
+                vaultRow,
                 { label: 'Cheques Cleared',             sign: '+', value: cheq,    color: '#00d4aa' },
                 { label: 'Expenses',                    sign: '−', value: exp,     color: '#f5736a' },
               ];
@@ -771,7 +781,7 @@ export default function ReportShell({
                   {op('−')} {item('BOUGHT', php(bought), '#5b8cff')}
                   {op('+')} {item('BALE', php(bale), '#aab4c8')}
                   {op('+')} {item('FROM BRANCH', php(interIn), '#aab4c8')}
-                  {op('−')} {item('RETURNS', php(ret), '#aab4c8')}
+                  {op(ret >= 0 ? '−' : '+')} {item('VAULT', php(Math.abs(ret)), '#aab4c8')}
                   {op('+')} {item('CHEQUES', php(cheq), '#aab4c8')}
                   {op('−')} {item('EXPENSES', php(exp), '#aab4c8')}
                   {op('=')}
