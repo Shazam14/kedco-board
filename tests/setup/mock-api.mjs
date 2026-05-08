@@ -934,6 +934,11 @@ const server = createServer(async (req, res) => {
     return json(res, { message: 'Rates saved' });
   }
 
+  // POST rates from carry-in (treasurer "use yesterday's rates" button)
+  if (method === 'POST' && url === '/api/v1/rates/from-carry-in') {
+    return json(res, { message: 'Rates copied from carry-in' });
+  }
+
   // Daily report (admin report page — server component)
   if (method === 'GET' && /^\/api\/v1\/report\/daily/.test(url)) {
     return json(res, {

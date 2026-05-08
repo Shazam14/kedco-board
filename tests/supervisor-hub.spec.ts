@@ -10,12 +10,13 @@ import path from 'path';
 test.use({ storageState: path.join('tests', '.auth', 'supervisor.json') });
 
 test.describe('Treasurer hub', () => {
-  test('renders the eight cards', async ({ page }) => {
+  test('renders the nine cards', async ({ page }) => {
     await page.goto('/supervisor');
     await expect(page.getByText('What do you need to do?')).toBeVisible();
     for (const title of [
       'Counter',
       'Opening Positions',
+      'Today’s Rates',
       'Daily Report',
       'Transactions',
       'Rider Dispatch',
@@ -77,6 +78,16 @@ test.describe('Treasurer-aware nav on shared admin pages', () => {
     await page.waitForLoadState('networkidle');
     await expect(page.getByText('Treasurer · Positions', { exact: true })).toBeVisible();
     await expect(page.getByText('TREASURER · POSITIONS', { exact: true })).toBeVisible();
+    const hub = page.getByRole('link', { name: 'HUB' });
+    await expect(hub).toBeVisible();
+    await expect(hub).toHaveAttribute('href', '/supervisor');
+  });
+
+  test('Today’s Rates shows Treasurer label + HUB back link', async ({ page }) => {
+    await page.goto('/admin/rates');
+    await page.waitForLoadState('networkidle');
+    await expect(page.getByText('Treasurer · Rates', { exact: true })).toBeVisible();
+    await expect(page.getByText('TREASURER · RATES', { exact: true })).toBeVisible();
     const hub = page.getByRole('link', { name: 'HUB' });
     await expect(hub).toBeVisible();
     await expect(hub).toHaveAttribute('href', '/supervisor');

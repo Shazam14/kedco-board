@@ -12,7 +12,7 @@ async function getToken() {
 
 export async function GET() {
   const role = await getTokenRole();
-  if (role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!role || !['admin', 'supervisor'].includes(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const token = await getToken();
   const res = await fetch(`${API_URL}/api/v1/positions/today`, {
@@ -25,7 +25,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const role = await getTokenRole();
-  if (role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!role || !['admin', 'supervisor'].includes(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const token = await getToken();
   const body  = await req.json();

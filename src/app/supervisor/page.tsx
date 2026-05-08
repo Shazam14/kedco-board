@@ -26,6 +26,13 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     color: '#5b8cff',
   },
   {
+    href:  '/admin/rates',
+    icon:  '💱',
+    title: 'Today’s Rates',
+    desc:  'Set buy/sell rates, or copy from yesterday’s carry-in.',
+    color: '#00d4aa',
+  },
+  {
     href:  '/admin/report',
     icon:  '📋',
     title: 'Daily Report',

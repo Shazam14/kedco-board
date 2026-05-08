@@ -3,7 +3,7 @@ import { saveRates, getTokenRole } from '@/lib/api';
 
 export async function POST(req: NextRequest) {
   const role = await getTokenRole();
-  if (role !== 'admin') {
+  if (!role || !['admin', 'supervisor'].includes(role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
