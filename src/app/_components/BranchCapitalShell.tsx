@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { formatAmountInput, parseAmountInput } from '@/lib/amountInput';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -35,19 +36,6 @@ const fmtWhen = (iso: string | null) => {
   const d = new Date(iso);
   return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 };
-
-function formatAmountInput(raw: string): string {
-  if (!raw) return '';
-  const negative = raw.trimStart().startsWith('-');
-  const cleaned = raw.replace(/[^0-9.]/g, '');
-  if (!cleaned) return negative ? '-' : '';
-  const [intRaw, decRaw] = cleaned.split('.');
-  const intFormatted = intRaw ? Number(intRaw).toLocaleString('en-PH') : '';
-  const out = decRaw !== undefined ? `${intFormatted}.${decRaw.slice(0, 2)}` : intFormatted;
-  return (negative ? '-' : '') + out;
-}
-
-const parseAmountInput = (raw: string) => parseFloat(raw.replace(/,/g, ''));
 
 export default function BranchCapitalShell({ initial, embedded = false }: { initial: Initial; embedded?: boolean }) {
   const [data, setData] = useState<Initial>(initial);

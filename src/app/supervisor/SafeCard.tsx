@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatAmountInput, parseAmountInput } from '@/lib/amountInput';
 
 const REASONS = [
   { value: 'MANUAL_DEPOSIT',    label: 'Deposit (cash into safe)' },
@@ -51,7 +52,7 @@ export default function SafeCard() {
   useEffect(() => { load(); }, []);
 
   async function submit() {
-    const raw = parseFloat(amount);
+    const raw = parseAmountInput(amount);
     if (isNaN(raw) || raw <= 0) { setError('Enter a positive amount.'); return; }
     setSubmitting(true); setError(null);
     try {
@@ -195,7 +196,7 @@ export default function SafeCard() {
               AMOUNT (PHP)
             </label>
             <input
-              type="text" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)}
+              type="text" inputMode="decimal" value={amount} onChange={e => setAmount(formatAmountInput(e.target.value))}
               data-testid="safe-amount" placeholder="0.00" autoFocus
               style={{
                 width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
