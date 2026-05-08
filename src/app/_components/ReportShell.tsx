@@ -85,6 +85,9 @@ interface PesoBlock {
   vault_returns_php?: number;
   cheques_cleared_php?: number;
   expenses_php?: number;
+  rider_remits_php?: number;
+  dispatched_out_php?: number;
+  from_cashier_php?: number;
 }
 interface Report {
   date: string;
@@ -274,6 +277,30 @@ function printReport(report: Report, hideThan = false) {
     </div>
     <div class="summary">
       <div class="summary-box"><div class="label">OPENING STOCK</div><div class="value" style="color:#555">${php(openingStockPhp)}</div></div>
+      <div class="summary-box"><div class="label">CLOSING STOCK</div><div class="value" style="color:#007a55">${php(report.total_closing_stock_php ?? closingEstimate)}</div></div>
+    </div>
+    <div style="background:#fafafa;border:1px solid #ddd;border-radius:6px;padding:12px 16px;margin-bottom:16px;font-family:Arial,sans-serif">
+      <div style="font-size:10px;color:#888;letter-spacing:0.15em;margin-bottom:8px">PESO BREAKDOWN</div>
+      ${[
+        ['Opening Peso',                '',  report.peso?.opening_php ?? 0,        '#555'],
+        ['Remitted In (riders)',        '+', report.peso?.rider_remits_php ?? 0,   '#007a55'],
+        ['Dispatched Out',              '−', report.peso?.dispatched_out_php ?? 0, '#c0392b'],
+        ['From Cashier',                '+', report.peso?.from_cashier_php ?? 0,   '#007a55'],
+        ['Bale Peso (vault → drawer)',  '+', report.peso?.bale_php ?? 0,           '#007a55'],
+        ['From Branch (inter-branch)',  '+', report.peso?.inter_branch_in_php ?? 0,'#007a55'],
+        ['Vault Return (drawer → vault)', '−', report.peso?.vault_returns_php ?? 0,'#c0392b'],
+        ['Cheques Cleared',             '+', report.peso?.cheques_cleared_php ?? 0,'#007a55'],
+        ['Expenses',                    '−', report.peso?.expenses_php ?? 0,       '#c0392b'],
+      ].map(([lbl, sign, val, color]) =>
+        `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:12px">
+          <span>${lbl}</span><span style="font-weight:700;color:${color}">${sign}${php(val as number)}</span>
+        </div>`).join('')}
+      <div style="display:flex;justify-content:space-between;padding:10px 0 4px;margin-top:4px;font-family:Arial,sans-serif">
+        <span style="font-size:11px;color:#555;letter-spacing:0.15em">= CLOSING PESO</span>
+        <span style="font-weight:900;font-size:18px;color:#007a55">${php(report.peso?.closing_php ?? 0)}</span>
+      </div>
+    </div>
+    <div class="summary">
       <div class="summary-box"><div class="label">TOTAL BOUGHT</div><div class="value" style="color:#2255cc">${php(report.total_bought_php)}</div></div>
       <div class="summary-box"><div class="label">TOTAL SOLD</div><div class="value" style="color:#c47000">${php(report.total_sold_php)}</div>${(report.total_sold_php_pending ?? 0) > 0 ? `<div style="font-size:10px;color:#c47000;font-weight:700;margin-top:6px">⏳ pending: ${php(report.total_sold_php_pending!)}</div>` : ''}</div>
       ${hideThan ? '' : `<div class="summary-box"><div class="label">TOTAL THAN</div><div class="value" style="color:#007a55">${php(report.total_than)}</div>${(report.total_than_pending ?? 0) > 0 ? `<div style="font-size:10px;color:#c47000;font-weight:700;margin-top:6px">⏳ pending: ${php(report.total_than_pending!)}</div>` : ''}</div>`}
@@ -577,17 +604,20 @@ export default function ReportShell({
               )}
             </div>
 
-            {/* ── SUMMARY BOXES — PESO ROW ── */}
+            {/* ── SUMMARY BOOKEND — 2×2 (peso open/close + stock open/close) ── */}
             {(() => {
-              const openPeso  = report.peso?.opening_php ?? 0;
-              const closePeso = report.peso?.closing_php ?? 0;
-              const pesoBoxes = [
-                { label: 'OPENING PESO', value: php(openPeso),  color: '#aab4c8', testid: 'peso-opening' },
-                { label: 'CLOSING PESO', value: php(closePeso), color: '#00d4aa', testid: 'peso-closing' },
+              const openPeso   = report.peso?.opening_php ?? 0;
+              const closePeso  = report.peso?.closing_php ?? 0;
+              const closeStock = report.total_closing_stock_php ?? (openingStock + report.total_bought_php - report.total_sold_php);
+              const cards: { label: string; value: string; color: string; testid?: string }[] = [
+                { label: 'OPENING PESO',  value: php(openPeso),     color: '#aab4c8', testid: 'peso-opening' },
+                { label: 'CLOSING PESO',  value: php(closePeso),    color: '#00d4aa', testid: 'peso-closing' },
+                { label: 'OPENING STOCK', value: php(openingStock), color: '#aab4c8' },
+                { label: 'CLOSING STOCK', value: php(closeStock),   color: '#00d4aa' },
               ];
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${pesoBoxes.length},1fr)`, gap: 16 }}>
-                  {pesoBoxes.map(s => (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  {cards.map(s => (
                     <div key={s.label} className="print-card" data-testid={s.testid} style={{
                       background: 'var(--surface)', border: '1px solid var(--border)',
                       borderRadius: 12, padding: '18px 24px',
@@ -600,13 +630,68 @@ export default function ReportShell({
               );
             })()}
 
+            {/* ── PESO BREAKDOWN TABLE (Ken's formula, line-by-line) ── */}
+            {(() => {
+              const p = report.peso ?? null;
+              const open    = p?.opening_php ?? 0;
+              const close   = p?.closing_php ?? 0;
+              const remit   = p?.rider_remits_php   ?? 0;
+              const out     = p?.dispatched_out_php ?? 0;
+              const fc      = p?.from_cashier_php   ?? 0;
+              const bale    = p?.bale_php           ?? 0;
+              const interIn = p?.inter_branch_in_php ?? 0;
+              const ret     = p?.vault_returns_php  ?? 0;
+              const cheq    = p?.cheques_cleared_php ?? 0;
+              const exp     = p?.expenses_php        ?? 0;
+              const rows: { label: string; sign: '+' | '−' | ''; value: number; color: string }[] = [
+                { label: 'Opening Peso',                sign: '',  value: open,    color: '#aab4c8' },
+                { label: 'Remitted In (riders)',        sign: '+', value: remit,   color: '#00d4aa' },
+                { label: 'Dispatched Out',              sign: '−', value: out,     color: '#f5736a' },
+                { label: 'From Cashier',                sign: '+', value: fc,      color: '#00d4aa' },
+                { label: 'Bale Peso (vault → drawer)',  sign: '+', value: bale,    color: '#00d4aa' },
+                { label: 'From Branch (inter-branch)',  sign: '+', value: interIn, color: '#00d4aa' },
+                { label: 'Vault Return (drawer → vault)', sign: '−', value: ret,   color: '#f5736a' },
+                { label: 'Cheques Cleared',             sign: '+', value: cheq,    color: '#00d4aa' },
+                { label: 'Expenses',                    sign: '−', value: exp,     color: '#f5736a' },
+              ];
+              return (
+                <div data-testid="peso-breakdown-table" className="print-card" style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 12, padding: '14px 18px',
+                }}>
+                  <div className="print-muted" style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.15em', marginBottom: 10 }}>
+                    PESO BREAKDOWN
+                  </div>
+                  <div>
+                    {rows.map(r => (
+                      <div key={r.label} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '7px 0', borderBottom: '1px solid var(--border)',
+                      }}>
+                        <span style={{ ...M, fontSize: 12, color: 'var(--text-strong, var(--muted))' }}>{r.label}</span>
+                        <span style={{ ...Y, fontSize: 13, fontWeight: 700, color: r.color }}>
+                          {r.sign}{php(r.value)}
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '12px 0 4px', marginTop: 4,
+                    }}>
+                      <span style={{ ...M, fontSize: 11, color: 'var(--muted)', letterSpacing: '0.15em' }}>= CLOSING PESO</span>
+                      <span style={{ ...Y, fontSize: 18, fontWeight: 800, color: '#00d4aa' }}>{php(close)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* ── SUMMARY BOXES — STOCK ROW ── */}
             {(() => {
-              const summaryCount = (report.total_commission !== 0 ? 5 : 4) - (hideThan ? 1 : 0);
+              const summaryCount = (report.total_commission !== 0 ? 4 : 3) - (hideThan ? 1 : 0);
               const soldPending = report.total_sold_php_pending ?? 0;
               const thanPending = report.total_than_pending ?? 0;
               const boxes = [
-                { label: 'OPENING STOCK', value: php(openingStock), color: '#aab4c8' },
                 { label: 'TOTAL BOUGHT',  value: php(report.total_bought_php),        color: '#5b8cff' },
                 { label: 'TOTAL SOLD',    value: php(report.total_sold_php),           color: '#f5a623', pending: soldPending },
                 ...(hideThan ? [] : [{ label: 'TOTAL THAN', value: php(report.total_than), color: '#00d4aa', pending: thanPending }]),

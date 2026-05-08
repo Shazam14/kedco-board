@@ -990,9 +990,13 @@ const server = createServer(async (req, res) => {
         opening_php: 2500000,
         closing_php: 2750000,
         bale_php: 100000,
+        inter_branch_in_php: 0,
         vault_returns_php: 50000,
         cheques_cleared_php: 25000,
         expenses_php: 5000,
+        rider_remits_php: 0,
+        dispatched_out_php: 0,
+        from_cashier_php: 180000,
       },
     });
   }
