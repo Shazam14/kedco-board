@@ -1156,6 +1156,18 @@ export default function DashboardShell({ data, role }: { data: DashboardSummary;
             >
               REFRESH
             </button>
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%', padding: '10px', borderRadius: 10,
+                border: '1px solid var(--border-subtle)', background: 'transparent',
+                color: 'var(--text-faint)', fontFamily: "'DM Mono',monospace",
+                fontSize: 11, cursor: 'pointer', letterSpacing: '0.1em',
+                marginTop: 8,
+              }}
+            >
+              LOGOUT
+            </button>
           </div>
         </div>
       )}
