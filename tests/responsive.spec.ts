@@ -46,7 +46,7 @@ test.describe('Counter — mobile (390px)', () => {
 
   test('nav is visible and not overflowing', async ({ page }) => {
     await expect(page.getByText('Kedco FX')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'LOGOUT' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /MENU/ })).toBeVisible();
     // Nav should not cause horizontal scroll
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);

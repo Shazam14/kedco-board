@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CurrencyMeta, Transaction } from '@/lib/types';
 import { useIdleTimeout } from '@/hooks/useIdleTimeout';
@@ -76,6 +76,18 @@ export default function CounterShell({
   const [branch,          setBranch]          = useState<string>('');
   const [terminal,        setTerminal]        = useState<string>('');
   const [showDeviceModal, setShowDeviceModal] = useState(false);
+  const [menuOpen,        setMenuOpen]        = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onDoc(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setMenuOpen(false); }
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, [menuOpen]);
   const [deviceStep,      setDeviceStep]      = useState<1 | 2>(1);
   const [branchDraft,     setBranchDraft]     = useState('');
   const [terminalDraft,   setTerminalDraft]   = useState('');
@@ -833,6 +845,14 @@ export default function CounterShell({
     position: 'fixed', inset: 0, zIndex: 200,
     background: 'rgba(7,9,13,0.92)', backdropFilter: 'blur(8px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+  };
+  const menuItemStyle: React.CSSProperties = {
+    padding: '10px 14px', borderRadius: 6, ...M, fontSize: 12,
+    color: 'var(--text-strong)', textDecoration: 'none', border: 'none',
+    letterSpacing: '0.04em', display: 'block',
+  };
+  const menuDivider: React.CSSProperties = {
+    height: 1, background: 'var(--border-subtle)', margin: '4px 6px',
   };
   const cardStyle: React.CSSProperties = {
     background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -1795,38 +1815,56 @@ export default function CounterShell({
               END SHIFT
             </button>
           </>)}
-          {role === 'admin' && (<>
-            <a href="/" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
-              DASHBOARD
-            </a>
-            <a href="/admin" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
-              ADMIN
-            </a>
-          </>)}
-          {role === 'supervisor' && (<>
-            <a href="/supervisor" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(61,199,173,0.3)', background: 'transparent', color: 'var(--teal-300)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
-              ← HUB
-            </a>
-            <a href="/supervisor/transactions" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
-              CASHIER TXNS
-            </a>
-            <a href="/admin/riders" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
-              RIDERS
-            </a>
-          </>)}
-          {!isMobile && <a href="/passbook" style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(61,199,173,0.3)', background: 'transparent', color: 'var(--teal-300)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em', textDecoration: 'none' }}>
-            PASSBOOK
-          </a>}
-          <button
-            onClick={() => { setBranchDraft(branch); setTerminalDraft(terminal); setDeviceStep(1); setShowDeviceModal(true); }}
-            title="Change branch / terminal"
-            style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid rgba(61,199,173,0.2)', background: 'transparent', color: 'var(--teal-300)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}
-          >
-            {branch ? `${branch} · ${terminal || '?'}` : 'SET DEVICE'}
-          </button>
-          <button onClick={handleLogout} style={{ padding: '5px 14px', borderRadius: 6, border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em' }}>
-            LOGOUT
-          </button>
+          <div ref={menuRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label="MENU"
+              aria-expanded={menuOpen}
+              style={{
+                padding: '5px 12px', borderRadius: 6,
+                border: '1px solid var(--border-subtle)', background: 'transparent',
+                color: 'var(--text-muted)', ...M, fontSize: 12, cursor: 'pointer',
+                letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }}>☰</span> MENU
+            </button>
+            {menuOpen && (
+              <div style={{
+                position: 'absolute', top: 'calc(100% + 8px)', right: 0, minWidth: 220,
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                borderRadius: 10, padding: 6, zIndex: 150,
+                boxShadow: '0 12px 32px rgba(0,0,0,0.45)',
+                display: 'flex', flexDirection: 'column',
+              }}>
+                {role === 'admin' && (<>
+                  <a href="/"      onClick={() => setMenuOpen(false)} style={menuItemStyle}>Dashboard</a>
+                  <a href="/admin" onClick={() => setMenuOpen(false)} style={menuItemStyle}>Admin</a>
+                  <div style={menuDivider} />
+                </>)}
+                {role === 'supervisor' && (<>
+                  <a href="/supervisor"              onClick={() => setMenuOpen(false)} style={{ ...menuItemStyle, color: 'var(--teal-300)' }}>← Supervisor Hub</a>
+                  <a href="/supervisor/transactions" onClick={() => setMenuOpen(false)} style={menuItemStyle}>Cashier Txns</a>
+                  <a href="/admin/riders"            onClick={() => setMenuOpen(false)} style={menuItemStyle}>Riders</a>
+                  <div style={menuDivider} />
+                </>)}
+                <a href="/passbook" onClick={() => setMenuOpen(false)} style={menuItemStyle}>Passbook</a>
+                <div style={menuDivider} />
+                <button
+                  onClick={() => { setMenuOpen(false); setBranchDraft(branch); setTerminalDraft(terminal); setDeviceStep(1); setShowDeviceModal(true); }}
+                  style={{ ...menuItemStyle, textAlign: 'left', background: 'transparent', cursor: 'pointer', width: '100%' }}
+                >
+                  {branch ? `${branch} · ${terminal || '?'}` : 'Set device'}
+                </button>
+                <button
+                  onClick={() => { setMenuOpen(false); handleLogout(); }}
+                  style={{ ...menuItemStyle, textAlign: 'left', background: 'transparent', cursor: 'pointer', width: '100%', color: 'var(--text-muted)' }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 

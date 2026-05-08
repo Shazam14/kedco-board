@@ -45,7 +45,8 @@ test.describe('Counter screen', () => {
 
   test('nav shows username and logout button', async ({ page }) => {
     await expect(page.getByText('cashier1')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'LOGOUT' })).toBeVisible();
+    await page.getByRole('button', { name: /MENU/ }).click();
+    await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
   });
 
   test('currency selector shows currencies with rates', async ({ page }) => {
@@ -108,7 +109,8 @@ test.describe('Counter screen', () => {
   });
 
   test('logout redirects to login', async ({ page }) => {
-    await page.getByRole('button', { name: 'LOGOUT' }).click();
+    await page.getByRole('button', { name: /MENU/ }).click();
+    await page.getByRole('button', { name: 'Logout' }).click();
     await page.waitForURL('**/login');
     expect(page.url()).toContain('/login');
   });
@@ -130,19 +132,22 @@ test.describe('Supervisor counter', () => {
     await page.goto('/counter');
   });
 
-  test('supervisor counter has no DASHBOARD or ADMIN nav links', async ({ page }) => {
-    await expect(page.getByRole('link', { name: 'DASHBOARD' })).not.toBeVisible();
-    await expect(page.getByRole('link', { name: 'ADMIN' })).not.toBeVisible();
+  test('supervisor counter has no Dashboard or Admin nav links', async ({ page }) => {
+    await page.getByRole('button', { name: /MENU/ }).click();
+    await expect(page.getByRole('link', { name: 'Dashboard' })).not.toBeVisible();
+    await expect(page.getByRole('link', { name: 'Admin', exact: true })).not.toBeVisible();
   });
 
-  test('supervisor nav shows CASHIER TXNS and RIDERS links', async ({ page }) => {
-    await expect(page.getByRole('link', { name: 'CASHIER TXNS' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'RIDERS' })).toBeVisible();
+  test('supervisor nav shows Cashier Txns and Riders links', async ({ page }) => {
+    await page.getByRole('button', { name: /MENU/ }).click();
+    await expect(page.getByRole('link', { name: 'Cashier Txns' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Riders' })).toBeVisible();
   });
 
   test('supervisor counter shows username and logout', async ({ page }) => {
     await expect(page.getByText('supervisor1')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'LOGOUT' })).toBeVisible();
+    await page.getByRole('button', { name: /MENU/ }).click();
+    await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
   });
 
   test('supervisor counter shows only own transactions, not other cashiers', async ({ page }) => {

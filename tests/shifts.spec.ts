@@ -138,8 +138,7 @@ test.describe('Counter — shift already open', () => {
     await page.getByRole('button', { name: 'CLOSE SHIFT' }).click();
 
     await expect(page.getByText('SHIFT CLOSED')).toBeVisible();
-    // Two LOGOUT buttons render (summary card + nav) — check the summary card one
-    await expect(page.getByRole('button', { name: 'LOGOUT' }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'LOGOUT' })).toBeVisible();
   });
 });
 
