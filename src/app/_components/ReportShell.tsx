@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 const M: React.CSSProperties = { fontFamily: "'DM Mono',monospace" };
 const Y: React.CSSProperties = { fontFamily: "'Syne',sans-serif" };
@@ -438,7 +438,7 @@ function printReport(report: Report, hideThan = false) {
 }
 
 export default function ReportShell({
-  report,
+  report: initialReport,
   selectedDate,
   hideThan = false,
   role = 'admin',
@@ -452,8 +452,32 @@ export default function ReportShell({
 }) {
   const isTreasurer = role === 'supervisor';
   const router  = useRouter();
-  const [date, setDate] = useState(selectedDate || report?.date || '');
+  const [report, setReport] = useState<Report | null>(initialReport);
+  const [date, setDate] = useState(selectedDate || initialReport?.date || '');
   const [isPending, startTransition] = useTransition();
+
+  // Re-sync local state when the server prop changes (date navigation, hard refresh).
+  useEffect(() => {
+    setReport(initialReport);
+  }, [initialReport]);
+
+  // Live refresh while treasurer's shift is OPEN — closing_is_live signals a
+  // mid-day projection, so the breakdown rows + flow strip + closing total are
+  // moving targets. Polls the same endpoint the server component uses.
+  useEffect(() => {
+    if (report?.peso?.closing_is_live !== true) return;
+    const url = `/api/report/daily${date ? `?date=${date}` : ''}`;
+    const tick = async () => {
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        setReport(data);
+      } catch { /* swallow — next tick will retry */ }
+    };
+    const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, [report?.peso?.closing_is_live, date]);
 
   function goToDate(d: string) {
     startTransition(() => {
