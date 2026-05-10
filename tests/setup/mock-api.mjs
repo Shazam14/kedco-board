@@ -289,6 +289,11 @@ function withTreasurerView(s) {
   const bale = (s.replenishments ?? [])
     .filter(r => r.source === 'SAFE')
     .reduce((sum, r) => sum + r.amount_php, 0);
+  const interBranchIn = (s.replenishments ?? [])
+    .filter(r => r.source === 'INTER_BRANCH')
+    .reduce((sum, r) => sum + r.amount_php, 0);
+  const interBranchOut = (s.inter_branch_outflows ?? [])
+    .reduce((sum, o) => sum + o.amount_php, 0);
   return {
     ...s,
     is_treasurer_shift:        true,
@@ -297,6 +302,8 @@ function withTreasurerView(s) {
     from_dispatches_php:       s.from_dispatches_php       ?? 0,
     from_cashier_php:          s.from_cashier_php          ?? 0,
     bale_peso_php:             bale,
+    inter_branch_in_php:       interBranchIn,
+    inter_branch_out_php:      interBranchOut,
     vault_returns_php:         s.vault_returns_php ?? 0,
     dispatches_out_php:        s.dispatches_out_php ?? 0,
   };
@@ -1062,6 +1069,7 @@ const server = createServer(async (req, res) => {
         closing_is_live: false,
         bale_php: 100000,
         inter_branch_in_php: 0,
+        inter_branch_out_php: 0,
         vault_returns_php: 50000,
         cheques_cleared_php: 25000,
         expenses_php: 5000,
@@ -1235,6 +1243,29 @@ const server = createServer(async (req, res) => {
         created_at: new Date().toISOString(),
       });
     }
+    return json(res, withTreasurerView(shift));
+  }
+
+  // POST /api/v1/shifts/inter-branch-out — drawer-negative, vault not involved
+  if (method === 'POST' && url === '/api/v1/shifts/inter-branch-out') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const cashier = payload.sub ?? 'cashier1';
+    const body    = JSON.parse(await readBody(req));
+    const shift   = SHIFTS.get(cashier);
+    if (!shift || shift.status !== 'OPEN') {
+      return json(res, { detail: 'No open shift found for today.' }, 404);
+    }
+    if (!body.amount_php || body.amount_php <= 0) {
+      return json(res, { detail: 'Amount must be positive.' }, 400);
+    }
+    const o = {
+      id: `ibo-${Date.now()}`,
+      amount_php: body.amount_php,
+      note: body.note ?? null,
+      sent_at: new Date().toISOString(),
+    };
+    shift.inter_branch_outflows = [...(shift.inter_branch_outflows ?? []), o];
     return json(res, withTreasurerView(shift));
   }
 

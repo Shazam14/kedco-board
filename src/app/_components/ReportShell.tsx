@@ -83,6 +83,7 @@ interface PesoBlock {
   closing_is_live?: boolean;
   bale_php?: number;
   inter_branch_in_php?: number;
+  inter_branch_out_php?: number;
   vault_returns_php?: number;
   cheques_cleared_php?: number;
   expenses_php?: number;
@@ -289,6 +290,7 @@ function printReport(report: Report, hideThan = false) {
         ['From Cashier',                '+', report.peso?.from_cashier_php ?? 0,   '#007a55'],
         ['Bale Peso (vault → drawer)',  '+', report.peso?.bale_php ?? 0,           '#007a55'],
         ['From Branch (inter-branch)',  '+', report.peso?.inter_branch_in_php ?? 0,'#007a55'],
+        ['To Branch (inter-branch)',    '−', report.peso?.inter_branch_out_php ?? 0,'#c0392b'],
         // Signed: + = drawer→vault deposit (subtracts from drawer),
         //         − = vault→drawer withdrawal (adds to drawer).
         // Display as drawer impact: invert sign so deposit shows '−' and withdrawal shows '+'.
@@ -322,6 +324,8 @@ function printReport(report: Report, hideThan = false) {
       <div class="flow-item"><div class="fl">BALE</div><div class="fv" style="color:#555">${php(report.peso?.bale_php ?? 0)}</div></div>
       <div class="flow-op">+</div>
       <div class="flow-item"><div class="fl">FROM BRANCH</div><div class="fv" style="color:#555">${php(report.peso?.inter_branch_in_php ?? 0)}</div></div>
+      <div class="flow-op">−</div>
+      <div class="flow-item"><div class="fl">TO BRANCH</div><div class="fv" style="color:#555">${php(report.peso?.inter_branch_out_php ?? 0)}</div></div>
       <div class="flow-op">${(report.peso?.vault_returns_php ?? 0) >= 0 ? '−' : '+'}</div>
       <div class="flow-item"><div class="fl">VAULT</div><div class="fv" style="color:#555">${php(Math.abs(report.peso?.vault_returns_php ?? 0))}</div></div>
       <div class="flow-op">+</div>
@@ -657,6 +661,7 @@ export default function ReportShell({
               const fc      = p?.from_cashier_php   ?? 0;
               const bale    = p?.bale_php           ?? 0;
               const interIn = p?.inter_branch_in_php ?? 0;
+              const interOut = p?.inter_branch_out_php ?? 0;
               const ret     = p?.vault_returns_php  ?? 0;
               const cheq    = p?.cheques_cleared_php ?? 0;
               const exp     = p?.expenses_php        ?? 0;
@@ -672,6 +677,7 @@ export default function ReportShell({
                 { label: 'From Cashier',                sign: '+', value: fc,      color: '#00d4aa' },
                 { label: 'Bale Peso (vault → drawer)',  sign: '+', value: bale,    color: '#00d4aa' },
                 { label: 'From Branch (inter-branch)',  sign: '+', value: interIn, color: '#00d4aa' },
+                { label: 'To Branch (inter-branch)',    sign: '−', value: interOut, color: '#f5736a' },
                 vaultRow,
                 { label: 'Cheques Cleared',             sign: '+', value: cheq,    color: '#00d4aa' },
                 { label: 'Expenses',                    sign: '−', value: exp,     color: '#f5736a' },
@@ -756,6 +762,7 @@ export default function ReportShell({
               const close   = p?.closing_php ?? 0;
               const bale    = p?.bale_php ?? 0;
               const interIn = p?.inter_branch_in_php ?? 0;
+              const interOut = p?.inter_branch_out_php ?? 0;
               const ret     = p?.vault_returns_php ?? 0;
               const cheq    = p?.cheques_cleared_php ?? 0;
               const exp     = p?.expenses_php ?? 0;
@@ -781,6 +788,7 @@ export default function ReportShell({
                   {op('−')} {item('BOUGHT', php(bought), '#5b8cff')}
                   {op('+')} {item('BALE', php(bale), '#aab4c8')}
                   {op('+')} {item('FROM BRANCH', php(interIn), '#aab4c8')}
+                  {op('−')} {item('TO BRANCH', php(interOut), '#aab4c8')}
                   {op(ret >= 0 ? '−' : '+')} {item('VAULT', php(Math.abs(ret)), '#aab4c8')}
                   {op('+')} {item('CHEQUES', php(cheq), '#aab4c8')}
                   {op('−')} {item('EXPENSES', php(exp), '#aab4c8')}
