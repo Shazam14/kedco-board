@@ -292,7 +292,14 @@ function withTreasurerView(s) {
   const interBranchIn = (s.replenishments ?? [])
     .filter(r => r.source === 'INTER_BRANCH')
     .reduce((sum, r) => sum + r.amount_php, 0);
+  const pesoKenIn = (s.replenishments ?? [])
+    .filter(r => r.source === 'PESO_KEN')
+    .reduce((sum, r) => sum + r.amount_php, 0);
   const interBranchOut = (s.inter_branch_outflows ?? [])
+    .filter(o => (o.destination ?? 'BRANCH') === 'BRANCH')
+    .reduce((sum, o) => sum + o.amount_php, 0);
+  const pesoKenOut = (s.inter_branch_outflows ?? [])
+    .filter(o => o.destination === 'PESO_KEN')
     .reduce((sum, o) => sum + o.amount_php, 0);
   return {
     ...s,
@@ -304,6 +311,8 @@ function withTreasurerView(s) {
     bale_peso_php:             bale,
     inter_branch_in_php:       interBranchIn,
     inter_branch_out_php:      interBranchOut,
+    peso_ken_in_php:           pesoKenIn,
+    peso_ken_out_php:          pesoKenOut,
     vault_returns_php:         s.vault_returns_php ?? 0,
     dispatches_out_php:        s.dispatches_out_php ?? 0,
   };
@@ -1263,6 +1272,31 @@ const server = createServer(async (req, res) => {
       id: `ibo-${Date.now()}`,
       amount_php: body.amount_php,
       note: body.note ?? null,
+      destination: 'BRANCH',
+      sent_at: new Date().toISOString(),
+    };
+    shift.inter_branch_outflows = [...(shift.inter_branch_outflows ?? []), o];
+    return json(res, withTreasurerView(shift));
+  }
+
+  // POST /api/v1/shifts/peso-ken-out — drawer-negative; paired with +amount in peso_ken_entries
+  if (method === 'POST' && url === '/api/v1/shifts/peso-ken-out') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const cashier = payload.sub ?? 'cashier1';
+    const body    = JSON.parse(await readBody(req));
+    const shift   = SHIFTS.get(cashier);
+    if (!shift || shift.status !== 'OPEN') {
+      return json(res, { detail: 'No open shift found for today.' }, 404);
+    }
+    if (!body.amount_php || body.amount_php <= 0) {
+      return json(res, { detail: 'Amount must be positive.' }, 400);
+    }
+    const o = {
+      id: `pko-${Date.now()}`,
+      amount_php: body.amount_php,
+      note: body.note ?? null,
+      destination: 'PESO_KEN',
       sent_at: new Date().toISOString(),
     };
     shift.inter_branch_outflows = [...(shift.inter_branch_outflows ?? []), o];

@@ -113,7 +113,7 @@ export default function CounterShell({
 
   // ── Shift state ──────────────────────────────────────────────────────────
   type Replenishment = { id: string; amount_php: number; note?: string; added_at: string; source?: string };
-  type InterBranchOut = { id: string; amount_php: number; note?: string; sent_at: string };
+  type InterBranchOut = { id: string; amount_php: number; note?: string; destination?: string; sent_at: string };
   type Shift = {
     id: string; cashier: string; cashier_name: string; status: string;
     opened_at: string; opening_cash_php: number;
@@ -135,6 +135,8 @@ export default function CounterShell({
     dispatches_out_php?: number;
     expenses_php?: number;
     cheques_cleared_php?: number;
+    peso_ken_in_php?: number;
+    peso_ken_out_php?: number;
   };
   const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
   const openingCashInput = useNumberInput('', 2);
@@ -146,7 +148,7 @@ export default function CounterShell({
   const [shiftClosed,        setShiftClosed]        = useState<Shift | null>(null);
   const replenishInput = useNumberInput('', 2);
   const [replenishNote,      setReplenishNote]      = useState('');
-  const [replenishSource,    setReplenishSource]    = useState<'SAFE' | 'INTER_BRANCH' | 'EXTERNAL' | 'OTHER'>('SAFE');
+  const [replenishSource,    setReplenishSource]    = useState<'SAFE' | 'INTER_BRANCH' | 'PESO_KEN' | 'EXTERNAL' | 'OTHER'>('SAFE');
   const [replenishLoading,   setReplenishLoading]   = useState(false);
   const [replenishError,     setReplenishError]     = useState<string | null>(null);
   const [floatHint,          setFloatHint]          = useState<string | null>(null);
@@ -155,6 +157,11 @@ export default function CounterShell({
   const [sendBranchNote,    setSendBranchNote]    = useState('');
   const [sendBranchLoading, setSendBranchLoading] = useState(false);
   const [sendBranchError,   setSendBranchError]   = useState<string | null>(null);
+  const [showToKenModal,    setShowToKenModal]    = useState(false);
+  const toKenInput = useNumberInput('', 2);
+  const [toKenNote,    setToKenNote]    = useState('');
+  const [toKenLoading, setToKenLoading] = useState(false);
+  const [toKenError,   setToKenError]   = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/counter/shift', { cache: 'no-store' })
@@ -246,6 +253,22 @@ export default function CounterShell({
       if (!res.ok) { setSendBranchError(data.detail ?? 'Failed to record outflow.'); }
       else { setShift(data); setShowSendBranchModal(false); sendBranchInput.setValue(''); setSendBranchNote(''); }
     } finally { setSendBranchLoading(false); }
+  }
+
+  async function handleToKen() {
+    const amount = parseFloat(toKenInput.raw);
+    if (isNaN(amount) || amount <= 0) { setToKenError('Enter a valid amount.'); return; }
+    setToKenLoading(true); setToKenError(null);
+    try {
+      const res = await fetch('/api/counter/shift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'peso-ken-out', amount_php: amount, note: toKenNote || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setToKenError(data.detail ?? 'Failed to record return.'); }
+      else { setShift(data); setShowToKenModal(false); toKenInput.setValue(''); setToKenNote(''); }
+    } finally { setToKenLoading(false); }
   }
 
   // ── Transaction state ─────────────────────────────────────────────────────
@@ -812,6 +835,8 @@ export default function CounterShell({
         <div class="row"><span class="label">Bale Peso (vault → drawer)</span><span class="val" style="color:#007a55">+${phpFmt(s.bale_peso_php ?? 0)}</span></div>
         ${(s.inter_branch_in_php ?? 0) > 0 ? `<div class="row"><span class="label">From Branch (inter-branch in)</span><span class="val" style="color:#007a55">+${phpFmt(s.inter_branch_in_php ?? 0)}</span></div>` : ''}
         ${(s.inter_branch_out_php ?? 0) > 0 ? `<div class="row"><span class="label">To Branch (inter-branch out)</span><span class="val" style="color:#cc0000">-${phpFmt(s.inter_branch_out_php ?? 0)}</span></div>` : ''}
+        ${(s.peso_ken_in_php ?? 0) > 0 ? `<div class="row"><span class="label">From Ken (Ken float → drawer)</span><span class="val" style="color:#007a55">+${phpFmt(s.peso_ken_in_php ?? 0)}</span></div>` : ''}
+        ${(s.peso_ken_out_php ?? 0) > 0 ? `<div class="row"><span class="label">To Ken (drawer → Ken float)</span><span class="val" style="color:#cc0000">-${phpFmt(s.peso_ken_out_php ?? 0)}</span></div>` : ''}
         ${(s.vault_returns_php ?? 0) !== 0 ? `<div class="row"><span class="label">Vault Movement (drawer ↔ vault)</span><span class="val" style="color:${(s.vault_returns_php ?? 0) >= 0 ? '#cc0000' : '#007a55'}">${(s.vault_returns_php ?? 0) >= 0 ? '-' : '+'}${phpFmt(Math.abs(s.vault_returns_php ?? 0))}</span></div>` : ''}
         ${(s.cheques_cleared_php ?? 0) > 0 ? `<div class="row"><span class="label">Cheques Cleared</span><span class="val" style="color:#007a55">+${phpFmt(s.cheques_cleared_php ?? 0)}</span></div>` : ''}
         ${(s.expenses_php ?? 0) > 0 ? `<div class="row"><span class="label">Expenses</span><span class="val" style="color:#cc0000">-${phpFmt(s.expenses_php ?? 0)}</span></div>` : ''}
@@ -1128,6 +1153,8 @@ export default function CounterShell({
                 const bale          = shiftClosed.bale_peso_php            ?? 0;
                 const interBranch   = shiftClosed.inter_branch_in_php      ?? 0;
                 const interBranchOut = shiftClosed.inter_branch_out_php    ?? 0;
+                const pesoKenIn     = shiftClosed.peso_ken_in_php          ?? 0;
+                const pesoKenOut    = shiftClosed.peso_ken_out_php         ?? 0;
                 const vaultReturns  = shiftClosed.vault_returns_php        ?? 0;
                 const expenses      = shiftClosed.expenses_php             ?? 0;
                 const cheques       = shiftClosed.cheques_cleared_php      ?? 0;
@@ -1141,6 +1168,8 @@ export default function CounterShell({
                   ['Bale Peso (vault → drawer)', '+' + php(bale),                  'var(--teal-300)'],
                   ...(interBranch > 0 ? [['From Branch (inter-branch in)', '+' + php(interBranch), 'var(--teal-300)']] as [string, string, string?, number?][] : []),
                   ...(interBranchOut > 0 ? [['To Branch (inter-branch out)', '-' + php(interBranchOut), 'var(--accent-coral)']] as [string, string, string?, number?][] : []),
+                  ...(pesoKenIn > 0 ? [['From Ken (Ken float → drawer)', '+' + php(pesoKenIn), 'var(--teal-300)']] as [string, string, string?, number?][] : []),
+                  ...(pesoKenOut > 0 ? [['To Ken (drawer → Ken float)', '-' + php(pesoKenOut), 'var(--accent-coral)']] as [string, string, string?, number?][] : []),
                   ...(vaultReturns !== 0 ? [['Vault Movement (drawer ↔ vault)', (vaultReturns >= 0 ? '-' : '+') + php(Math.abs(vaultReturns)), vaultReturns >= 0 ? 'var(--accent-coral)' : 'var(--teal-300)']] as [string, string, string?, number?][] : []),
                   ...(cheques > 0      ? [['Cheques Cleared', '+' + php(cheques), 'var(--teal-300)']]      as [string, string, string?, number?][] : []),
                   ...(expenses > 0     ? [['Expenses',        '-' + php(expenses), 'var(--accent-coral)']] as [string, string, string?, number?][] : []),
@@ -1251,7 +1280,7 @@ export default function CounterShell({
             </label>
             <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
               {(role === 'supervisor'
-                ? (['SAFE', 'INTER_BRANCH', 'EXTERNAL', 'OTHER'] as const)
+                ? (['SAFE', 'INTER_BRANCH', 'PESO_KEN', 'EXTERNAL', 'OTHER'] as const)
                 : (['SAFE', 'EXTERNAL', 'OTHER'] as const)
               ).map(s => (
                 <button
@@ -1267,7 +1296,7 @@ export default function CounterShell({
                     ...M, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer',
                   }}
                 >
-                  {s === 'SAFE' ? 'VAULT' : s === 'INTER_BRANCH' ? 'FROM BRANCH' : s}
+                  {s === 'SAFE' ? 'VAULT' : s === 'INTER_BRANCH' ? 'FROM BRANCH' : s === 'PESO_KEN' ? 'FROM KEN' : s}
                 </button>
               ))}
             </div>
@@ -1320,9 +1349,9 @@ export default function CounterShell({
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
             </div>
 
-            {(shift.inter_branch_outflows?.length ?? 0) > 0 && (
+            {(shift.inter_branch_outflows?.filter(o => (o.destination ?? 'BRANCH') === 'BRANCH').length ?? 0) > 0 && (
               <div style={{ marginBottom: 12 }}>
-                {shift.inter_branch_outflows!.map(o => (
+                {shift.inter_branch_outflows!.filter(o => (o.destination ?? 'BRANCH') === 'BRANCH').map(o => (
                   <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
                     <span style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>{o.note || 'Outflow'}</span>
                     <span style={{ ...M, fontSize: 12, color: 'var(--accent-coral)' }}>−{php(o.amount_php)}</span>
@@ -1388,6 +1417,87 @@ export default function CounterShell({
         </div>
       )}
 
+      {/* ── TO KEN MODAL (treasurer only) — drawer → Peso Ken ── */}
+      {showToKenModal && shift && (
+        <div style={overlayStyle}>
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <div style={{ ...M, fontSize: 10, color: 'var(--accent-coral)', letterSpacing: '0.2em', marginBottom: 4 }}>RETURN TO PESO KEN</div>
+                <div style={{ ...Y, fontSize: 20, fontWeight: 800 }}>Drawer → Ken&apos;s Float</div>
+              </div>
+              <button onClick={() => setShowToKenModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+            </div>
+
+            {(shift.inter_branch_outflows?.filter(o => o.destination === 'PESO_KEN').length ?? 0) > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                {shift.inter_branch_outflows!.filter(o => o.destination === 'PESO_KEN').map(o => (
+                  <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>{o.note || 'Return to Ken'}</span>
+                    <span style={{ ...M, fontSize: 12, color: 'var(--accent-coral)' }}>−{php(o.amount_php)}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', marginTop: 2 }}>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--text-muted)' }}>TOTAL RETURNED</span>
+                  <span style={{ ...M, fontSize: 12, color: 'var(--accent-coral)', fontWeight: 700 }}>−{php(shift.peso_ken_out_php ?? 0)}</span>
+                </div>
+              </div>
+            )}
+
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              AMOUNT (PHP)
+            </label>
+            <input
+              type="text" inputMode="decimal"
+              ref={toKenInput.ref}
+              value={toKenInput.value}
+              onChange={toKenInput.onChange}
+              onFocus={toKenInput.onFocus}
+              placeholder="0.00" autoFocus
+              style={{
+                width: '100%', background: 'var(--bg)', border: '1px solid rgba(255,138,138,0.4)',
+                borderRadius: 8, padding: '14px 16px', color: 'var(--accent-coral)',
+                ...M, fontSize: 22, outline: 'none', boxSizing: 'border-box', marginBottom: 12,
+              }}
+            />
+
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              NOTE (optional)
+            </label>
+            <input
+              type="text"
+              value={toKenNote}
+              onChange={e => setToKenNote(e.target.value)}
+              placeholder="e.g. returning float, end of day..."
+              style={{
+                width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)',
+                ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+
+            {toKenError && (
+              <div style={{ ...M, fontSize: 11, color: 'var(--accent-coral)', marginTop: 12 }}>✗ {toKenError}</div>
+            )}
+
+            <button
+              data-testid="to-ken-confirm"
+              onClick={handleToKen}
+              disabled={toKenLoading || !toKenInput.value}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 10, border: 'none', marginTop: 20,
+                background: toKenLoading || !toKenInput.value ? 'var(--border-subtle)' : 'linear-gradient(135deg,#ff8a8a,#c95a5a)',
+                color: toKenLoading || !toKenInput.value ? 'var(--text-muted)' : '#fff',
+                ...Y, fontSize: 14, fontWeight: 800, cursor: toKenLoading || !toKenInput.value ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {toKenLoading ? 'SAVING...' : 'RETURN TO KEN'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── END SHIFT MODAL ── */}
       {showEndModal && shift && (
         <div style={overlayStyle}>
@@ -1414,6 +1524,8 @@ export default function CounterShell({
                 + (shift.bale_peso_php        ?? 0)
                 + (shift.inter_branch_in_php  ?? 0)
                 - (shift.inter_branch_out_php ?? 0)
+                + (shift.peso_ken_in_php      ?? 0)
+                - (shift.peso_ken_out_php     ?? 0)
                 - (shift.vault_returns_php    ?? 0)
                 + (shift.cheques_cleared_php  ?? 0)
                 - (shift.expenses_php         ?? 0);
@@ -1443,6 +1555,8 @@ export default function CounterShell({
                 const bale          = shift.bale_peso_php            ?? 0;
                 const interBranch   = shift.inter_branch_in_php      ?? 0;
                 const interBranchOut = shift.inter_branch_out_php    ?? 0;
+                const pesoKenIn     = shift.peso_ken_in_php          ?? 0;
+                const pesoKenOut    = shift.peso_ken_out_php         ?? 0;
                 const vaultReturns  = shift.vault_returns_php        ?? 0;
                 const expenses      = shift.expenses_php             ?? 0;
                 const cheques       = shift.cheques_cleared_php      ?? 0;
@@ -1456,6 +1570,8 @@ export default function CounterShell({
                   ['Bale Peso (vault → drawer)', '+' + php(bale),                  'var(--teal-300)'],
                   ...(interBranch > 0 ? [['From Branch (inter-branch in)', '+' + php(interBranch), 'var(--teal-300)']] as [string, string, string?][] : []),
                   ...(interBranchOut > 0 ? [['To Branch (inter-branch out)', '-' + php(interBranchOut), 'var(--accent-coral)']] as [string, string, string?][] : []),
+                  ...(pesoKenIn > 0 ? [['From Ken (Ken float → drawer)', '+' + php(pesoKenIn), 'var(--teal-300)']] as [string, string, string?][] : []),
+                  ...(pesoKenOut > 0 ? [['To Ken (drawer → Ken float)', '-' + php(pesoKenOut), 'var(--accent-coral)']] as [string, string, string?][] : []),
                   ...(vaultReturns !== 0 ? [['Vault Movement (drawer ↔ vault)', (vaultReturns >= 0 ? '-' : '+') + php(Math.abs(vaultReturns)), vaultReturns >= 0 ? 'var(--accent-coral)' : 'var(--teal-300)']] as [string, string, string?][] : []),
                   ...(cheques > 0      ? [['Cheques Cleared', '+' + php(cheques), 'var(--teal-300)']]      as [string, string, string?][] : []),
                   ...(expenses > 0     ? [['Expenses',        '-' + php(expenses), 'var(--accent-coral)']] as [string, string, string?][] : []),
@@ -1922,6 +2038,20 @@ export default function CounterShell({
                 }}
               >
                 SEND
+              </button>
+            )}
+            {role === 'supervisor' && (
+              <button
+                data-testid="to-ken-btn"
+                onClick={() => { setToKenError(null); toKenInput.setValue(''); setToKenNote(''); setShowToKenModal(true); }}
+                style={{
+                  padding: '5px 10px', borderRadius: 6,
+                  border: '1px solid rgba(255,138,138,0.35)',
+                  background: 'rgba(255,138,138,0.07)',
+                  color: 'var(--accent-coral)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
+                }}
+              >
+                TO KEN
               </button>
             )}
             <button
