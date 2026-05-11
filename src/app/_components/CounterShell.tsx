@@ -137,6 +137,8 @@ export default function CounterShell({
     cheques_cleared_php?: number;
     peso_ken_in_php?: number;
     peso_ken_out_php?: number;
+    vale_in_php?: number;
+    vale_out_php?: number;
   };
   const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
   const openingCashInput = useNumberInput('', 2);
@@ -148,7 +150,7 @@ export default function CounterShell({
   const [shiftClosed,        setShiftClosed]        = useState<Shift | null>(null);
   const replenishInput = useNumberInput('', 2);
   const [replenishNote,      setReplenishNote]      = useState('');
-  const [replenishSource,    setReplenishSource]    = useState<'SAFE' | 'INTER_BRANCH' | 'PESO_KEN' | 'EXTERNAL' | 'OTHER'>('SAFE');
+  const [replenishSource,    setReplenishSource]    = useState<'SAFE' | 'INTER_BRANCH' | 'PESO_KEN' | 'VALE' | 'EXTERNAL' | 'OTHER'>('SAFE');
   const [replenishLoading,   setReplenishLoading]   = useState(false);
   const [replenishError,     setReplenishError]     = useState<string | null>(null);
   const [floatHint,          setFloatHint]          = useState<string | null>(null);
@@ -162,6 +164,49 @@ export default function CounterShell({
   const [toKenNote,    setToKenNote]    = useState('');
   const [toKenLoading, setToKenLoading] = useState(false);
   const [toKenError,   setToKenError]   = useState<string | null>(null);
+  // ── VALE (investor IOU) ───────────────────────────────────────────────────
+  type ValeParty = { id: string; name: string; is_active: boolean };
+  const [valeParties,        setValeParties]        = useState<ValeParty[]>([]);
+  const [replenishPartyId,   setReplenishPartyId]   = useState<string>('');
+  const [newPartyName,       setNewPartyName]       = useState<string>('');
+  const [newPartySaving,     setNewPartySaving]     = useState(false);
+  const [showToValeModal,    setShowToValeModal]    = useState(false);
+  const toValeInput = useNumberInput('', 2);
+  const [toValeNote,     setToValeNote]     = useState('');
+  const [toValePartyId,  setToValePartyId]  = useState<string>('');
+  const [toValeLoading,  setToValeLoading]  = useState(false);
+  const [toValeError,    setToValeError]    = useState<string | null>(null);
+
+  async function reloadValeParties() {
+    if (role !== 'supervisor') return;
+    try {
+      const r = await fetch('/api/admin/vales/parties', { cache: 'no-store' });
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data)) setValeParties(data.filter((p: ValeParty) => p.is_active));
+      }
+    } catch {}
+  }
+  useEffect(() => { reloadValeParties(); /* eslint-disable-next-line */ }, [role]);
+
+  async function createValeParty(name: string): Promise<ValeParty | null> {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    setNewPartySaving(true);
+    try {
+      const r = await fetch('/api/admin/vales/parties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const data = await r.json();
+      if (r.ok) {
+        await reloadValeParties();
+        return data as ValeParty;
+      }
+    } finally { setNewPartySaving(false); }
+    return null;
+  }
 
   useEffect(() => {
     fetch('/api/counter/shift', { cache: 'no-store' })
@@ -226,17 +271,60 @@ export default function CounterShell({
   async function handleReplenish() {
     const amount = parseFloat(replenishInput.raw);
     if (isNaN(amount) || amount <= 0) { setReplenishError('Enter a valid amount.'); return; }
+    if (replenishSource === 'VALE' && !replenishPartyId) {
+      setReplenishError('Pick a vale party (investor) or add a new one.');
+      return;
+    }
     setReplenishLoading(true); setReplenishError(null);
     try {
       const res = await fetch('/api/counter/shift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'replenish', amount_php: amount, note: replenishNote || undefined, source: replenishSource }),
+        body: JSON.stringify({
+          action: 'replenish', amount_php: amount, note: replenishNote || undefined,
+          source: replenishSource,
+          ...(replenishSource === 'VALE' ? { party_id: replenishPartyId } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setReplenishError(data.detail ?? 'Failed to record replenishment.'); }
-      else { setShift(data); setShowReplenishModal(false); replenishInput.setValue(''); setReplenishNote(''); setReplenishSource('SAFE'); }
+      else {
+        setShift(data);
+        setShowReplenishModal(false);
+        replenishInput.setValue('');
+        setReplenishNote('');
+        setReplenishSource('SAFE');
+        setReplenishPartyId('');
+      }
     } finally { setReplenishLoading(false); }
+  }
+
+  async function handleToVale() {
+    const amount = parseFloat(toValeInput.raw);
+    if (isNaN(amount) || amount <= 0) { setToValeError('Enter a valid amount.'); return; }
+    if (!toValePartyId) { setToValeError('Pick a vale party (investor).'); return; }
+    setToValeLoading(true); setToValeError(null);
+    try {
+      const res = await fetch('/api/counter/shift', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'vale-out',
+          amount_php: amount,
+          party_id: toValePartyId,
+          note: toValeNote || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setToValeError(data.detail ?? 'Failed to record return.'); }
+      else {
+        setShift(data);
+        setShowToValeModal(false);
+        toValeInput.setValue('');
+        setToValeNote('');
+        setToValePartyId('');
+      }
+    } finally { setToValeLoading(false); }
   }
 
   async function handleSendBranch() {
@@ -1280,7 +1368,7 @@ export default function CounterShell({
             </label>
             <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
               {(role === 'supervisor'
-                ? (['SAFE', 'INTER_BRANCH', 'PESO_KEN', 'EXTERNAL', 'OTHER'] as const)
+                ? (['SAFE', 'INTER_BRANCH', 'PESO_KEN', 'VALE', 'EXTERNAL', 'OTHER'] as const)
                 : (['SAFE', 'EXTERNAL', 'OTHER'] as const)
               ).map(s => (
                 <button
@@ -1296,10 +1384,67 @@ export default function CounterShell({
                     ...M, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer',
                   }}
                 >
-                  {s === 'SAFE' ? 'VAULT' : s === 'INTER_BRANCH' ? 'FROM BRANCH' : s === 'PESO_KEN' ? 'FROM KEN' : s}
+                  {s === 'SAFE' ? 'VAULT' : s === 'INTER_BRANCH' ? 'FROM BRANCH' : s === 'PESO_KEN' ? 'FROM KEN' : s === 'VALE' ? 'FROM VALE' : s}
                 </button>
               ))}
             </div>
+
+            {replenishSource === 'VALE' && (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+                  VALE PARTY (INVESTOR)
+                </label>
+                <select
+                  value={replenishPartyId}
+                  onChange={e => setReplenishPartyId(e.target.value)}
+                  data-testid="replenish-vale-party"
+                  style={{
+                    width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)',
+                    ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8,
+                  }}
+                >
+                  <option value="">— pick party —</option>
+                  {valeParties.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="text"
+                    value={newPartyName}
+                    onChange={e => setNewPartyName(e.target.value)}
+                    placeholder="+ new party name (e.g. Ike)"
+                    style={{
+                      flex: 1, background: 'var(--bg)', border: '1px solid var(--border)',
+                      borderRadius: 8, padding: '8px 12px', color: 'var(--text-strong)',
+                      ...M, fontSize: 12, outline: 'none', boxSizing: 'border-box',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={newPartySaving || !newPartyName.trim()}
+                    onClick={async () => {
+                      const created = await createValeParty(newPartyName);
+                      if (created) {
+                        setReplenishPartyId(created.id);
+                        setNewPartyName('');
+                      }
+                    }}
+                    style={{
+                      padding: '8px 14px', borderRadius: 8,
+                      border: '1px solid var(--teal-300)',
+                      background: newPartySaving || !newPartyName.trim() ? 'transparent' : 'rgba(61,199,173,0.12)',
+                      color: 'var(--teal-300)',
+                      ...M, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+                      cursor: newPartySaving || !newPartyName.trim() ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {newPartySaving ? '…' : 'ADD'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
               NOTE (optional)
@@ -1493,6 +1638,106 @@ export default function CounterShell({
               }}
             >
               {toKenLoading ? 'SAVING...' : 'RETURN TO KEN'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── TO VALE MODAL (treasurer only) — drawer → investor (paying back IOU) ── */}
+      {showToValeModal && shift && (
+        <div style={overlayStyle}>
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <div style={{ ...M, fontSize: 10, color: 'var(--accent-coral)', letterSpacing: '0.2em', marginBottom: 4 }}>RETURN TO VALE</div>
+                <div style={{ ...Y, fontSize: 20, fontWeight: 800 }}>Drawer → Investor</div>
+              </div>
+              <button onClick={() => setShowToValeModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+            </div>
+
+            {(shift.inter_branch_outflows?.filter(o => o.destination === 'VALE').length ?? 0) > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                {shift.inter_branch_outflows!.filter(o => o.destination === 'VALE').map(o => (
+                  <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ ...M, fontSize: 11, color: 'var(--text-muted)' }}>{o.note || 'Return to vale'}</span>
+                    <span style={{ ...M, fontSize: 12, color: 'var(--accent-coral)' }}>−{php(o.amount_php)}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', marginTop: 2 }}>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--text-muted)' }}>TOTAL RETURNED</span>
+                  <span style={{ ...M, fontSize: 12, color: 'var(--accent-coral)', fontWeight: 700 }}>−{php(shift.vale_out_php ?? 0)}</span>
+                </div>
+              </div>
+            )}
+
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              VALE PARTY (INVESTOR)
+            </label>
+            <select
+              value={toValePartyId}
+              onChange={e => setToValePartyId(e.target.value)}
+              data-testid="to-vale-party"
+              style={{
+                width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)',
+                ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 12,
+              }}
+            >
+              <option value="">— pick party —</option>
+              {valeParties.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              AMOUNT (PHP)
+            </label>
+            <input
+              type="text" inputMode="decimal"
+              ref={toValeInput.ref}
+              value={toValeInput.value}
+              onChange={toValeInput.onChange}
+              onFocus={toValeInput.onFocus}
+              placeholder="0.00" autoFocus
+              style={{
+                width: '100%', background: 'var(--bg)', border: '1px solid rgba(255,138,138,0.4)',
+                borderRadius: 8, padding: '14px 16px', color: 'var(--accent-coral)',
+                ...M, fontSize: 22, outline: 'none', boxSizing: 'border-box', marginBottom: 12,
+              }}
+            />
+
+            <label style={{ ...M, fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.12em', display: 'block', marginBottom: 8 }}>
+              NOTE (optional)
+            </label>
+            <input
+              type="text"
+              value={toValeNote}
+              onChange={e => setToValeNote(e.target.value)}
+              placeholder="e.g. partial repayment, full settle..."
+              style={{
+                width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 14px', color: 'var(--text-strong)',
+                ...M, fontSize: 13, outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+
+            {toValeError && (
+              <div style={{ ...M, fontSize: 11, color: 'var(--accent-coral)', marginTop: 12 }}>✗ {toValeError}</div>
+            )}
+
+            <button
+              data-testid="to-vale-confirm"
+              onClick={handleToVale}
+              disabled={toValeLoading || !toValeInput.value || !toValePartyId}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 10, border: 'none', marginTop: 20,
+                background: toValeLoading || !toValeInput.value || !toValePartyId ? 'var(--border-subtle)' : 'linear-gradient(135deg,#ff8a8a,#c95a5a)',
+                color: toValeLoading || !toValeInput.value || !toValePartyId ? 'var(--text-muted)' : '#fff',
+                ...Y, fontSize: 14, fontWeight: 800, cursor: toValeLoading || !toValeInput.value || !toValePartyId ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {toValeLoading ? 'SAVING...' : 'RETURN TO VALE'}
             </button>
           </div>
         </div>
@@ -2054,6 +2299,20 @@ export default function CounterShell({
                 TO KEN
               </button>
             )}
+            {role === 'supervisor' && (
+              <button
+                data-testid="to-vale-btn"
+                onClick={() => { setToValeError(null); toValeInput.setValue(''); setToValeNote(''); setToValePartyId(''); setShowToValeModal(true); }}
+                style={{
+                  padding: '5px 10px', borderRadius: 6,
+                  border: '1px solid rgba(255,138,138,0.35)',
+                  background: 'rgba(255,138,138,0.07)',
+                  color: 'var(--accent-coral)', ...M, fontSize: 10, cursor: 'pointer', letterSpacing: '0.05em',
+                }}
+              >
+                TO VALE
+              </button>
+            )}
             <button
               onClick={async () => {
                 setShiftError(null);
@@ -2105,6 +2364,7 @@ export default function CounterShell({
                   <a href="/supervisor"              onClick={() => setMenuOpen(false)} style={{ ...menuItemStyle, color: 'var(--teal-300)' }}>← Supervisor Hub</a>
                   <a href="/supervisor/transactions" onClick={() => setMenuOpen(false)} style={menuItemStyle}>Cashier Txns</a>
                   <a href="/admin/riders"            onClick={() => setMenuOpen(false)} style={menuItemStyle}>Riders</a>
+                  <a href="/admin/vales"             onClick={() => setMenuOpen(false)} style={menuItemStyle}>Vale Ledger</a>
                   <div style={menuDivider} />
                 </>)}
                 <a href="/passbook" onClick={() => setMenuOpen(false)} style={menuItemStyle}>Passbook</a>

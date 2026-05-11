@@ -301,6 +301,12 @@ function withTreasurerView(s) {
   const pesoKenOut = (s.inter_branch_outflows ?? [])
     .filter(o => o.destination === 'PESO_KEN')
     .reduce((sum, o) => sum + o.amount_php, 0);
+  const valeIn = (s.replenishments ?? [])
+    .filter(r => r.source === 'VALE')
+    .reduce((sum, r) => sum + r.amount_php, 0);
+  const valeOut = (s.inter_branch_outflows ?? [])
+    .filter(o => o.destination === 'VALE')
+    .reduce((sum, o) => sum + o.amount_php, 0);
   return {
     ...s,
     is_treasurer_shift:        true,
@@ -313,6 +319,8 @@ function withTreasurerView(s) {
     inter_branch_out_php:      interBranchOut,
     peso_ken_in_php:           pesoKenIn,
     peso_ken_out_php:          pesoKenOut,
+    vale_in_php:               valeIn,
+    vale_out_php:              valeOut,
     vault_returns_php:         s.vault_returns_php ?? 0,
     dispatches_out_php:        s.dispatches_out_php ?? 0,
   };
@@ -1277,6 +1285,61 @@ const server = createServer(async (req, res) => {
     };
     shift.inter_branch_outflows = [...(shift.inter_branch_outflows ?? []), o];
     return json(res, withTreasurerView(shift));
+  }
+
+  // POST /api/v1/shifts/vale-out — drawer-negative; paired with −amount in vale_entries
+  if (method === 'POST' && url === '/api/v1/shifts/vale-out') {
+    const auth    = (req.headers['authorization'] ?? '').replace('Bearer ', '');
+    const payload = auth ? JSON.parse(Buffer.from(auth.split('.')[1], 'base64').toString()) : {};
+    const cashier = payload.sub ?? 'cashier1';
+    const body    = JSON.parse(await readBody(req));
+    const shift   = SHIFTS.get(cashier);
+    if (!shift || shift.status !== 'OPEN') {
+      return json(res, { detail: 'No open shift found for today.' }, 404);
+    }
+    if (!body.amount_php || body.amount_php <= 0) {
+      return json(res, { detail: 'Amount must be positive.' }, 400);
+    }
+    if (!body.party_id) {
+      return json(res, { detail: 'Vale party not found.' }, 404);
+    }
+    const o = {
+      id: `vo-${Date.now()}`,
+      amount_php: body.amount_php,
+      note: body.note ?? null,
+      destination: 'VALE',
+      sent_at: new Date().toISOString(),
+    };
+    shift.inter_branch_outflows = [...(shift.inter_branch_outflows ?? []), o];
+    return json(res, withTreasurerView(shift));
+  }
+
+  // ── Vale parties (mock — minimal happy path) ────────────────────────────
+  if (method === 'GET' && url === '/api/v1/vales/parties') {
+    return json(res, []);
+  }
+  if (method === 'POST' && url === '/api/v1/vales/parties') {
+    const body = JSON.parse(await readBody(req));
+    return json(res, {
+      id: `vp-${Date.now()}`,
+      name: body.name,
+      note: body.note ?? null,
+      is_active: true,
+      created_by: 'mock',
+      created_at: new Date().toISOString(),
+    }, 201);
+  }
+  if (method === 'GET' && url === '/api/v1/vales/balances') {
+    return json(res, []);
+  }
+  if (method === 'GET' && url === '/api/v1/vales/available-investors') {
+    return json(res, []);
+  }
+  if (method === 'GET' && url.match(/^\/api\/v1\/vales\/parties\/[^/]+\/entries$/)) {
+    return json(res, []);
+  }
+  if (method === 'PATCH' && url.match(/^\/api\/v1\/vales\/parties\/[^/]+$/)) {
+    return json(res, { id: 'mock', name: 'mock', is_active: true, note: null, investor_id: null, investor_name: null, created_by: 'mock', created_at: new Date().toISOString() });
   }
 
   // POST /api/v1/shifts/peso-ken-out — drawer-negative; paired with +amount in peso_ken_entries
