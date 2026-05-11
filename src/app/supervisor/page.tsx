@@ -12,6 +12,27 @@ function decodeToken(t: string) {
 
 const tools: { href: string; icon: string; title: string; desc: string; color: string }[] = [
   {
+    href:  '/admin/report',
+    icon:  '📋',
+    title: 'Daily Report',
+    desc:  'Full day breakdown by currency, cashier, and stock.',
+    color: '#a78bfa',
+  },
+  {
+    href:  '/supervisor/payables',
+    icon:  '⏳',
+    title: 'Pending Payments',
+    desc:  'Confirm payment slices once funds clear.',
+    color: '#d4a64a',
+  },
+  {
+    href:  '/supervisor/transactions',
+    icon:  '📒',
+    title: 'Transactions',
+    desc:  'All buy/sell entries — search, filter, inspect.',
+    color: '#00d4aa',
+  },
+  {
     href:  '/counter',
     icon:  '🖥️',
     title: 'Counter',
@@ -33,20 +54,6 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     color: '#00d4aa',
   },
   {
-    href:  '/admin/report',
-    icon:  '📋',
-    title: 'Daily Report',
-    desc:  'Full day breakdown by currency, cashier, and stock.',
-    color: '#a78bfa',
-  },
-  {
-    href:  '/supervisor/transactions',
-    icon:  '📒',
-    title: 'Transactions',
-    desc:  'All buy/sell entries — search, filter, inspect.',
-    color: '#00d4aa',
-  },
-  {
     href:  '/supervisor/dispatch',
     icon:  '🏍️',
     title: 'Rider Dispatch',
@@ -59,13 +66,6 @@ const tools: { href: string; icon: string; title: string; desc: string; color: s
     title: 'Cashier Floats',
     desc:  'Set opening floats — cashiers see them when they open shift.',
     color: '#5b8cff',
-  },
-  {
-    href:  '/supervisor/payables',
-    icon:  '⏳',
-    title: 'Pending Payments',
-    desc:  'Confirm payment slices once funds clear.',
-    color: '#d4a64a',
   },
   {
     href:  '/admin/eod',
