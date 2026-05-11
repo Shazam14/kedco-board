@@ -495,45 +495,65 @@ export default function DispatchShell({
                   );
                 })}
               </div>
-              <div
-                data-testid="returned-total"
-                style={{
-                  ...cardStyle,
-                  marginTop: 10,
-                  borderColor: 'var(--teal-600)',
-                  background: 'rgba(61,199,173,0.04)',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <span style={{ ...Y, fontSize: 12, fontWeight: 700, color: 'var(--text-strong)', letterSpacing: '0.08em' }}>
-                    TOTAL · {returned.length} RETURNED
-                  </span>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
-                  <span style={{ ...M, fontSize: 10, color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 10, border: '1px solid var(--border)' }}>
-                    OUT {php(outPhpTotal)}
-                  </span>
-                  {backPhpTotal > 0 && (
-                    <span style={{ ...M, fontSize: 10, color: 'var(--teal-300)', background: 'rgba(61,199,173,0.06)', padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(61,199,173,0.2)' }}>
-                      BACK {php(backPhpTotal)}
-                    </span>
-                  )}
-                </div>
-                {(Object.keys(outCcyTotals).length > 0 || Object.keys(backCcyTotals).length > 0) && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {Object.entries(outCcyTotals).map(([c, a]) => (
-                      <span key={`o-${c}`} style={{ ...M, fontSize: 10, color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 10, border: '1px solid var(--border)' }}>
-                        OUT {fmt(a, c)}
+              {(() => {
+                const ccySet = new Set<string>([
+                  ...Object.keys(outCcyTotals),
+                  ...Object.keys(backCcyTotals),
+                ]);
+                const fcyRows = Array.from(ccySet).sort();
+                const grid: React.CSSProperties = {
+                  display: 'grid',
+                  gridTemplateColumns: '48px 1fr 1fr',
+                  alignItems: 'center',
+                  columnGap: 10,
+                  padding: '6px 0',
+                };
+                const ccyCell: React.CSSProperties = {
+                  ...M, fontSize: 11, color: 'var(--text-strong)', fontWeight: 600,
+                };
+                const outCell: React.CSSProperties = {
+                  ...M, fontSize: 11, color: 'var(--text-muted)', textAlign: 'right',
+                };
+                const backCell: React.CSSProperties = {
+                  ...M, fontSize: 11, color: 'var(--teal-300)', textAlign: 'right',
+                };
+                const fmtAmt = (n: number) =>
+                  n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                return (
+                  <div
+                    data-testid="returned-total"
+                    style={{
+                      ...cardStyle,
+                      marginTop: 10,
+                      borderColor: 'var(--teal-600)',
+                      background: 'rgba(61,199,173,0.04)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ ...Y, fontSize: 12, fontWeight: 700, color: 'var(--text-strong)', letterSpacing: '0.08em' }}>
+                        TOTAL · {returned.length} RETURNED
                       </span>
-                    ))}
-                    {Object.entries(backCcyTotals).map(([c, a]) => (
-                      <span key={`b-${c}`} style={{ ...M, fontSize: 10, color: 'var(--teal-300)', background: 'rgba(61,199,173,0.06)', padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(61,199,173,0.2)' }}>
-                        BACK {fmt(a, c)}
-                      </span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 1fr', columnGap: 10, ...M, fontSize: 9, color: 'var(--text-faint)', letterSpacing: '0.1em', padding: '4px 0 2px', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <span></span>
+                      <span style={{ textAlign: 'right' }}>OUT</span>
+                      <span style={{ textAlign: 'right' }}>BACK</span>
+                    </div>
+                    <div style={{ ...grid, borderBottom: fcyRows.length > 0 ? '1px solid var(--border-subtle)' : 'none' }}>
+                      <span style={ccyCell}>PHP</span>
+                      <span style={outCell}>{outPhpTotal > 0 ? php(outPhpTotal) : '—'}</span>
+                      <span style={backCell}>{backPhpTotal > 0 ? php(backPhpTotal) : '—'}</span>
+                    </div>
+                    {fcyRows.map(c => (
+                      <div key={c} style={grid}>
+                        <span style={ccyCell}>{c}</span>
+                        <span style={outCell}>{(outCcyTotals[c] ?? 0) > 0 ? fmtAmt(outCcyTotals[c]) : '—'}</span>
+                        <span style={backCell}>{(backCcyTotals[c] ?? 0) > 0 ? fmtAmt(backCcyTotals[c]) : '—'}</span>
+                      </div>
                     ))}
                   </div>
-                )}
-              </div>
+                );
+              })()}
             </div>
             );
           })()}
