@@ -88,6 +88,7 @@ interface PesoBlock {
   peso_ken_out_php?: number;
   vale_in_php?: number;
   vale_out_php?: number;
+  cashier_floats_out_php?: number;
   vault_returns_php?: number;
   cheques_cleared_php?: number;
   expenses_php?: number;
@@ -299,6 +300,7 @@ function printReport(report: Report, hideThan = false) {
         ...((report.peso?.peso_ken_out_php ?? 0) > 0 ? [['To Ken (drawer → Ken float)',  '−', report.peso?.peso_ken_out_php ?? 0,'#c0392b']] : []),
         ...((report.peso?.vale_in_php  ?? 0) > 0 ? [['From Vale (investor → drawer)','+', report.peso?.vale_in_php  ?? 0,'#007a55']] : []),
         ...((report.peso?.vale_out_php ?? 0) > 0 ? [['To Vale (drawer → investor)',  '−', report.peso?.vale_out_php ?? 0,'#c0392b']] : []),
+        ...((report.peso?.cashier_floats_out_php ?? 0) > 0 ? [['Cashier Floats Out (drawer → cashiers)', '−', report.peso?.cashier_floats_out_php ?? 0, '#c0392b']] : []),
         // Signed: + = drawer→vault deposit (subtracts from drawer),
         //         − = vault→drawer withdrawal (adds to drawer).
         // Display as drawer impact: invert sign so deposit shows '−' and withdrawal shows '+'.
@@ -698,6 +700,7 @@ export default function ReportShell({
               const pkOut   = p?.peso_ken_out_php   ?? 0;
               const valeIn  = p?.vale_in_php        ?? 0;
               const valeOut = p?.vale_out_php       ?? 0;
+              const cFloats = p?.cashier_floats_out_php ?? 0;
               const ret     = p?.vault_returns_php  ?? 0;
               const cheq    = p?.cheques_cleared_php ?? 0;
               const exp     = p?.expenses_php        ?? 0;
@@ -718,6 +721,7 @@ export default function ReportShell({
                 ...(pkOut > 0 ? [{ label: 'To Ken (drawer → Ken float)',    sign: '−' as const, value: pkOut,   color: '#f5736a' }] : []),
                 ...(valeIn  > 0 ? [{ label: 'From Vale (investor → drawer)',  sign: '+' as const, value: valeIn,  color: '#00d4aa' }] : []),
                 ...(valeOut > 0 ? [{ label: 'To Vale (drawer → investor)',    sign: '−' as const, value: valeOut, color: '#f5736a' }] : []),
+                ...(cFloats > 0 ? [{ label: 'Cashier Floats Out (drawer → cashiers)', sign: '−' as const, value: cFloats, color: '#f5736a' }] : []),
                 vaultRow,
                 { label: 'Cheques Cleared',             sign: '+', value: cheq,    color: '#00d4aa' },
                 { label: 'Expenses',                    sign: '−', value: exp,     color: '#f5736a' },
@@ -807,6 +811,7 @@ export default function ReportShell({
               const pkOut   = p?.peso_ken_out_php ?? 0;
               const valeIn  = p?.vale_in_php ?? 0;
               const valeOut = p?.vale_out_php ?? 0;
+              const cFloats = p?.cashier_floats_out_php ?? 0;
               const ret     = p?.vault_returns_php ?? 0;
               const cheq    = p?.cheques_cleared_php ?? 0;
               const exp     = p?.expenses_php ?? 0;
@@ -837,6 +842,7 @@ export default function ReportShell({
                   {pkOut > 0 && <>{op('−')} {item('TO KEN',    php(pkOut), '#aab4c8')}</>}
                   {valeIn  > 0 && <>{op('+')} {item('FROM VALE', php(valeIn),  '#aab4c8')}</>}
                   {valeOut > 0 && <>{op('−')} {item('TO VALE',   php(valeOut), '#aab4c8')}</>}
+                  {cFloats > 0 && <>{op('−')} {item('FLOATS OUT', php(cFloats), '#aab4c8')}</>}
                   {op(ret >= 0 ? '−' : '+')} {item('VAULT', php(Math.abs(ret)), '#aab4c8')}
                   {op('+')} {item('CHEQUES', php(cheq), '#aab4c8')}
                   {op('−')} {item('EXPENSES', php(exp), '#aab4c8')}

@@ -321,6 +321,7 @@ function withTreasurerView(s) {
     peso_ken_out_php:          pesoKenOut,
     vale_in_php:               valeIn,
     vale_out_php:              valeOut,
+    cashier_floats_out_php:    s.cashier_floats_out_php ?? 0,
     vault_returns_php:         s.vault_returns_php ?? 0,
     dispatches_out_php:        s.dispatches_out_php ?? 0,
   };

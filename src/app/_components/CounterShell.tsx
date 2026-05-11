@@ -139,6 +139,7 @@ export default function CounterShell({
     peso_ken_out_php?: number;
     vale_in_php?: number;
     vale_out_php?: number;
+    cashier_floats_out_php?: number;
   };
   const [shift,         setShift]         = useState<Shift | null | undefined>(undefined); // undefined = loading
   const openingCashInput = useNumberInput('', 2);
@@ -925,6 +926,7 @@ export default function CounterShell({
         ${(s.inter_branch_out_php ?? 0) > 0 ? `<div class="row"><span class="label">To Branch (inter-branch out)</span><span class="val" style="color:#cc0000">-${phpFmt(s.inter_branch_out_php ?? 0)}</span></div>` : ''}
         ${(s.peso_ken_in_php ?? 0) > 0 ? `<div class="row"><span class="label">From Ken (Ken float → drawer)</span><span class="val" style="color:#007a55">+${phpFmt(s.peso_ken_in_php ?? 0)}</span></div>` : ''}
         ${(s.peso_ken_out_php ?? 0) > 0 ? `<div class="row"><span class="label">To Ken (drawer → Ken float)</span><span class="val" style="color:#cc0000">-${phpFmt(s.peso_ken_out_php ?? 0)}</span></div>` : ''}
+        ${(s.cashier_floats_out_php ?? 0) > 0 ? `<div class="row"><span class="label">Cashier Floats Out (drawer → cashiers)</span><span class="val" style="color:#cc0000">-${phpFmt(s.cashier_floats_out_php ?? 0)}</span></div>` : ''}
         ${(s.vault_returns_php ?? 0) !== 0 ? `<div class="row"><span class="label">Vault Movement (drawer ↔ vault)</span><span class="val" style="color:${(s.vault_returns_php ?? 0) >= 0 ? '#cc0000' : '#007a55'}">${(s.vault_returns_php ?? 0) >= 0 ? '-' : '+'}${phpFmt(Math.abs(s.vault_returns_php ?? 0))}</span></div>` : ''}
         ${(s.cheques_cleared_php ?? 0) > 0 ? `<div class="row"><span class="label">Cheques Cleared</span><span class="val" style="color:#007a55">+${phpFmt(s.cheques_cleared_php ?? 0)}</span></div>` : ''}
         ${(s.expenses_php ?? 0) > 0 ? `<div class="row"><span class="label">Expenses</span><span class="val" style="color:#cc0000">-${phpFmt(s.expenses_php ?? 0)}</span></div>` : ''}
