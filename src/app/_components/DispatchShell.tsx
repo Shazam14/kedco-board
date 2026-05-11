@@ -443,7 +443,17 @@ export default function DispatchShell({
             </div>
           )}
 
-          {returned.length > 0 && (
+          {returned.length > 0 && (() => {
+            const outPhpTotal  = returned.reduce((s, d) => s + (d.cash_php  ?? 0), 0);
+            const backPhpTotal = returned.reduce((s, d) => s + (d.remit_php ?? 0), 0);
+            const sumByCcy = (key: 'items' | 'remit_items') => {
+              const m: Record<string, number> = {};
+              for (const d of returned) for (const it of d[key]) m[it.currency] = (m[it.currency] ?? 0) + it.amount;
+              return m;
+            };
+            const outCcyTotals  = sumByCcy('items');
+            const backCcyTotals = sumByCcy('remit_items');
+            return (
             <div>
               <div style={{ ...M, fontSize: 10, color: 'var(--text-faint)', letterSpacing: '0.12em', marginBottom: 8 }}>
                 RETURNED ({returned.length})
@@ -485,8 +495,48 @@ export default function DispatchShell({
                   );
                 })}
               </div>
+              <div
+                data-testid="returned-total"
+                style={{
+                  ...cardStyle,
+                  marginTop: 10,
+                  borderColor: 'var(--teal-600)',
+                  background: 'rgba(61,199,173,0.04)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ ...Y, fontSize: 12, fontWeight: 700, color: 'var(--text-strong)', letterSpacing: '0.08em' }}>
+                    TOTAL · {returned.length} RETURNED
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                  <span style={{ ...M, fontSize: 10, color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 10, border: '1px solid var(--border)' }}>
+                    OUT {php(outPhpTotal)}
+                  </span>
+                  {backPhpTotal > 0 && (
+                    <span style={{ ...M, fontSize: 10, color: 'var(--teal-300)', background: 'rgba(61,199,173,0.06)', padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(61,199,173,0.2)' }}>
+                      BACK {php(backPhpTotal)}
+                    </span>
+                  )}
+                </div>
+                {(Object.keys(outCcyTotals).length > 0 || Object.keys(backCcyTotals).length > 0) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {Object.entries(outCcyTotals).map(([c, a]) => (
+                      <span key={`o-${c}`} style={{ ...M, fontSize: 10, color: 'var(--text-muted)', padding: '2px 8px', borderRadius: 10, border: '1px solid var(--border)' }}>
+                        OUT {fmt(a, c)}
+                      </span>
+                    ))}
+                    {Object.entries(backCcyTotals).map(([c, a]) => (
+                      <span key={`b-${c}`} style={{ ...M, fontSize: 10, color: 'var(--teal-300)', background: 'rgba(61,199,173,0.06)', padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(61,199,173,0.2)' }}>
+                        BACK {fmt(a, c)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+            );
+          })()}
 
           {dispatches.length === 0 && undispatched.length === 0 && (
             <div style={{ ...M, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '60px 0' }}>
