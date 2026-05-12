@@ -1367,6 +1367,29 @@ const server = createServer(async (req, res) => {
     return json(res, withTreasurerView(shift));
   }
 
+  // ── Cash Map ─────────────────────────────────────────────────────────────
+  if (method === 'GET' && url.startsWith('/api/v1/cash-map')) {
+    const vault = Math.round(SAFE_MOVEMENTS.reduce((s, m) => s + m.amount_php, 0) * 100) / 100;
+    const lastMove = SAFE_MOVEMENTS.length
+      ? [...SAFE_MOVEMENTS].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0]
+      : null;
+    return json(res, {
+      date: today,
+      rollup: {
+        cashiers: { drawer: 0, handoff: 0 },
+        riders:   { in_field: 0, remitted_unconfirmed: 0 },
+        vault,
+        total: vault,
+      },
+      rows: [{
+        location: 'Vault', holder: '—', amount: vault, status: '—',
+        since: lastMove ? lastMove.created_at : null,
+      }],
+      expected: null,
+      variance: null,
+    });
+  }
+
   // ── Safe / Vault ─────────────────────────────────────────────────────────
   if (method === 'GET' && url.startsWith('/api/v1/safe') && !url.startsWith('/api/v1/safe/movements')) {
     const todays = SAFE_MOVEMENTS.filter(m => m.movement_date === today);

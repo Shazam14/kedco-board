@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import SafeCard from './SafeCard';
+import CashMapCard from './CashMapCard';
 
 const AUTH_COOKIE = process.env.AUTH_COOKIE ?? 'kedco_token';
 
@@ -101,6 +102,8 @@ export default async function SupervisorPage() {
       <div style={{ padding:'28px 32px' }}>
         <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, color:'var(--muted)', letterSpacing:'0.2em', marginBottom:6 }}>TREASURER</div>
         <div style={{ fontFamily:"'Syne',sans-serif", fontSize:26, fontWeight:800, marginBottom:28, letterSpacing:'-0.02em' }}>What do you need to do?</div>
+
+        <CashMapCard />
 
         <SafeCard />
 
