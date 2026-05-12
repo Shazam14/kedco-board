@@ -460,36 +460,51 @@ export default function DispatchShell({
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {returned.map(d => {
-                  const outChip: React.CSSProperties = {
-                    ...M, fontSize: 10, color: 'var(--text-muted)',
-                    padding: '2px 8px', borderRadius: 10, border: '1px solid var(--border)',
+                  const outPhp  = d.cash_php  ?? 0;
+                  const backPhp = d.remit_php ?? 0;
+                  const outByCcy: Record<string, number> = {};
+                  const backByCcy: Record<string, number> = {};
+                  for (const it of d.items)       outByCcy[it.currency]  = (outByCcy[it.currency]  ?? 0) + it.amount;
+                  for (const it of d.remit_items) backByCcy[it.currency] = (backByCcy[it.currency] ?? 0) + it.amount;
+                  const fcyRows = Array.from(new Set([...Object.keys(outByCcy), ...Object.keys(backByCcy)])).sort();
+                  const hasAnyMoney = outPhp > 0 || backPhp > 0 || fcyRows.length > 0;
+                  const rowGrid: React.CSSProperties = {
+                    display: 'grid', gridTemplateColumns: '48px 1fr 1fr',
+                    columnGap: 10, alignItems: 'center', padding: '3px 0',
                   };
-                  const backChip: React.CSSProperties = {
-                    ...M, fontSize: 10, color: 'var(--teal-300)',
-                    background: 'rgba(61,199,173,0.06)',
-                    padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(61,199,173,0.2)',
-                  };
+                  const ccyCell:  React.CSSProperties = { ...M, fontSize: 10, color: 'var(--text-strong)', fontWeight: 600 };
+                  const outCell:  React.CSSProperties = { ...M, fontSize: 10, color: 'var(--text-muted)',  textAlign: 'right' };
+                  const backCell: React.CSSProperties = { ...M, fontSize: 10, color: 'var(--teal-300)',    textAlign: 'right' };
+                  const fmtAmt = (n: number) =>
+                    n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                   return (
-                    <div key={d.id} style={{ ...cardStyle, opacity: 0.75 }}>
+                    <div key={d.id} style={{ ...cardStyle, opacity: 0.85 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <span style={{ ...Y, fontSize: 13, fontWeight: 600, color: 'var(--text-strong)' }}>{d.rider_name}</span>
                         <span style={{ ...M, fontSize: 10, color: 'var(--teal-300)' }}>✓ RETURNED {d.return_time ?? ''}</span>
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
-                        <span style={outChip}>OUT {php(d.cash_php ?? 0)}</span>
-                        {(d.remit_php ?? 0) > 0 && (
-                          <span style={backChip}>BACK {php(d.remit_php ?? 0)}</span>
-                        )}
-                      </div>
-                      {(d.items.length > 0 || d.remit_items.length > 0) && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {d.items.map((it, i) => (
-                            <span key={i} style={outChip}>OUT {fmt(it.amount, it.currency)}</span>
+                      {hasAnyMoney && (
+                        <>
+                          <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 1fr', columnGap: 10, ...M, fontSize: 9, color: 'var(--text-faint)', letterSpacing: '0.1em', padding: '2px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+                            <span></span>
+                            <span style={{ textAlign: 'right' }}>OUT</span>
+                            <span style={{ textAlign: 'right' }}>BACK</span>
+                          </div>
+                          {(outPhp > 0 || backPhp > 0) && (
+                            <div style={rowGrid}>
+                              <span style={ccyCell}>PHP</span>
+                              <span style={outCell}>{outPhp > 0 ? php(outPhp) : '—'}</span>
+                              <span style={backCell}>{backPhp > 0 ? php(backPhp) : '—'}</span>
+                            </div>
+                          )}
+                          {fcyRows.map(c => (
+                            <div key={c} style={rowGrid}>
+                              <span style={ccyCell}>{c}</span>
+                              <span style={outCell}>{(outByCcy[c] ?? 0) > 0 ? fmtAmt(outByCcy[c]) : '—'}</span>
+                              <span style={backCell}>{(backByCcy[c] ?? 0) > 0 ? fmtAmt(backByCcy[c]) : '—'}</span>
+                            </div>
                           ))}
-                          {d.remit_items.map((it, i) => (
-                            <span key={i} style={backChip}>BACK {fmt(it.amount, it.currency)}</span>
-                          ))}
-                        </div>
+                        </>
                       )}
                     </div>
                   );
