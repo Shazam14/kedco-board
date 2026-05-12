@@ -1773,6 +1773,9 @@ export default function CounterShell({
                 - (shift.inter_branch_out_php ?? 0)
                 + (shift.peso_ken_in_php      ?? 0)
                 - (shift.peso_ken_out_php     ?? 0)
+                + (shift.vale_in_php          ?? 0)
+                - (shift.vale_out_php         ?? 0)
+                - (shift.cashier_floats_out_php ?? 0)
                 - (shift.vault_returns_php    ?? 0)
                 + (shift.cheques_cleared_php  ?? 0)
                 - (shift.expenses_php         ?? 0);
@@ -1804,6 +1807,9 @@ export default function CounterShell({
                 const interBranchOut = shift.inter_branch_out_php    ?? 0;
                 const pesoKenIn     = shift.peso_ken_in_php          ?? 0;
                 const pesoKenOut    = shift.peso_ken_out_php         ?? 0;
+                const valeIn        = shift.vale_in_php              ?? 0;
+                const valeOut       = shift.vale_out_php             ?? 0;
+                const cashierFloatsOut = shift.cashier_floats_out_php ?? 0;
                 const vaultReturns  = shift.vault_returns_php        ?? 0;
                 const expenses      = shift.expenses_php             ?? 0;
                 const cheques       = shift.cheques_cleared_php      ?? 0;
@@ -1819,6 +1825,9 @@ export default function CounterShell({
                   ...(interBranchOut > 0 ? [['To Branch (inter-branch out)', '-' + php(interBranchOut), 'var(--accent-coral)']] as [string, string, string?][] : []),
                   ...(pesoKenIn > 0 ? [['From Ken (Ken float → drawer)', '+' + php(pesoKenIn), 'var(--teal-300)']] as [string, string, string?][] : []),
                   ...(pesoKenOut > 0 ? [['To Ken (drawer → Ken float)', '-' + php(pesoKenOut), 'var(--accent-coral)']] as [string, string, string?][] : []),
+                  ...(valeIn > 0  ? [['From Vale (investor → drawer)', '+' + php(valeIn),  'var(--teal-300)']] as [string, string, string?][] : []),
+                  ...(valeOut > 0 ? [['To Vale (drawer → investor)',   '-' + php(valeOut), 'var(--accent-coral)']] as [string, string, string?][] : []),
+                  ...(cashierFloatsOut > 0 ? [['Cashier Floats Out (drawer → cashiers)', '-' + php(cashierFloatsOut), 'var(--accent-coral)']] as [string, string, string?][] : []),
                   ...(vaultReturns !== 0 ? [['Vault Movement (drawer ↔ vault)', (vaultReturns >= 0 ? '-' : '+') + php(Math.abs(vaultReturns)), vaultReturns >= 0 ? 'var(--accent-coral)' : 'var(--teal-300)']] as [string, string, string?][] : []),
                   ...(cheques > 0      ? [['Cheques Cleared', '+' + php(cheques), 'var(--teal-300)']]      as [string, string, string?][] : []),
                   ...(expenses > 0     ? [['Expenses',        '-' + php(expenses), 'var(--accent-coral)']] as [string, string, string?][] : []),
@@ -1891,6 +1900,11 @@ export default function CounterShell({
                   + (shift.bale_peso_php        ?? 0)
                   + (shift.inter_branch_in_php  ?? 0)
                   - (shift.inter_branch_out_php ?? 0)
+                  + (shift.peso_ken_in_php      ?? 0)
+                  - (shift.peso_ken_out_php     ?? 0)
+                  + (shift.vale_in_php          ?? 0)
+                  - (shift.vale_out_php         ?? 0)
+                  - (shift.cashier_floats_out_php ?? 0)
                   - (shift.vault_returns_php    ?? 0)
                   + (shift.cheques_cleared_php  ?? 0)
                   - (shift.expenses_php         ?? 0);
