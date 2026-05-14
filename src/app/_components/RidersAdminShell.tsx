@@ -94,6 +94,15 @@ function toApi(items: LineItem[]): CurrItem[] {
   return items.map(it => ({ currency: it.currency, amount: parseFloat(it.amount) }));
 }
 
+const ROW_GRID: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: '52px 1fr 1fr 1fr',
+  alignItems: 'center', columnGap: 12, padding: '4px 0',
+};
+
+function fmtAmt(n: number) {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function SummaryBar({ dispatches }: { dispatches: Dispatch[] }) {
   const totals: Record<string, { out: number; back: number }> = {};
 
@@ -108,36 +117,55 @@ function SummaryBar({ dispatches }: { dispatches: Dispatch[] }) {
     }
   }
 
-  const entries = Object.entries(totals);
-  if (entries.length === 0) return null;
+  if (Object.keys(totals).length === 0) return null;
+
+  const phpRow = totals['PHP'];
+  const fcyRows = Object.entries(totals).filter(([c]) => c !== 'PHP').sort(([a], [b]) => a.localeCompare(b));
+
+  const ccyCell:  React.CSSProperties = { ...M, fontSize: 11, color: '#e2e6f0', fontWeight: 600 };
+  const outCell:  React.CSSProperties = { ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' };
+  const backCell: React.CSSProperties = { ...M, fontSize: 11, color: '#00d4aa', textAlign: 'right' };
+  const stillCell: React.CSSProperties = { ...M, fontSize: 11, textAlign: 'right' };
+
+  const render = (cur: string, out: number, back: number) => {
+    const still = out - back;
+    return (
+      <div key={cur} style={ROW_GRID}>
+        <span style={ccyCell}>{cur}</span>
+        <span style={outCell}>{out > 0 ? fmt(out, cur) : '—'}</span>
+        <span style={backCell}>{back > 0 ? fmt(back, cur) : '—'}</span>
+        <span style={{ ...stillCell, color: still > 0 ? '#ff5c5c' : 'var(--muted)' }}>
+          {still !== 0 ? fmt(still, cur) : '—'}
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
-      <div style={{ ...M, fontSize: 10, color: '#a78bfa', letterSpacing: '0.12em', marginBottom: 10 }}>TODAY'S FLOAT SUMMARY</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-        {entries.map(([cur, { out, back }]) => {
-          const still = out - back;
-          return (
-            <div key={cur} style={{ minWidth: 140 }}>
-              <div style={{ ...M, fontSize: 11, color: '#a78bfa', fontWeight: 700, marginBottom: 4 }}>{cur}</div>
-              <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>Out: <span style={{ color: '#f5a623' }}>{fmt(out, cur)}</span></div>
-              <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>Back: <span style={{ color: '#00d4aa' }}>{fmt(back, cur)}</span></div>
-              <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>Still out: <span style={{ color: still > 0 ? '#ff5c5c' : '#00d4aa' }}>{fmt(still, cur)}</span></div>
-            </div>
-          );
-        })}
+      <div style={{ ...M, fontSize: 10, color: '#a78bfa', letterSpacing: '0.12em', marginBottom: 10 }}>TODAY&apos;S FLOAT SUMMARY</div>
+      <div style={{ ...ROW_GRID, ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em', padding: '2px 0 4px', borderBottom: '1px solid var(--border)' }}>
+        <span></span>
+        <span style={{ textAlign: 'right' }}>OUT</span>
+        <span style={{ textAlign: 'right' }}>BACK</span>
+        <span style={{ textAlign: 'right' }}>STILL OUT</span>
       </div>
+      {phpRow && render('PHP', phpRow.out, phpRow.back)}
+      {fcyRows.map(([cur, { out, back }]) => render(cur, out, back))}
     </div>
   );
 }
 
 export default function RidersAdminShell({
-  dispatches: initial, riders, currencies,
+  dispatches: initial, riders, currencies, role, username,
 }: {
   dispatches: Dispatch[];
   riders: Rider[];
   currencies: string[];
+  role: string;
+  username: string;
 }) {
+  const isSupervisor = role === 'supervisor';
   const router = useRouter();
   const [dispatches,  setDispatches]  = useState<Dispatch[]>(initial);
   const [selected,    setSelected]    = useState<Dispatch | null>(null);
@@ -250,6 +278,11 @@ export default function RidersAdminShell({
   const inField  = dispatches.filter(d => d.status === 'IN_FIELD');
   const returned = dispatches.filter(d => d.status === 'RETURNED');
 
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: '#e2e6f0' }}>
       {/* Nav */}
@@ -258,10 +291,27 @@ export default function RidersAdminShell({
           <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#a78bfa,#7c5cbf)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🏍️</div>
           <div>
             <div style={{ ...Y, fontSize: 13, fontWeight: 700 }}>Kedco FX</div>
-            <div style={{ ...M, fontSize: 9, color: 'var(--muted)' }}>Rider Dispatch</div>
+            <div style={{ ...M, fontSize: 9, color: 'var(--muted)' }}>Rider Management</div>
           </div>
         </div>
-        <a href="/admin" style={{ ...M, fontSize: 11, padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', color: 'var(--muted)', textDecoration: 'none' }}>← Admin</a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {username && (
+            <div style={{ ...M, fontSize: 11, color: 'var(--muted)' }}>
+              <span style={{ color: '#e2e6f0' }}>{username}</span>
+            </div>
+          )}
+          <a href={isSupervisor ? '/supervisor' : '/admin'} style={{ ...M, fontSize: 11, padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', color: 'var(--muted)', textDecoration: 'none' }}>
+            {isSupervisor ? '← HUB' : '← Admin'}
+          </a>
+          {isSupervisor && (
+            <a href="/supervisor/dispatch" style={{ ...M, fontSize: 11, padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', color: 'var(--muted)', textDecoration: 'none' }}>
+              DISPATCH
+            </a>
+          )}
+          <button onClick={handleLogout} style={{ ...M, fontSize: 11, padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--muted)', cursor: 'pointer' }}>
+            LOGOUT
+          </button>
+        </div>
       </nav>
 
       <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: 0, minHeight: 'calc(100vh - 56px)' }}>
@@ -311,14 +361,28 @@ export default function RidersAdminShell({
                       <span style={{ ...M, fontSize: 10, color: '#a78bfa', background: 'rgba(167,139,250,0.1)', padding: '3px 8px', borderRadius: 20, border: '1px solid rgba(167,139,250,0.2)' }}>IN FIELD</span>
                     </div>
 
-                    {/* Dispatched items */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                      {d.items.map((it, i) => (
-                        <span key={i} style={{ ...M, fontSize: 11, color: '#f5a623', background: 'rgba(245,166,35,0.08)', padding: '2px 8px', borderRadius: 10, border: '1px solid rgba(245,166,35,0.2)' }}>
-                          OUT {fmt(it.amount, it.currency)}
-                        </span>
-                      ))}
-                    </div>
+                    {/* Dispatched items — table-style */}
+                    {d.items.length > 0 && (() => {
+                      const phpItem = d.items.find(it => it.currency === 'PHP');
+                      const fcyItems = d.items.filter(it => it.currency !== 'PHP').sort((a, b) => a.currency.localeCompare(b.currency));
+                      const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: '52px 1fr', alignItems: 'center', columnGap: 10, padding: '3px 0' };
+                      const ccy:  React.CSSProperties = { ...M, fontSize: 11, color: '#e2e6f0', fontWeight: 600 };
+                      const amt:  React.CSSProperties = { ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' };
+                      return (
+                        <div style={{ marginBottom: 8, borderTop: '1px solid var(--border)', paddingTop: 6 }}>
+                          <div style={{ ...grid, ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em', padding: '2px 0 4px' }}>
+                            <span></span>
+                            <span style={{ textAlign: 'right' }}>OUT</span>
+                          </div>
+                          {phpItem && (
+                            <div style={grid}><span style={ccy}>PHP</span><span style={amt}>{fmt(phpItem.amount, 'PHP')}</span></div>
+                          )}
+                          {fcyItems.map((it, i) => (
+                            <div key={i} style={grid}><span style={ccy}>{it.currency}</span><span style={amt}>{fmtAmt(it.amount)}</span></div>
+                          ))}
+                        </div>
+                      );
+                    })()}
 
                     {d.notes && <div style={{ ...M, fontSize: 10, color: 'var(--muted)', marginBottom: 8 }}>{d.notes}</div>}
 
@@ -358,23 +422,51 @@ export default function RidersAdminShell({
             <>
               <div style={{ ...M, fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 10 }}>RETURNED ({returned.length})</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {returned.map(d => (
-                  <div key={d.id} onClick={() => loadDetail(d)}
-                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', opacity: 0.8 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <span style={{ ...Y, fontSize: 13, fontWeight: 700 }}>{d.rider_name}</span>
-                      <span style={{ ...M, fontSize: 10, color: '#00d4aa' }}>✓ RETURNED {d.return_time}</span>
+                {returned.map(d => {
+                  const outByCcy: Record<string, number> = {};
+                  const backByCcy: Record<string, number> = {};
+                  for (const it of d.items)       outByCcy[it.currency]  = (outByCcy[it.currency]  ?? 0) + it.amount;
+                  for (const it of d.remit_items) backByCcy[it.currency] = (backByCcy[it.currency] ?? 0) + it.amount;
+                  const allCcy = Array.from(new Set([...Object.keys(outByCcy), ...Object.keys(backByCcy)]));
+                  const phpHas = allCcy.includes('PHP');
+                  const fcyRows = allCcy.filter(c => c !== 'PHP').sort();
+                  const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: '52px 1fr 1fr', alignItems: 'center', columnGap: 10, padding: '3px 0' };
+                  const ccy:  React.CSSProperties = { ...M, fontSize: 11, color: '#e2e6f0', fontWeight: 600 };
+                  const outC: React.CSSProperties = { ...M, fontSize: 11, color: '#f5a623', textAlign: 'right' };
+                  const bckC: React.CSSProperties = { ...M, fontSize: 11, color: '#00d4aa', textAlign: 'right' };
+                  return (
+                    <div key={d.id} onClick={() => loadDetail(d)}
+                      style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', opacity: 0.85 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                        <span style={{ ...Y, fontSize: 13, fontWeight: 700 }}>{d.rider_name}</span>
+                        <span style={{ ...M, fontSize: 10, color: '#00d4aa' }}>✓ RETURNED {d.return_time}</span>
+                      </div>
+                      {allCcy.length > 0 && (
+                        <>
+                          <div style={{ ...grid, ...M, fontSize: 9, color: 'var(--muted)', letterSpacing: '0.1em', padding: '2px 0', borderBottom: '1px solid var(--border)' }}>
+                            <span></span>
+                            <span style={{ textAlign: 'right' }}>OUT</span>
+                            <span style={{ textAlign: 'right' }}>BACK</span>
+                          </div>
+                          {phpHas && (
+                            <div style={grid}>
+                              <span style={ccy}>PHP</span>
+                              <span style={outC}>{(outByCcy['PHP'] ?? 0) > 0 ? fmt(outByCcy['PHP'], 'PHP') : '—'}</span>
+                              <span style={bckC}>{(backByCcy['PHP'] ?? 0) > 0 ? fmt(backByCcy['PHP'], 'PHP') : '—'}</span>
+                            </div>
+                          )}
+                          {fcyRows.map(c => (
+                            <div key={c} style={grid}>
+                              <span style={ccy}>{c}</span>
+                              <span style={outC}>{(outByCcy[c] ?? 0) > 0 ? fmtAmt(outByCcy[c]) : '—'}</span>
+                              <span style={bckC}>{(backByCcy[c] ?? 0) > 0 ? fmtAmt(backByCcy[c]) : '—'}</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                      {d.items.map((it, i) => (
-                        <span key={i} style={{ ...M, fontSize: 10, color: '#f5a623' }}>OUT {fmt(it.amount, it.currency)}</span>
-                      ))}
-                      {d.remit_items.map((it, i) => (
-                        <span key={i} style={{ ...M, fontSize: 10, color: '#00d4aa' }}>BACK {fmt(it.amount, it.currency)}</span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}

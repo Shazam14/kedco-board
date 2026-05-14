@@ -32,5 +32,13 @@ export default async function RidersPage() {
 
   const activeCurrencies = ['PHP', ...(currencies as { code: string }[]).map(c => c.code)];
 
-  return <RidersAdminShell dispatches={dispatches} riders={riders} currencies={activeCurrencies} />;
+  return (
+    <RidersAdminShell
+      dispatches={dispatches}
+      riders={riders}
+      currencies={activeCurrencies}
+      role={payload.role}
+      username={payload.full_name || payload.sub || ''}
+    />
+  );
 }
